@@ -98,7 +98,7 @@ If the two exclusion height values differ significantly between each other for e
 interacts with something on the sample over time, partly adsorbs to the surface, or needs longer time to rinse properly 
 from the flow cell (shift solvent range to further after probe rinsing). 
 
-## The dual-wavelength method
+## (TODO) The dual-wavelength method
 The dual-wavelength method can be used to determine the extension of swollen layers with unknown refractive index, 
 based on the following requirements: 
    * The refractive index increment for the layer material for each wavelength is known.
