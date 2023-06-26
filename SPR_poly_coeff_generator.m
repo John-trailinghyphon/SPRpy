@@ -1,7 +1,7 @@
 % Polyfit on steps vs angles from .spr2 for each wavelength (2019 VT)
 % Uses spectra from full angular scans
 
-cal_save_folder = 'C:\Users\John\OneDrive - Chalmers University of Technology\Dahlin group\Python\PhD-Projects';
+cal_save_folder = '';
 file_name = strcat(cal_save_folder, '\', 'SPR_poly_coeff_', datestr(now, 'yy-mm-dd'), '.csv');
 
 data1_FC1 = dlmread('X-cal_210519scan1_L1 670nm.dto', '\t').';
