@@ -3,7 +3,8 @@
 This program can be used to perform fresnel modelling of multi-parameter surface plasmon resonance (MP-SPR) measurements
 performed using [Bionavis SPR instruments](https://www.bionavis.com/en/technology/why-choose-mpspr/). 
 
-It is based on MATLAB implementations of the [transfer-matrix-method](https://en.wikipedia.org/wiki/Transfer-matrix_method_(optics)) by [Andreas Dahlin](https://www.adahlin.com/matlab-programs). 
+It is based on MATLAB implementations of the [transfer-matrix-method](https://en.wikipedia.org/wiki/Transfer-matrix_method_(optics)) 
+by [Andreas Dahlin](https://www.adahlin.com/matlab-programs). 
 
 ## Performing fresnel modelling of non-swollen layers
 
@@ -18,9 +19,20 @@ index throughout its thickness.
 
 ### Modelling
 
-1) Select the desired wavelength and its corresponding literature values for the refractive index and thickness for each material layer of the cleaned sensor.
+1) Load the measurement file corresponding to the cleaned sensor. Select the desired wavelength and corresponding 
+literature values for the refractive index and thickness of each material layer for the sensor (defaults are loaded). 
 
-2) testing, is it updated?
+2) Choose which layer and property should be fitted to match a model background to the reference measurement. For empty 
+metal sensors, choose the imaginary part of the refractive index (extinction coefficient, _k_) for the metal layer (the 
+plasmonic metal layer thickness should not be altered). For all other types of layers, select the surface layer 
+thickness (or refractive index) as variable to be fitted. Provide its refractive index as a constant (or vice versa if 
+thickness is selected) and give an initial guess as well as a lower and upper bound of the variable thickness (or 
+refractive index) for the fitting algorithm. 
+
+3) Run the fitting once to see the plot. Use the interactivity in the plot to adapt the selected range of values to fit 
+against (typically around the reflectivity minimum) until the fit looks good.
+
+4) If needed, add a new surface layer to the model on top of the previous and repeat the procedure. 
 
 ## The non-interacting probe method for height determination
 
@@ -86,8 +98,7 @@ If the two exclusion height values differ significantly between each other for e
 interacts with something on the sample over time, partly adsorbs to the surface, or needs longer time to rinse properly 
 from the flow cell (shift solvent range to further after probe rinsing). 
 
-## The dual-wavelength method (TO-DO)
-
+## The dual-wavelength method
 The dual-wavelength method can be used to determine the extension of swollen layers with unknown refractive index, 
 based on the following requirements: 
    * The refractive index increment for the layer material for each wavelength is known.
@@ -99,3 +110,5 @@ It is based on the peer-reviewed paper by:
 Rupert, D. L. M., et al. (2016). Dual-Wavelength Surface Plasmon Resonance for Determining the Size and Concentration of Sub-Populations of Extracellular Vesicles. 
 _Analytical Chemistry_, _88(20)_, 9980–9988. 
 https://pubs.acs.org/doi/full/10.1021/acs.analchem.6b01860
+
+TODO: Update this section when implemented.
