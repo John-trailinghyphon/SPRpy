@@ -108,13 +108,13 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
     spr2_path, spr2_file_name = os.path.split(spr2_file)
 
     if c_ind == 0:
-        file_identifier = sp2_file_name[:-5] + '-L1_670nm.csv'
+        file_identifier = spr2_file_name[:-5] + '-L1_670nm.csv'
     elif c_ind == 1:
-        file_identifier = sp2_file_name[:-5] + '-L2_980nm.csv'
+        file_identifier = spr2_file_name[:-5] + '-L2_980nm.csv'
     elif c_ind == 2:
-        file_identifier = sp2_file_name[:-5] + '-L3_670nm.csv'
+        file_identifier = spr2_file_name[:-5] + '-L3_670nm.csv'
     elif c_ind == 3:
-        file_identifier = sp2_file_name[:-5] + '-L4_785nm.csv'
+        file_identifier = spr2_file_name[:-5] + '-L4_785nm.csv'
 
     save_name = os.path.join(spr2_path, file_identifier)
     header_string = 'Left most column is Time (min), First row is Angles (deg)'
