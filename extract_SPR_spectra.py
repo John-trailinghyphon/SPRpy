@@ -41,7 +41,7 @@ def extract_parameters(content):
     return start_pos, step_length, TIR_values, time_value_list
 
 
-def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length, time_values, sp2_file):
+def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length, time_values, spr2_file):
     #  Extracts and calibrates spectra from .sp2 file, then saves it as .csv
 
     #  Get the spectra data (angles and intensity)
@@ -105,7 +105,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
     spectra_full_array = np.column_stack((np.insert(time_values_np, 0, 0), spectra_full_array))
 
     #  Save data as .csv
-    sp2_path, sp2_file_name = os.path.split(sp2_file)
+    spr2_path, spr2_file_name = os.path.split(spr2_file)
 
     if c_ind == 0:
         file_identifier = sp2_file_name[:-5] + '-L1_670nm.csv'
@@ -116,7 +116,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
     elif c_ind == 3:
         file_identifier = sp2_file_name[:-5] + '-L4_785nm.csv'
 
-    save_name = os.path.join(sp2_path, file_identifier)
+    save_name = os.path.join(spr2_path, file_identifier)
     header_string = 'Left most column is Time (min), First row is Angles (deg)'
 
     np.savetxt(save_name, spectra_full_array, fmt='%1.6f', delimiter=';', header=header_string)
@@ -125,7 +125,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
 if __name__ == '__main__':  # This is important since mp.Process goes through this file for extract_spectra()
     tkinter.Tk().withdraw()
 
-    sp2_files = askopenfilenames(title='Select sp2 files')
+    spr2_files = askopenfilenames(title='Select spr2 files')
 
     try:
         #  Read default polynomial file
@@ -153,12 +153,12 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
 
         poly_path, poly_file_name = os.path.split(poly_file)
 
-    for sp2_file in sp2_files:
+    for spr2_file in spr2_files:
 
-        sp2_path, sp2_file_name = os.path.split(sp2_file)
+        spr2_path, spr2_file_name = os.path.split(spr2_file)
 
         #  Read sp2 file
-        with open(sp2_file, 'r') as f:
+        with open(spr2_file, 'r') as f:
             content = f.read()
 
         #  Get starting position for scan, TIR value steps and time points
@@ -176,7 +176,7 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
        
         jobs = []
         for i in range(4):
-            pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], angle_offsets[i], start_pos, scan_speed, time_value_list, sp2_file))
+            pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], angle_offsets[i], start_pos, scan_speed, time_value_list, spr2_file))
             jobs.append(pr)
             pr.start()
             print('TIR Calib. Offset', i, ': ', angle_offsets[i], ' deg')
@@ -186,6 +186,6 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
         for job in jobs:
             job.join()
 
-        print('File: ' + sp2_file_name + ' is done.')
+        print('File: ' + spr2_file_name + ' is done.')
 
 
