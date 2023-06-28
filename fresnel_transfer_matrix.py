@@ -3,19 +3,19 @@
 import numpy as np
 
 
-def fresnel_calculation(fitted_var, layer, wavelength, layer_thicknesses, n_re, n_im, angles, ydata=None, ydata_type='R', polarization=1):
+def fresnel_calculation(fitted_var, angles=np.linspace(39, 50, 1567), layer='n_im_Au', wavelength=670, layer_thicknesses=np.array([np.NaN, 2, 50, 2, np.NaN]), n_re=np.array([1.5202, 3.3105, 0.2238, 1.35, 1.0003]), n_im=np.array([0, 3.4556, 3.9259, 0, 0]), ydata=None, ydata_type='R', polarization=1):
 
     """
     Function for calculating fresnel coefficients or for fitting angular reflectivity traces based on the residuals of
     a measurement
 
+    :param angles: ndarray
     :param fitted_var: float
     :param layer: string, determines which layer is fitted, see cases below for valid options
     :param wavelength: int
     :param layer_thicknesses: ndarray
     :param n_re: ndarray
     :param n_im: ndarray
-    :param angles: ndarray
     :param ydata: ndarray (default None), if provided the function will instead return residuals between the modelled intensity and measurement
     :param ydata_type: string, specify if reflectivity ('R'), transmission ('T') or absorption ('A') is fitted against
     :param polarization: int, 1 (default) or 0
