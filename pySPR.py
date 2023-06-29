@@ -13,21 +13,17 @@
 # TODO: The workbook can be its own class with methods that define how data is stored and loaded for the dash app. The
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
+
 import fresnel_transfer_matrix as ftm
 import numpy as np
+import datetime
+import os
 from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory
-
-
-# PLACEHOLDER ATTRIBUTES (should come from different sources later, such as .spr2 file, .csv files or from user input in
-# dashapp
-session_name_PH = '2306XX SPR experiment testing'
-session_directory_PH = askdirectory(title='Select save folder')
-PH_data_path = askopenfilename(title='Select a measurement file')
-PH_polarization = 1
-PH_wavelength = 670
-PH_layer_thicknesses = np.array([np.NaN, 2, 50, np.NaN])
-PH_n_re = np.array([1.5202, 3.3105, 0.2238, 1.0003])
-PH_n_im = np.array([0, 3.4556, 3.9259, 0])
+import pandas as pd
+import plotly.express as px
+import dash
+import extract_SPR_spectra
+import copy
 
 
 class Session:
@@ -37,13 +33,15 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, name=session_name_PH, directory=session_directory_PH):
-        self.name = name
-        self.location = directory
+    def __init__(self, name='Session', directory=os.getcwd()):
+        self.name = datetime.datetime.now().__str__()[0:16] + ' ' + name
+        if not os.path.exists(directory + r'\\sessions'):
+            os.mkdir(directory + r'\\pySPR sessions')
+        self.location = directory + r'\\pySPR sessions'
         self.measurement_instances = []
-        self.measurement_ID_generator = generate_measurement_id()
+        self.session_ID_generator = generate_id()
 
-    def remove_measurement_instance(self):
+    def remove_experiment(self):
         """
         Remove a measurement from the session.
         :return:
@@ -51,78 +49,167 @@ class Session:
         pass
 
 
-class SPRExperiment:
+class SPRMeasurement:
 
     """
-    An SPR experiment typically have some things in common, such as the sensor layers, measured angles, measured reflectivity, measurement
+    An SPR measurement typically have some things in common, such as the sensor layers, measured angles, measured reflectivity, measurement
     time, etc. This information can be shared between different analysis methods for one measurement. This class serves
     as a base class for inheritance between different measurements within a session.
+
+    NOTE: Create a new SPRMeasuerment object/instance every time before an analysis run is performed after the sensor properties has changed.
+    Otherwise, previous runs will be broken. Essentially,
+
+
     """
 
-    def __init__(self, data_path=PH_data_path, layer_thicknesses=PH_layer_thicknesses, n_re=PH_n_re, n_im=PH_n_im, wavelength=PH_wavelength, polarization=PH_polarization):
+    def __init__(self, data_path_, sensor_metal='Au', polarization=1):
 
-        # Note that these attributes can be changed for a measurement instance when it is created, but having them here
-        # should make them default from initial startup if not specified
-        self.data_path = data_path
         self.polarization = polarization
-        self.wavelength = wavelength
-        self.layer_thicknesses = layer_thicknesses
-        self.refractive_indices = n_re
-        self.extinction_coefficients = n_im
 
-    # def add_new_measurement(self):
-    #     """
-    #     Should add new data file path to the session and initiate a new measurement of a particular type (when called
-    #     from that measurement instance)
-    #     :param new_path:
-    #     :return:
-    #     """
+        # Load in the measurement data from a .csv file
+        self.data_table = pd.read_csv(data_path_, delimiter=';')
+        self.time = self.data_table.iloc[:, 0]
+        self.angles = self.data_table.iloc[0, 1:]
+        self.ydata = self.data_table.iloc[1, 1:]
 
+        # Loading sensor's default optical properties
+        self.wavelength = int(data_path_[-9:-6])
+        self.sensor_metal = sensor_metal
+        self.set_default_sensor_properties(self.sensor_metal)
 
-class PlottedData(SPRExperiment):
-    """
+    def set_default_sensor_properties(self, sensor_metal):
 
-    """
+        # These default parameters should be set based on material layer and wavelength from loaded .csv file
+        match sensor_metal:
+            case 'Au' | 'gold' | 'Gold' | 'GOLD':
+                self.layer_thicknesses = np.array([np.NaN, 2, 50, np.NaN])
+                match self.wavelength:
+                    case 670:
+                        self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.4556, 3.9259, 0])
+                    case 785:
+                        self.refractive_indices = np.array([1.5162, 3.3225, 0.2580, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.6148, 4.88, 0])
+                    case 980:
+                        self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0])
 
-    def __init__(self, xdata, ydata):
-        super().__init__()
+            case 'sio2' | 'SiO2' | 'SIO2' | 'glass' | 'silica':
+                # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez.
+                # Self-consistent optical constants of SiO2 and Ta2O5 films
+                # Opt. Mater. Express 6, 3622-3637 (2016) (Numerical data kindly provided by Juan Larruquert)
+                self.layer_thicknesses = np.array([np.NaN, 2, 50, 14, np.NaN])
+                match self.wavelength:
+                    case 670:
+                        self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.4628, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.4556, 3.9259, 0, 0])
+                    case 785:
+                        self.refractive_indices = np.array([1.5162, 3.3225, 0.2580, 1.4610, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.6148, 4.88, 0, 0])
+                    case 980:
+                        self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.4592, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0, 0])
 
-        instance_id = next(super().measurement_ID_generator)
-        self.measurement_instances = self.measurement_instances.append('test')
+            case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
+                self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
+                match self.wavelength:
+                    case 670:
+                        self.refractive_indices = np.array([1.5202, 3.3105, 2.25, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.4556, 4.60, 0])
+                    case 785:
+                        self.refractive_indices = np.array([1.5162, 3.3225, 2.5467, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.6148, 5.1250, 0])
+                    case 980:
+                        self.refractive_indices = np.array([1.5130, 3.4052, 3.0331, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.5678, 6.1010, 0])
 
-        self.angles = xdata
-        self.reflectivity = ydata
+            case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
+                self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
+                match self.wavelength:
+                    case 670:
+                        self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
+                    case 785:
+                        print('WARNING! Default values for Pt, platinum, at 785 and 980 nm not yet supported. Enter values manually')
+                        self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
+                    case 980:
+                        print('WARNING! Default values for Pt, platinum, at 785 and 980 nm not yet supported. Enter values manually')
+                        self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
+                        self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
 
-    def show(self):
+    def add_sensor_layer(self):
+        """
+        Add additional layers on top of the sensor
+        :return:
+        """
+
+        pass
+
+    def plot_reflectivity_trace(self, index=0, xdata=None, ydata=None, rlines=None):
+        """
+
+        """
+        pass
+
+    def plot_sensorgram(self, xdata=None, ydata=None, rlines=None):
+        """
+
+        """
         pass
 
 
-class ModelledReflectivityTrace(SPRExperiment):
+class ModelledReflectivityTrace:
+    """
+    This class defines how a modelled reflectivity trace behaves. Note that a new measurement object should be used for
+    each new layer added to the sensor!
     """
 
-    """
-
-    def __init__(self, xdata, variable):
-        super().__init__()
+    def __init__(self, spr_measurement_object):
+        self.polarization = spr_measurement_object.polarization
+        self.wavelength = spr_measurement_object.wavelength
+        self.layer_thicknesses = spr_measurement_object.layer_thicknesses
+        self.refractive_indices = spr_measurement_object.refractive_indices
+        self.extinction_coefficients = spr_measurement_object.extinction_coefficients
+        self.data_path = spr_measurement_object.data_path
 
     def calculate_trace(self):
         pass
 
 
-class FittedReflectivityTrace(SPRExperiment):
+class FittedReflectivityTrace(ModelledReflectivityTrace):
 
     """
 
     """
 
-    def __init__(self, xdata, ydata, ydata_type):
-        super().__init__()
+    def __init__(self, spr_measurement_object, ydata_type='R'):
+        super().__init__(spr_measurement_object)  # Initializes the same way as parent objects, to shorten code
+        self.ydata_type = ydata_type
 
     def calculate_fit(self):
         pass
 
 
-def load_session():
+def add_experiment(experiment_handle, session_handle):
+    """
+
+    :return:
+    """
+    # This should not add measurement id, it should be done with "add_measurement"
+    pass
+
+
+def add_analysis(analysis_handle, session_handle):
+    """
+
+    :return:
+    """
+    # This should not add measurement id, it should be done with "add_measurement"
+    pass
+
+
+def load_session(filename):
     """
     Loads a previously initiated session.
     :return:
@@ -130,7 +217,7 @@ def load_session():
     pass
 
 
-def save_session():
+def save_session(session_handle):
     """
     Save a session to a binary pickle file.
     :return:
@@ -138,16 +225,31 @@ def save_session():
     pass
 
 
-def generate_measurement_id():
+def generate_id():
     """
-    Each time this function is called it will return a new session measurement ID.
+    Each time this function is called within an object it can return a new ID.
     :yield:
     """
-    measurement_id = 0
+    new_id = 1
     while True:
-        yield measurement_id
-        measurement_id += 1
+        yield new_id
+        new_id += 1
 
+
+def set_new_data_path():
+    print('Select the measurement datafile')
+    new_data_path = askopenfilename(title='Select the data file (.csv)')
+    return new_data_path
+
+
+if __name__ == '__main__':
+
+    # Create initial session
+    active_session = Session()
+
+    # Prompt user for initial measurement path
+    print('Select initial measurement file (.csv)')
+    data_path = askopenfilename(title='Select initial measurement file (.csv)')
 
 # def save_new_measurement(self):
 #     """
