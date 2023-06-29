@@ -138,11 +138,3 @@ def fresnel_calculation(fitted_var, angles=np.linspace(39, 50, 1567), layer='n_i
                 fresnel_residuals = fresnel_coefficients_absorption - ydata
 
         return fresnel_residuals
-
-def model_reflectivity_trace():
-
-    """
-
-
-    :return:
-    """
