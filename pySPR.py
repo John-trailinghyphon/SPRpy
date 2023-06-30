@@ -14,6 +14,7 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
+import extract_SPR_spectra
 import fresnel_transfer_matrix as ftm
 import numpy as np
 import datetime
@@ -22,7 +23,6 @@ from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory
 import pandas as pd
 import plotly.express as px
 import dash
-import extract_SPR_spectra
 import copy
 
 
@@ -35,11 +35,13 @@ class Session:
 
     def __init__(self, name='Session', directory=os.getcwd()):
         self.name = datetime.datetime.now().__str__()[0:16] + ' ' + name
-        if not os.path.exists(directory + r'\\sessions'):
+        if not os.path.exists(directory + r'\\pySPR sessions'):
             os.mkdir(directory + r'\\pySPR sessions')
         self.location = directory + r'\\pySPR sessions'
-        self.measurement_instances = []
-        self.session_ID_generator = generate_id()
+        self.sensor_instances = {}
+        self.sensor_ID = generate_id()
+        self.analysis_instances = {}
+        self.analysis_ID = generate_id()
 
     def remove_experiment(self):
         """
@@ -49,35 +51,24 @@ class Session:
         pass
 
 
-class SPRMeasurement:
+class Sensor:
 
     """
-    An SPR measurement typically have some things in common, such as the sensor layers, measured angles, measured reflectivity, measurement
-    time, etc. This information can be shared between different analysis methods for one measurement. This class serves
-    as a base class for inheritance between different measurements within a session.
-
-    NOTE: Create a new SPRMeasuerment object/instance every time before an analysis run is performed after the sensor properties has changed.
-    Otherwise, previous runs will be broken. Essentially,
-
-
+    An SPR measurement typically have some things in common, such as the sensor layers, measured angles,
+    measured reflectivity, measurement time, etc. This information can be shared between different analysis methods for
+    one measurement. This class serves as a basis for describing the current sensor, containing information about its
+    layers and their optical properties.
     """
 
     def __init__(self, data_path_, sensor_metal='Au', polarization=1):
 
+        # Load sensor's default optical properties
         self.polarization = polarization
-
-        # Load in the measurement data from a .csv file
-        self.data_table = pd.read_csv(data_path_, delimiter=';')
-        self.time = self.data_table.iloc[:, 0]
-        self.angles = self.data_table.iloc[0, 1:]
-        self.ydata = self.data_table.iloc[1, 1:]
-
-        # Loading sensor's default optical properties
         self.wavelength = int(data_path_[-9:-6])
         self.sensor_metal = sensor_metal
-        self.set_default_sensor_properties(self.sensor_metal)
+        self.set_default_optical_properties(self.sensor_metal)
 
-    def set_default_sensor_properties(self, sensor_metal):
+    def set_default_optical_properties(self, sensor_metal):
 
         # These default parameters should be set based on material layer and wavelength from loaded .csv file
         match sensor_metal:
@@ -138,43 +129,35 @@ class SPRMeasurement:
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
 
-    def add_sensor_layer(self, thickness, n_re, n_im):
+    def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
         """
         Add additional layers on top of the sensor (before bulk medium).
         :return:
         """
         # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
-        self.layer_thicknesses = np.insert(self.layer_thicknesses, -1, thickness)
-        self.refractive_indices = np.insert(self.refractive_indices, -1, n_re)
-        self.extinction_coefficients = np.insert(self.extinction_coefficients, -1, n_im)
-        print('Current layer thicknesses: ', self.layer_thicknesses)
-        print('Current layer refractive indices: ', self.refractive_indices)
-        print('Current layer extinction coefficients: ', self.extinction_coefficients)
+        self.layer_thicknesses = np.insert(self.layer_thicknesses, layer_index_, thickness)
+        self.refractive_indices = np.insert(self.refractive_indices, layer_index_, n_re)
+        self.extinction_coefficients = np.insert(self.extinction_coefficients, layer_index_, n_im)
+        print('Sensor thicknesses: ', self.layer_thicknesses)
+        print('Sensor refractive indices: ', self.refractive_indices)
+        print('Sensor extinction coefficients: ', self.extinction_coefficients)
 
-    def remove_sensor_layer(self, layer_index):
+    def remove_material_layer(self, layer_index_):
+
         """
-        Removes a layer from sensor.
+        Removes a layer from a sensor.
+
+        :param layer_index_: int, which layer index to remove (starting from 1)
         :return:
         """
+
         # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
-        self.layer_thicknesses = np.delete(self.layer_thicknesses, layer_index)
-        self.refractive_indices = np.delete(self.refractive_indices, layer_index)
-        self.extinction_coefficients = np.delete(self.extinction_coefficients, layer_index)
-        print('Current layer thicknesses: ', self.layer_thicknesses)
-        print('Current layer refractive indices: ', self.refractive_indices)
-        print('Current layer extinction coefficients: ', self.extinction_coefficients)
-
-    def plot_reflectivity_trace(self, index=0, xdata=None, ydata=None, rlines=None):
-        """
-
-        """
-        pass
-
-    def plot_sensorgram(self, xdata=None, ydata=None, rlines=None):
-        """
-
-        """
-        pass
+        self.layer_thicknesses = np.delete(self.layer_thicknesses, layer_index_-1, axis=0)
+        self.refractive_indices = np.delete(self.refractive_indices, layer_index_-1, axis=0)
+        self.extinction_coefficients = np.delete(self.extinction_coefficients, layer_index_-1, axis=0)
+        print('Sensor thicknesses: ', self.layer_thicknesses)
+        print('Sensor refractive indices: ', self.refractive_indices)
+        print('Sensor extinction coefficients: ', self.extinction_coefficients)
 
 
 class ModelledReflectivityTrace:
@@ -183,15 +166,27 @@ class ModelledReflectivityTrace:
     each new layer added to the sensor!
     """
 
-    def __init__(self, spr_measurement_object):
-        self.polarization = spr_measurement_object.polarization
-        self.wavelength = spr_measurement_object.wavelength
-        self.layer_thicknesses = spr_measurement_object.layer_thicknesses
-        self.refractive_indices = spr_measurement_object.refractive_indices
-        self.extinction_coefficients = spr_measurement_object.extinction_coefficients
-        self.data_path = spr_measurement_object.data_path
+    def __init__(self, sensor_object, data_path_):
+        self.polarization = sensor_object.polarization
+        self.wavelength = sensor_object.wavelength
+        self.layer_thicknesses = sensor_object.layer_thicknesses
+        self.refractive_indices = sensor_object.refractive_indices
+        self.extinction_coefficients = sensor_object.extinction_coefficients
+        self.data_path = data_path_
 
     def calculate_trace(self):
+        pass
+
+    def plot_reflectivity_trace(self, time_index=0, xdata_=None, ydata_=None, rlines_=None):
+        """
+
+        """
+        pass
+
+    def plot_sensorgram(self, time_=None, ydata_=None, rlines_=None):
+        """
+
+        """
         pass
 
 
@@ -201,15 +196,15 @@ class FittedReflectivityTrace(ModelledReflectivityTrace):
 
     """
 
-    def __init__(self, spr_measurement_object, ydata_type='R'):
-        super().__init__(spr_measurement_object)  # Initializes the same way as parent objects, to shorten code
+    def __init__(self, sensor_object, ydata_type='R'):
+        super().__init__(sensor_object)  # Initializes the same way as parent objects, to shorten code
         self.ydata_type = ydata_type
 
     def calculate_fit(self):
         pass
 
 
-def add_experiment(experiment_handle, session_handle):
+def add_sensor(sensor_handle, session_handle):
     """
 
     :return:
@@ -229,17 +224,21 @@ def add_analysis(analysis_handle, session_handle):
 
 def load_session(filename):
     """
-    Loads a previously initiated session.
+    Loads a previous session.
     :return:
     """
+    # TODO: It should load a session object and load its dictionaries containing measurement_instances and
+    #  analysis_instances.
+
     pass
 
 
-def save_session(session_handle):
+def save_to_session(session_handle, object_handle):
     """
     Save a session to a binary pickle file.
     :return:
     """
+    # TODO: Save a measurement or analysis object to a session
     pass
 
 
@@ -254,10 +253,16 @@ def generate_id():
         new_id += 1
 
 
-def set_new_data_path():
-    print('Select the measurement datafile')
-    new_data_path = askopenfilename(title='Select the data file (.csv)')
-    return new_data_path
+def load_data():
+    print('Select the measurement data file (.csv)')
+    data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')])
+
+    # Load in the measurement data from a .csv file
+    data_table = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
+    time_ = data_table.iloc[:, 0]
+    angles_ = data_table.iloc[0, 1:]
+    ydata_ = data_table.iloc[1:, 1:]
+    return data_path, time_, angles_, ydata_
 
 
 if __name__ == '__main__':
@@ -265,9 +270,8 @@ if __name__ == '__main__':
     # Create initial session
     active_session = Session()
 
-    # Prompt user for initial measurement path
-    print('Select initial measurement file (.csv)')
-    data_path = askopenfilename(title='Select initial measurement file (.csv)')
+    # Prompt user for initial measurement data
+    data_path, time, angles, ydata = load_data()
 
 # def save_new_measurement(self):
 #     """
