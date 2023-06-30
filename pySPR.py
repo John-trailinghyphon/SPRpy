@@ -2,17 +2,24 @@
 # either load .csv files directly or run conversion of .spr2 files using 'extract_SPR_spectra.py' in a separate thread
 # (preferably showing a progress bar if possible)
 
-# TODO: Start with rewriting the dry scan fitting code and function files into python. Use scipy.optimize.least_squares
+#  Start with rewriting the dry scan fitting code and function files into python. Use scipy.optimize.least_squares
 #  to replace MATLABs lsqnonlin.
 
-# TODO: Should have a class for modelling dry scan reflectivity traces and a second one for fitting reflectivity traces.
+#  Should have a class for modelling dry scan reflectivity traces and a second one for fitting reflectivity traces.
 #  Each class should have methods for running the calculations using the fresnel_calculation() function and for saving
 #  the results in an "experiment workbook". The optical parameters (with many defaults) and some naming strings should
 #  be provided when an object is instanced from the class.
 
-# TODO: The workbook can be its own class with methods that define how data is stored and loaded for the dash app. The
+#  The workbook can be its own class with methods that define how data is stored and loaded for the dash app. The
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
+
+# TODO: It is time to test the object persistence for an "active_object" variable and when it is added to a dictionary
+#  within a session object. Will the pointer inside the session object dictionary still point to the same object in
+#  memory? (I think so, but good to confirm).
+# TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
+#  performing the fresnel_calculation() function
+
 
 import extract_SPR_spectra
 import fresnel_transfer_matrix as ftm
@@ -146,7 +153,6 @@ class Sensor:
 
         """
         Removes a layer from a sensor.
-
         :param layer_index_: int, which layer index to remove (starting from 1)
         :return:
         """
@@ -162,8 +168,8 @@ class Sensor:
 
 class ModelledReflectivityTrace:
     """
-    This class defines how a modelled reflectivity trace behaves. Note that a new measurement object should be used for
-    each new layer added to the sensor!
+    This class defines how a modelled reflectivity trace behaves. Note that a different sensor object should be used for
+    each layer added to the sensor!
     """
 
     def __init__(self, sensor_object, data_path_):
@@ -196,30 +202,50 @@ class FittedReflectivityTrace(ModelledReflectivityTrace):
 
     """
 
-    def __init__(self, sensor_object, ydata_type='R'):
-        super().__init__(sensor_object)  # Initializes the same way as parent objects, to shorten code
+    def __init__(self, sensor_object, data_path_, ydata_type='R'):
+        super().__init__(sensor_object, data_path_)  # Initializes the same way as parent objects, to shorten code
         self.ydata_type = ydata_type
 
     def calculate_fit(self):
         pass
 
 
-def add_sensor(sensor_handle, session_handle):
+def add_sensor(session_handle, data_path_, sensor_metal='Au', polarization=1):
+    """
+    Adds sensor objects to a session object.
+    :return: a sensor object
+    """
+    id_ = next(session_handle.sensor_ID)
+    sensor_object = Sensor(data_path_, sensor_metal=sensor_metal, polarization=polarization)
+    session_handle.sensor_instances[id_] = sensor_object
+
+    return sensor_object
+
+
+def add_modelled_reflectivity_trace(session_handle, sensor_object, data_path_):
+    """
+    Adds analysis objects to a session object.
+    :return: an analysis object
     """
 
-    :return:
-    """
-    # This should not add measurement id, it should be done with "add_measurement"
-    pass
+    id_ = next(session_handle.analysis_ID)
+    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_)
+    session_handle.analysis_instances[id_] = analysis_object
+
+    return analysis_object
 
 
-def add_analysis(analysis_handle, session_handle):
+def add_fitted_reflectivity_trace(session_handle, sensor_object, data_path_, ydata_type='R'):
+    """
+    Adds analysis objects to a session object.
+    :return: an analysis object
     """
 
-    :return:
-    """
-    # This should not add measurement id, it should be done with "add_measurement"
-    pass
+    id_ = next(session_handle.analysis_ID)
+    analysis_object = FittedReflectivityTrace(sensor_object, data_path_, ydata_type=ydata_type)
+    session_handle.analysis_instances[id_] = analysis_object
+
+    return analysis_object
 
 
 def load_session(filename):
