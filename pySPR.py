@@ -138,13 +138,31 @@ class SPRMeasurement:
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
 
-    def add_sensor_layer(self):
+    def add_sensor_layer(self, thickness, n_re, n_im):
         """
-        Add additional layers on top of the sensor
+        Add additional layers on top of the sensor (before bulk medium).
         :return:
         """
+        # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
+        self.layer_thicknesses = np.insert(self.layer_thicknesses, -1, thickness)
+        self.refractive_indices = np.insert(self.refractive_indices, -1, n_re)
+        self.extinction_coefficients = np.insert(self.extinction_coefficients, -1, n_im)
+        print('Current layer thicknesses: ', self.layer_thicknesses)
+        print('Current layer refractive indices: ', self.refractive_indices)
+        print('Current layer extinction coefficients: ', self.extinction_coefficients)
 
-        pass
+    def remove_sensor_layer(self, layer_index):
+        """
+        Removes a layer from sensor.
+        :return:
+        """
+        # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
+        self.layer_thicknesses = np.delete(self.layer_thicknesses, layer_index)
+        self.refractive_indices = np.delete(self.refractive_indices, layer_index)
+        self.extinction_coefficients = np.delete(self.extinction_coefficients, layer_index)
+        print('Current layer thicknesses: ', self.layer_thicknesses)
+        print('Current layer refractive indices: ', self.refractive_indices)
+        print('Current layer extinction coefficients: ', self.extinction_coefficients)
 
     def plot_reflectivity_trace(self, index=0, xdata=None, ydata=None, rlines=None):
         """
