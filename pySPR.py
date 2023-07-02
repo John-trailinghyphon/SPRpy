@@ -323,4 +323,4 @@ if __name__ == '__main__':
     current_session = Session()
 
     # Prompt user for initial measurement data
-    data_path, time, angles, ydata = load_data()
+    data_path, time, angles, ydata = load_csv_data()
