@@ -5,6 +5,7 @@ import tkinter
 import multiprocessing as mp
 from tkinter.filedialog import askopenfilename, askopenfilenames
 
+
 def extract_parameters(content):
 
     #  Starting position for scans
@@ -27,7 +28,6 @@ def extract_parameters(content):
 
     for t_ind, time_string in enumerate(time_matches):
         time_value_list[t_ind] = int(time_value_match.search(time_string).group())/1000/60
-
 
     #  Determine the scanning speed/step length
     step_pattern = re.compile(r'<scan rtime="\d+" step_len="\d{1,2}" dir="Forward">')

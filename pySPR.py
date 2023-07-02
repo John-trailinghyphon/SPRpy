@@ -1,5 +1,5 @@
 # This is the main file where the webapp is initiated and further selections are made. It should ask for a datafile and
-# either load .csv files directly or run conversion of .spr2 files using 'extract_SPR_spectra.py' in a separate thread
+# either load .csv files directly or run conversion of .spr2 files using 'spr2_to_csv.py' in a separate thread
 # (preferably showing a progress bar if possible)
 
 #  Start with rewriting the dry scan fitting code and function files into python. Use scipy.optimize.least_squares
@@ -14,14 +14,13 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
-# TODO: It is time to test the object persistence for an "active_object" variable and when it is added to a dictionary
-#  within a session object. Will the pointer inside the session object dictionary still point to the same object in
-#  memory? (I think so, but good to confirm).
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
-#  performing the fresnel_calculation() function
+#  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
+#  it is better to avoid saving the raw data, unless that is all that was used (simply plotting reflectivity trace for
+#  instance).
 
 
-import extract_SPR_spectra
+
 import fresnel_transfer_matrix as ftm
 import numpy as np
 import datetime
@@ -30,7 +29,6 @@ from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory
 import pandas as pd
 import plotly.express as px
 import dash
-import copy
 
 
 class Session:
@@ -40,12 +38,12 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, name='Session', directory=os.getcwd()):
+    def __init__(self, name='Initial session', directory=os.getcwd()):
         self.name = datetime.datetime.now().__str__()[0:16] + ' ' + name
         if not os.path.exists(directory + r'\\pySPR sessions'):
             os.mkdir(directory + r'\\pySPR sessions')
         self.location = directory + r'\\pySPR sessions'
-        self.sensor_instances = {}
+        self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
         self.sensor_ID = generate_id()
         self.analysis_instances = {}
         self.analysis_ID = generate_id()
@@ -61,15 +59,20 @@ class Session:
 class Sensor:
 
     """
-    An SPR measurement typically have some things in common, such as the sensor layers, measured angles,
+      An SPR measurement typically have some things in common, such as the sensor layers, measured angles,
     measured reflectivity, measurement time, etc. This information can be shared between different analysis methods for
     one measurement. This class serves as a basis for describing the current sensor, containing information about its
     layers and their optical properties.
     """
 
-    def __init__(self, data_path_, sensor_metal='Au', polarization=1):
-
+    def __init__(self, data_path_, object_id_, sensor_metal='Au', polarization=1):
+        """
+        :param data_path_: string
+        :param sensor_metal: string, see options in method "set_default_optical_properties"
+        :param polarization: int, default 1 or "p-polarization"
+        """
         # Load sensor's default optical properties
+        self.object_id = object_id_
         self.polarization = polarization
         self.wavelength = int(data_path_[-9:-6])
         self.sensor_metal = sensor_metal
@@ -153,7 +156,7 @@ class Sensor:
 
         """
         Removes a layer from a sensor.
-        :param layer_index_: int, which layer index to remove (starting from 1)
+        :param layer_index_: int, which layer to remove (starting from 1)
         :return:
         """
 
@@ -172,7 +175,9 @@ class ModelledReflectivityTrace:
     each layer added to the sensor!
     """
 
-    def __init__(self, sensor_object, data_path_):
+    def __init__(self, sensor_object, data_path_, object_id_):
+        self.object_id = object_id_
+        self.sensor_id = sensor_object.object_id
         self.polarization = sensor_object.polarization
         self.wavelength = sensor_object.wavelength
         self.layer_thicknesses = sensor_object.layer_thicknesses
@@ -180,10 +185,13 @@ class ModelledReflectivityTrace:
         self.extinction_coefficients = sensor_object.extinction_coefficients
         self.data_path = data_path_
 
-    def calculate_trace(self):
+    def calculate_trace(self,  xdata_, ydata_):
+        # TODO: This must handle data correctly, in that the data path should be checked to match the current global
+        #  data path so that the calculation is performed with the right data. If the self.data_path_ attribute doesn't
+        #  match the global current data path then load in the correct one.
         pass
 
-    def plot_reflectivity_trace(self, time_index=0, xdata_=None, ydata_=None, rlines_=None):
+    def plot_reflectivity_trace(self, xdata_, ydata_, time_index=0, rlines_=None):
         """
 
         """
@@ -202,8 +210,9 @@ class FittedReflectivityTrace(ModelledReflectivityTrace):
 
     """
 
-    def __init__(self, sensor_object, data_path_, ydata_type='R'):
-        super().__init__(sensor_object, data_path_)  # Initializes the same way as parent objects, to shorten code
+    def __init__(self, sensor_object, data_path_, object_id_, ydata_type='R'):
+        super().__init__(sensor_object, data_path_, sensor_object.object_id)  # Initializes the same way as parent objects, to shorten code
+        self.object_id = object_id_
         self.ydata_type = ydata_type
 
     def calculate_fit(self):
@@ -216,7 +225,7 @@ def add_sensor(session_handle, data_path_, sensor_metal='Au', polarization=1):
     :return: a sensor object
     """
     id_ = next(session_handle.sensor_ID)
-    sensor_object = Sensor(data_path_, sensor_metal=sensor_metal, polarization=polarization)
+    sensor_object = Sensor(data_path_, id_, sensor_metal=sensor_metal, polarization=polarization)
     session_handle.sensor_instances[id_] = sensor_object
 
     return sensor_object
@@ -229,7 +238,7 @@ def add_modelled_reflectivity_trace(session_handle, sensor_object, data_path_):
     """
 
     id_ = next(session_handle.analysis_ID)
-    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_)
+    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, id_)
     session_handle.analysis_instances[id_] = analysis_object
 
     return analysis_object
@@ -242,7 +251,7 @@ def add_fitted_reflectivity_trace(session_handle, sensor_object, data_path_, yda
     """
 
     id_ = next(session_handle.analysis_ID)
-    analysis_object = FittedReflectivityTrace(sensor_object, data_path_, ydata_type=ydata_type)
+    analysis_object = FittedReflectivityTrace(sensor_object, data_path_, id_, ydata_type=ydata_type)
     session_handle.analysis_instances[id_] = analysis_object
 
     return analysis_object
@@ -288,16 +297,8 @@ def load_data():
     time_ = data_table.iloc[:, 0]
     angles_ = data_table.iloc[0, 1:]
     ydata_ = data_table.iloc[1:, 1:]
-    return data_path, time_, angles_, ydata_
+    return data_path_, time_, angles_, ydata_
 
-
-if __name__ == '__main__':
-
-    # Create initial session
-    active_session = Session()
-
-    # Prompt user for initial measurement data
-    data_path, time, angles, ydata = load_data()
 
 # def save_new_measurement(self):
 #     """
@@ -313,4 +314,10 @@ if __name__ == '__main__':
 #     """
 #     pass
 
+if __name__ == '__main__':
 
+    # Create initial session
+    current_session = Session()
+
+    # Prompt user for initial measurement data
+    data_path, time, angles, ydata = load_data()
