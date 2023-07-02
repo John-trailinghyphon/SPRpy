@@ -14,6 +14,9 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
+# TODO: First, it is probably smartest to start building out the dash webapp, since all functionality will be tied to it
+#  and piped through it. The callbacks need to be made through function calls, targeting the active analysis objects.
+
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
 #  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
 #  it is better to avoid saving the raw data, unless that is all that was used (simply plotting reflectivity trace for
@@ -288,7 +291,7 @@ def generate_id():
         new_id += 1
 
 
-def load_data():
+def load_csv_data():
     print('Select the measurement data file (.csv)')
     data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')])
 
