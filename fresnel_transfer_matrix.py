@@ -3,11 +3,20 @@
 import numpy as np
 
 
-def fresnel_calculation(fitted_var, angles=np.linspace(39, 50, 1567), layer='n_im_Au', wavelength=670, layer_thicknesses=np.array([np.NaN, 2, 50, 2, np.NaN]), n_re=np.array([1.5202, 3.3105, 0.2238, 1.35, 1.0003]), n_im=np.array([0, 3.4556, 3.9259, 0, 0]), ydata=None, ydata_type='R', polarization=1):
+def fresnel_calculation(fitted_var,
+                        angles=np.linspace(39, 50, 1567),
+                        layer='h_surf', wavelength=670,
+                        layer_thicknesses=np.array([np.NaN, 2, 50, 4, np.NaN]),
+                        n_re=np.array([1.5202, 3.3105, 0.2238, 1.35, 1.0003]),
+                        n_im=np.array([0, 3.4556, 3.9259, 0, 0]),
+                        ydata=None,
+                        ydata_type='R',
+                        polarization=1
+                        ):
 
     """
     Function for calculating fresnel coefficients or for fitting angular reflectivity traces based on the residuals of
-    a measurement
+    a measurement. By default the function provides the thickness of a monolayer of BSA on gold in air.
 
     :param angles: ndarray
     :param fitted_var: float
