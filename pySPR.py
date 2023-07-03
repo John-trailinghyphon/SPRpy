@@ -51,12 +51,21 @@ class Session:
         self.analysis_instances = {}
         self.analysis_ID = generate_id()
 
-    def remove_experiment(self):
+    def remove_sensor(self, sensor_object_id):
         """
-        Remove a measurement from the session.
+        Remove a sensor object from the session.
         :return:
         """
-        pass
+        removed = self.sensor_instances.pop(sensor_object_id)
+        print('Removed the following sensor object: ' + str(removed))
+
+    def remove_analysis(self, analysis_object_id):
+        """
+        Remove an analysis object from the session.
+        :return:
+        """
+        removed = self.analysis_instances.pop(analysis_object_id)
+        print('Removed the following analysis object: ' + str(removed))
 
 
 class Sensor:
