@@ -14,14 +14,22 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
-# TODO: First, it is probably smartest to start building out the dash webapp, since all functionality will be tied to it
+# TODO: It is probably smartest to build the dash webapp last, since all functionality will be tied to it
 #  and piped through it. The callbacks need to be made through function calls, targeting the active analysis objects.
+#  Best to flush out the underlying logic first, but also think a bit about how the dash app layout will be.
 
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
 #  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
 #  it is better to avoid saving the raw data, unless that is all that was used (simply plotting reflectivity trace for
 #  instance).
 
+# TODO: For the non-interacting probe method where a previously calculated background is used in the calculations, there
+#  is a need of some way to select a previous analysis. The easiest way is probably to make sure that each analysis is
+#  named something? I imagine that the user selects from a list of names of each analysis (and there should be a default
+#  name that auto-increments.
+
+# TODO: There should be a way to load objects from one previous session into the active session. So that the background
+#  does not have to be remade every time for instance.
 
 
 import fresnel_transfer_matrix as ftm
@@ -96,6 +104,7 @@ class Sensor:
         match sensor_metal:
             case 'Au' | 'gold' | 'Gold' | 'GOLD':
                 self.layer_thicknesses = np.array([np.NaN, 2, 50, np.NaN])
+                self.fitted_layer = 'n_im_metal'
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.0003])
@@ -112,6 +121,7 @@ class Sensor:
                 # Self-consistent optical constants of SiO2 and Ta2O5 films
                 # Opt. Mater. Express 6, 3622-3637 (2016) (Numerical data kindly provided by Juan Larruquert)
                 self.layer_thicknesses = np.array([np.NaN, 2, 50, 14, np.NaN])
+                self.fitted_layer = 'h_SiO2'
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.4628, 1.0003])
@@ -125,6 +135,7 @@ class Sensor:
 
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
+                self.fitted_layer = 'n_im_metal'
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.25, 1.0003])
@@ -138,6 +149,7 @@ class Sensor:
 
             case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
+                self.fitted_layer = 'n_im_metal'
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
@@ -160,6 +172,7 @@ class Sensor:
         self.layer_thicknesses = np.insert(self.layer_thicknesses, layer_index_, thickness)
         self.refractive_indices = np.insert(self.refractive_indices, layer_index_, n_re)
         self.extinction_coefficients = np.insert(self.extinction_coefficients, layer_index_, n_im)
+        self.fitted_layer = 'h_surf'
         print('Sensor thicknesses: ', self.layer_thicknesses)
         print('Sensor refractive indices: ', self.refractive_indices)
         print('Sensor extinction coefficients: ', self.extinction_coefficients)
@@ -172,10 +185,12 @@ class Sensor:
         :return:
         """
 
-        # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
         self.layer_thicknesses = np.delete(self.layer_thicknesses, layer_index_-1, axis=0)
+        if len(self.layer_thicknesses) == 4:
+            self.fitted_layer = 'n_im_metal'
         self.refractive_indices = np.delete(self.refractive_indices, layer_index_-1, axis=0)
         self.extinction_coefficients = np.delete(self.extinction_coefficients, layer_index_-1, axis=0)
+
         print('Sensor thicknesses: ', self.layer_thicknesses)
         print('Sensor refractive indices: ', self.refractive_indices)
         print('Sensor extinction coefficients: ', self.extinction_coefficients)
@@ -185,6 +200,8 @@ class ModelledReflectivityTrace:
     """
     This class defines how a modelled reflectivity trace behaves. Note that a different sensor object should be used for
     each layer added to the sensor!
+
+    Each object should also have a .csv export function.
     """
 
     def __init__(self, sensor_object, data_path_, object_id_):
@@ -193,15 +210,26 @@ class ModelledReflectivityTrace:
         self.polarization = sensor_object.polarization
         self.wavelength = sensor_object.wavelength
         self.layer_thicknesses = sensor_object.layer_thicknesses
+        self.fitted_layer = sensor_object.fitted_layer
         self.refractive_indices = sensor_object.refractive_indices
         self.extinction_coefficients = sensor_object.extinction_coefficients
         self.data_path = data_path_
 
-    def calculate_trace(self,  xdata_, ydata_):
+    def calculate_trace(self,  xdata_, ydata_, ini_guess, lower_bond, upper_bound):
         # TODO: This must handle data correctly, in that the data path should be checked to match the current global
         #  data path so that the calculation is performed with the right data. If the self.data_path_ attribute doesn't
         #  match the global current data path then load in the correct one.
-        pass
+        ftm.fresnel_calculation(ini_guess,
+                                angles=xdata_,
+                                layer=self.fitted_layer,
+                                wavelength=self.wavelength,
+                                layer_thicknesses=self.layer_thicknesses,
+                                n_re=self.refractive_indices,
+                                n_im=self.extinction_coefficients,
+                                ydata=None,
+                                ydata_type='R',
+                                polarization=1
+                                )
 
     def plot_reflectivity_trace(self, xdata_, ydata_, time_index=0, rlines_=None):
         """
@@ -215,8 +243,30 @@ class ModelledReflectivityTrace:
         """
         pass
 
+    def export_results(self):
+        """
+        Exporting the result (including parameters) of a particular analysis as a .csv file
+        :return:
+        """
+        pass
+
 
 class FittedReflectivityTrace(ModelledReflectivityTrace):
+
+    """
+
+    """
+
+    def __init__(self, sensor_object, data_path_, object_id_, ydata_type='R'):
+        super().__init__(sensor_object, data_path_, sensor_object.object_id)  # Initializes the same way as parent objects, to shorten code
+        self.object_id = object_id_
+        self.ydata_type = ydata_type
+
+    def calculate_fit(self):
+        pass
+
+
+class NonInteractingProbe(ModelledReflectivityTrace):
 
     """
 
@@ -289,6 +339,14 @@ def save_to_session(session_handle, object_handle):
     pass
 
 
+def import_to_session(past_session, current_session, sensor_import_id=None, analysis_import_id=None):
+    """
+
+    :return:
+    """
+    pass
+
+
 def generate_id():
     """
     Each time this function is called within an object it can return a new ID.
@@ -333,3 +391,4 @@ if __name__ == '__main__':
 
     # Prompt user for initial measurement data
     data_path, time, angles, ydata = load_csv_data()
+
