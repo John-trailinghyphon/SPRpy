@@ -1,29 +1,6 @@
 # This file dictates the layout and functionality of the data interactivity via a dash app
 
-# TODO: My overall design vision is to have DIV elements with buttons, dropdown menus and graphs to control and visualize
-#  each different type of analysis (like fresnel modelling of reflectivity traces, Non-interacting probe method etc.).
-#  Maybe toggle buttons could be used to control which analysis method is used? This would also change the layout of the
-#  displayed divs under the "main control DIV".
 
-# TODO: "Main control DIV". Need buttons for controlling a lot of things:
-#  - Which measurement file to load data from (.
-#  - Choosing analysis method (default should be fitting reflectivity traces, like background)
-#  - Session control
-#     * loading previous session
-#     * importing previous session into current one
-#     * importing sensor and analysis objects from previous session (like background)
-#     * saving session
-#     * removing sensor objects and analysis objects from the active session
-#     *
-#  - Adding sensor object
-#     * adding material layers to sensor (maybe using a table interface)
-#     * modifying existing layers
-#     * removing layers
-#  - Adding new analysis object (starting an analysis DIV)
-#     * Selecting between different available types, which will change the analysis interface DIV and its options
-#     * run calculations, fitting, plotting, selecting values, etc.
-#  - Exporting the finished analysis as a HTML file with retained interactivity (omitting control DIV elements). This
-#  can then be added to obsidian notes for instance, allowing straight forward result documentation.
 
 
 # THE CODE BELOW IS AN EXAMPLE OF HOW TO MAKE GRAPHS UPDATE BASED ON HOVERING THE MOUSE ON A VALUE
@@ -35,7 +12,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
-df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
+# df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
 
 
 app.layout = html.Div([
