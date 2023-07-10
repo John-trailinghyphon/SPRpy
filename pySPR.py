@@ -16,7 +16,7 @@
 
 # TODO: It is probably smartest to build the dash webapp last, since all functionality will be tied to it
 #  and piped through it. The callbacks need to be made through function calls, targeting the active analysis objects.
-#  Best to flush out the underlying logic first, but also think a bit about how the dash app layout will be.
+#  Best to flush out the underlying logic first, but also think a bit about how the dash app layout will be?
 
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
 #  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
@@ -31,6 +31,36 @@
 # TODO: There should be a way to load objects from one previous session into the active session. So that the background
 #  does not have to be remade every time for instance.
 
+# Regarding the dash app below
+
+# TODO: My overall design vision is to have DIV elements with buttons, dropdown menus and graphs to control and visualize
+#  each different type of analysis (like fresnel modelling of reflectivity traces, Non-interacting probe method etc.).
+#  Maybe toggle buttons could be used to control which analysis method is used? This would also change the layout of the
+#  displayed divs under the "main control DIV".
+
+
+# TODO: "Main control DIV". Need buttons for controlling a lot of things:
+#  - Which measurement file to load data from (.csv)
+#  - Choosing analysis method (default should be fitting reflectivity traces, like background)
+#  - Session control
+#     * loading previous session
+#     * importing previous session into current one
+#     * importing sensor and analysis objects from previous session (like background)
+#     * saving session
+#     * removing sensor objects and analysis objects from the active session
+#     *
+#  - Adding sensor object
+#     * adding material layers to sensor (maybe using a table interface)
+#     * modifying existing layers
+#     * removing layers
+#  - Adding new analysis object (starting an analysis DIV)
+#     * Selecting between different available types, which will change the analysis interface DIV and its options
+#     * run calculations, fitting, plotting, selecting values, etc.
+#  - Exporting the finished analysis as a HTML file with retained interactivity (omitting control DIV elements). This
+#  can then be added to obsidian notes for instance, allowing straight forward result documentation.
+
+#  TODO: Dash concepts to implement:
+#   * DataTable to display current sensor parameters
 
 import fresnel_transfer_matrix as ftm
 import numpy as np
@@ -77,7 +107,7 @@ class Session:
 
 
 class Sensor:
-
+    # TODO: Is this class actually necessary? If the dash_table.DataTable() class is used, then updating
     """
       An SPR measurement typically have some things in common, such as the sensor layers, measured angles,
     measured reflectivity, measurement time, etc. This information can be shared between different analysis methods for
@@ -234,6 +264,11 @@ class ModelledReflectivityTrace:
     def plot_reflectivity_trace(self, xdata_, ydata_, time_index=0, rlines_=None):
         """
 
+        :param xdata_:
+        :param ydata_:
+        :param time_index:
+        :param rlines_:
+        :return:
         """
         pass
 
@@ -352,7 +387,7 @@ def generate_id():
     Each time this function is called within an object it can return a new ID.
     :yield:
     """
-    new_id = 1
+    new_id = 0
     while True:
         yield new_id
         new_id += 1
