@@ -448,9 +448,9 @@ if __name__ == '__main__':
             )
         ]),
 
-        # Test button for console
+        # PLACEHOLDER: Test button for session log
         dash.html.Div([
-            "Test console input   ",
+            "Test session log input   ",
             dash.dcc.Input(id='test-input', value='', type='text'),
             dash.html.Button(id='submit-button', n_clicks=0, children='Submit')
         ])
@@ -458,6 +458,7 @@ if __name__ == '__main__':
         #
     ])
 
+    # PLACEHOLDER: Function for test button
     @dash.callback(
         dash.Output('console', 'value'),
         dash.Input('submit-button', 'n_clicks'),
