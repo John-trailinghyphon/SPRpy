@@ -66,9 +66,9 @@ import fresnel_transfer_matrix as ftm
 import numpy as np
 import datetime
 import os
+import sys
 from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory
 import pandas as pd
-import plotly.express as px
 import dash
 
 
@@ -419,11 +419,59 @@ def load_csv_data():
 #     """
 #     pass
 
+
 if __name__ == '__main__':
 
-    # Create initial session
-    current_session = Session()
+    # # Create initial session
+    # current_session = Session()
+    #
+    # # Prompt user for initial measurement data
+    # data_path, time, angles, ydata = load_csv_data()
 
-    # Prompt user for initial measurement data
-    data_path, time, angles, ydata = load_csv_data()
+    # Launch Dash app
+    external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
+    app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+    app.layout = dash.html.Div([
+        # Heading for page
+        dash.html.H1('pySPR', style={'textAlign': 'center'}),
+
+        # Session log div
+        dash.html.Div([
+            dash.html.H3("Session log"),
+            dash.dcc.Textarea(
+                id='console',
+                value='Welcome to pySPR!\nStart your session by defining your SPR sensor layers.\nYou can load previous sessions using the "File" tab.',
+                readOnly=True,
+                style={'width': '100%', 'height': '150px', 'border': '2px solid #D1D1D1'}
+            )
+        ]),
+
+        # Test button for console
+        dash.html.Div([
+            "Test console input   ",
+            dash.dcc.Input(id='test-input', value='', type='text'),
+            dash.html.Button(id='submit-button', n_clicks=0, children='Submit')
+        ])
+
+        #
+    ])
+
+    @dash.callback(
+        dash.Output('console', 'value'),
+        dash.Input('submit-button', 'n_clicks'),
+        dash.State('console', 'value'),
+        dash.State('test-input', 'value')
+    )
+    def update_session_log(input1, state1, state2):
+        new_message = state1 + '\n' + state2
+        return new_message
+
+
+    # Connect textarea
+
+    # sys.stdout = output_redirector
+    # sys.stderr = output_redirector
+
+    app.run_server(debug=True)
