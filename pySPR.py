@@ -429,13 +429,11 @@ if __name__ == '__main__':
     # data_path, time, angles, ydata = load_csv_data()
 
     # Launch Dash app
-    external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
-    app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+    app = dash.Dash(__name__)
 
     app.layout = dash.html.Div([
         # Heading for page
-        dash.html.H1('pySPR', style={'textAlign': 'center'}),
+        dash.html.H1('pySPR'),
 
         # Session log div
         dash.html.Div([
@@ -446,16 +444,31 @@ if __name__ == '__main__':
                 readOnly=True,
                 style={'width': '100%', 'height': '150px', 'border': '2px solid #D1D1D1'}
             )
-        ]),
+        ], style={'textAlign': 'center'}),
 
         # PLACEHOLDER: Test button for session log
         dash.html.Div([
             "Test session log input   ",
             dash.dcc.Input(id='test-input', value='', type='text'),
             dash.html.Button(id='submit-button', n_clicks=0, children='Submit')
-        ])
+        ]),
 
-        #
+        # File and session control
+        dash.html.Div([
+            dash.html.H3("File and session controls", style={'textAlign': 'center'}),
+            dash.html.Div([
+                dash.html.Button(id='load-session', n_clicks=0, children='Load session', title='Load a previous session in its entirety', style={'marginRight': '10px'}),
+                dash.html.Button(id='import-from-session', n_clicks=0, children='Import from session', title='Use this to import previous sensors or analysis from another session', style={'marginRight': '10px'}),
+                dash.html.Button(id='load-data', n_clicks=0, children='Load data', title='Load data from another measurement', style={'marginRight': '10px'}),
+                dash.html.Button(id='new-sensor', n_clicks=0, children='New sensor', style={'marginRight': '10px'}),
+                dash.dcc.Dropdown([
+                    {'label': 'Sensor 1', 'value': 1},  # These are placeholder values. Should be loaded from session.
+                    {'label': 'Sensor 2', 'value': 2}],  # These are placeholder values. Should be loaded from session.
+                    placeholder='Choose current sensor...',
+                    id='current-session-sensors',
+                    style={'width': '36%'})
+            ], className='twelve columns', style={'display': 'flex', 'justify-content': 'right'})  # The justify-content right is a temp fix to make it "centered"... has to figure out the css
+        ])
     ])
 
     # PLACEHOLDER: Function for test button
