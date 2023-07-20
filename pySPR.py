@@ -61,6 +61,7 @@
 
 #  TODO: Dash concepts to implement:
 #   * DataTable to display current sensor parameters
+#   * DataTable to display fitting parameters
 
 import fresnel_transfer_matrix as ftm
 import numpy as np
@@ -70,6 +71,7 @@ import sys
 from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory
 import pandas as pd
 import dash
+import dash_bootstrap_components as dbc
 
 
 class Session:
@@ -107,7 +109,8 @@ class Session:
 
 
 class Sensor:
-    # TODO: Is this class actually necessary? If the dash_table.DataTable() class is used, then updating
+    # TODO: Is this class actually necessary? If the dash_table.DataTable() class is used, then updating the layer
+    #  properties from there is actually easier? Maybe default values should be determined from that instead?
     """
       An SPR measurement typically have some things in common, such as the sensor layers, measured angles,
     measured reflectivity, measurement time, etc. This information can be shared between different analysis methods for
@@ -429,46 +432,86 @@ if __name__ == '__main__':
     # data_path, time, angles, ydata = load_csv_data()
 
     # Launch Dash app
-    app = dash.Dash(__name__)
+    app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
     app.layout = dash.html.Div([
+
         # Heading for page
-        dash.html.H1('pySPR'),
+        dbc.Container(
+            [
+                dbc.Card(
+                    [
+                        dbc.CardImg(src='static/images/SPR_principle.svg', top=True),
+                        # dbc.CardBody([dash.html.H4('Surface plasmon resonance (SPR)', className='card-title')])
+                    ], style={'width': '20rem'}
+                ),
+                dbc.Card(
+                    [
+                        dbc.CardImg(src='static/images/SPR-sensor.PNG', top=True),
+                        # dbc.CardBody([dash.html.H4('SPR sensor', className='card-title')])
+                    ], style={'width': '12rem', 'padding-top': '65px'}
+                ),
+                dash.dcc.Markdown('''
+                # **pySPR**
+                ''', className='dash-bootstrap', style={'margin-top': '8rem'}),
+                dbc.Card(
+                    [
+                        dbc.CardImg(src='static/images/fresnel_material.svg', top=True),
+                        # dbc.CardBody([dash.html.H4('Fresnel modelling', className='card-title')])
+                    ], style={'width': '17rem', 'padding-top': '30px'}
+                ),
+                dbc.Card(
+                    [
+                        dbc.CardImg(src='static/images/non-interacting_height_probe.PNG', top=True),
+                        # dbc.CardBody([dash.html.H4('Non-interacting height probing', className='card-title')])
+                    ], style={'width': '15rem', 'padding-top': '20px'}
+                ),
+            ], style={'margin-top': '5px', 'display': 'flex', 'justify-content': 'space-between'}
+        ),
 
         # Session log div
         dash.html.Div([
-            dash.html.H3("Session log"),
+            dash.html.H3("Session log", className='dash-bootstrap'),
             dash.dcc.Textarea(
                 id='console',
                 value='Welcome to pySPR!\nStart your session by defining your SPR sensor layers.\nYou can load previous sessions using the "File" tab.',
                 readOnly=True,
-                style={'width': '100%', 'height': '150px', 'border': '2px solid #D1D1D1'}
+                className='dash-bootstrap',
+                style={'width': '99%', 'height': '150px'}
             )
-        ], style={'textAlign': 'center'}),
+        ], style={'margin-top': '40px', 'margin-left': '10px', 'text-align': 'left'}),
 
         # PLACEHOLDER: Test button for session log
         dash.html.Div([
-            "Test session log input   ",
-            dash.dcc.Input(id='test-input', value='', type='text'),
-            dash.html.Button(id='submit-button', n_clicks=0, children='Submit')
+            dbc.InputGroup(
+                [
+                    dbc.Button('Test session log', id='submit-button', n_clicks=0),
+                    dbc.Input(id='test-input', value='', type='text')
+                ]
+            )
+
         ]),
 
         # File and session control
-        dash.html.Div([
-            dash.html.H3("File and session controls", style={'textAlign': 'center'}),
-            dash.html.Div([
-                dash.html.Button(id='load-session', n_clicks=0, children='Load session', title='Load a previous session in its entirety', style={'marginRight': '10px'}),
-                dash.html.Button(id='import-from-session', n_clicks=0, children='Import from session', title='Use this to import previous sensors or analysis from another session', style={'marginRight': '10px'}),
-                dash.html.Button(id='load-data', n_clicks=0, children='Load data', title='Load data from another measurement', style={'marginRight': '10px'}),
-                dash.html.Button(id='new-sensor', n_clicks=0, children='New sensor', style={'marginRight': '10px'}),
-                dash.dcc.Dropdown([
-                    {'label': 'Sensor 1', 'value': 1},  # These are placeholder values. Should be loaded from session.
-                    {'label': 'Sensor 2', 'value': 2}],  # These are placeholder values. Should be loaded from session.
-                    placeholder='Choose current sensor...',
-                    id='current-session-sensors',
-                    style={'width': '36%'})
-            ], className='twelve columns', style={'display': 'flex', 'justify-content': 'right'})  # The justify-content right is a temp fix to make it "centered"... has to figure out the css
-        ])
+        dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
+        dbc.Container([
+            dbc.ButtonGroup([
+                dbc.Button('Load session', id='load-session', n_clicks=0, title='Load a previous session in its entirety'),
+                dbc.Button('Import from session', id='import-from-session', n_clicks=0, title='Use this to import previous sensors or analysis from another session'),
+                dbc.Button('Load data', id='load-data', n_clicks=0, title='Load data from another measurement'),
+                dbc.Button('New sensor', id='new-sensor', n_clicks=0),
+                dbc.DropdownMenu(
+                    label='Choose sensor',
+                    children=[
+                        dbc.DropdownMenuItem('Sensor 1'),
+                        dbc.DropdownMenuItem('Sensor 2')
+                    ])
+            ])
+        ], style={'display': 'flex', 'justify-content': 'center'}),
+
+        # Sensor datatable
+        # dash.dash_table.DataTable
+
     ])
 
     # PLACEHOLDER: Function for test button
