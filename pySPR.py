@@ -443,30 +443,30 @@ if __name__ == '__main__':
                     [
                         dbc.CardImg(src='static/images/SPR_principle.svg', top=True),
                         # dbc.CardBody([dash.html.H4('Surface plasmon resonance (SPR)', className='card-title')])
-                    ], style={'width': '20rem'}
+                    ], style={'width': '22rem'}
                 ),
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/SPR-sensor.PNG', top=True),
-                        # dbc.CardBody([dash.html.H4('SPR sensor', className='card-title')])
-                    ], style={'width': '12rem', 'padding-top': '65px'}
-                ),
-                dash.dcc.Markdown('''
-                # **pySPR**
-                ''', className='dash-bootstrap', style={'margin-top': '8rem'}),
                 dbc.Card(
                     [
                         dbc.CardImg(src='static/images/fresnel_material.svg', top=True),
                         # dbc.CardBody([dash.html.H4('Fresnel modelling', className='card-title')])
-                    ], style={'width': '17rem', 'padding-top': '30px'}
+                    ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
+                ),
+                dash.dcc.Markdown('''
+                # **#pySPR#**
+                ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
+                dbc.Card(
+                    [
+                        dbc.CardImg(src='static/images/SPR_angular_spectrum.svg', top=True),
+                        # dbc.CardBody([dash.html.H4('SPR sensor', className='card-title')])
+                    ], style={'width': '23rem', 'padding-top': '18px', 'margin-right': '2rem'}
                 ),
                 dbc.Card(
                     [
                         dbc.CardImg(src='static/images/non-interacting_height_probe.PNG', top=True),
                         # dbc.CardBody([dash.html.H4('Non-interacting height probing', className='card-title')])
-                    ], style={'width': '15rem', 'padding-top': '20px'}
+                    ], style={'width': '17rem', 'padding-top': '20px'}
                 ),
-            ], style={'margin-top': '5px', 'display': 'flex', 'justify-content': 'space-between'}
+            ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
         ),
 
         # Session log div
@@ -485,7 +485,7 @@ if __name__ == '__main__':
         dash.html.Div([
             dbc.InputGroup(
                 [
-                    dbc.Button('Test session log', id='submit-button', n_clicks=0),
+                    dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
                     dbc.Input(id='test-input', value='', type='text')
                 ]
             )
@@ -502,6 +502,7 @@ if __name__ == '__main__':
                 dbc.Button('New sensor', id='new-sensor', n_clicks=0),
                 dbc.DropdownMenu(
                     label='Choose sensor',
+                    color='secondary',
                     children=[
                         dbc.DropdownMenuItem('Sensor 1'),
                         dbc.DropdownMenuItem('Sensor 2')
