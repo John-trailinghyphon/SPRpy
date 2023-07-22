@@ -523,7 +523,7 @@ if __name__ == '__main__':
         #  Then callback functions are required that will enable editing the table and updating the sensor object in question.
         #  The choose sensor dropdown should be used to select the current sensor from the session, while New Sensor
         #  should add an additional sensor layout and make the new one the active one. Getting this functionality to
-        #  work first is likely a good idea.
+        #  work first is likely a good idea. end
 
         # # Sensor datatable
         # dash.html.Div([
