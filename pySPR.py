@@ -428,14 +428,13 @@ def load_csv_data():
 
 if __name__ == '__main__':
 
-    # TODO: Add date and time to log messages
     # Create initial session
     current_session = Session()
 
-    # # Prompt user for initial measurement data
+    # Prompt user for initial measurement data
     data_path, time, angles, ydata = load_csv_data()
 
-    # Launch Dash app
+    # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
     app.layout = dash.html.Div([
@@ -499,6 +498,9 @@ if __name__ == '__main__':
         # File and session control
         dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
         dbc.Container([
+            dash.html.Div(['Current measurement file:', dash.html.Br(), data_path.split('/')[-1]],
+                          id='datapath-textfield',
+                          style={'margin-right': '10px'}),
             dbc.ButtonGroup([
                 dbc.Button('Load data', id='load-data', n_clicks=0,
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
