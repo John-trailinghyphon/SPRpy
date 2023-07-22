@@ -34,27 +34,23 @@ def fresnel_calculation(fitted_var,
     # Selecting layer to fit
     match layer:
         case 'h_Cr':
-            layer_thicknesses[2] = fitted_var
+            layer_thicknesses[1] = fitted_var
         case 'h_Au':
-            layer_thicknesses[3] = fitted_var
+            layer_thicknesses[2] = fitted_var
         case 'h_SiO2':
-            layer_thicknesses[4] = fitted_var
+            layer_thicknesses[3] = fitted_var
         case 'h_surf':
             layer_thicknesses[-2] = fitted_var
         case 'n_re_prism':
-            n_re[1] = fitted_var
+            n_re[0] = fitted_var
         case 'n_re_Cr':
-            n_re[2] = fitted_var
+            n_re[1] = fitted_var
         case 'n_im_Cr':
+            n_im[1] = fitted_var
+        case 'n_re_metal':
+            n_re[2] = fitted_var
+        case 'n_im_metal':
             n_im[2] = fitted_var
-        case 'n_re_Au':
-            n_re[3] = fitted_var
-        case 'n_im_Au':
-            n_im[3] = fitted_var
-        case 'n_re_Cr2':
-            n_re[-3] = fitted_var
-        case 'n_im_Cr2':
-            n_im[-3] = fitted_var
         case 'n_re_surf':
             n_re[-2] = fitted_var
         case 'n_im_surf':
@@ -69,9 +65,9 @@ def fresnel_calculation(fitted_var,
         case 'H_surf':
             n_im[-2] = fitted_var[1]
             layer_thicknesses[-2] = fitted_var[0]
-        case 'N_Au':
-            n_im[3] = fitted_var[1]
-            n_re[3] = fitted_var[0]
+        case 'N_metal':
+            n_im[2] = fitted_var[1]
+            n_re[2] = fitted_var[0]
 
     # # Create complex refractive index (this is unnecessary)
     # n = np.array([0] * len(n_re))
