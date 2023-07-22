@@ -497,10 +497,10 @@ if __name__ == '__main__':
 
         # File and session control
         dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
+        dash.html.Div(['Current measurement file:', dash.html.Br(), data_path.split('/')[-1]],
+                      id='datapath-textfield',
+                      style={'margin-right': '10px', 'textAlign': 'center'}),
         dbc.Container([
-            dash.html.Div(['Current measurement file:', dash.html.Br(), data_path.split('/')[-1]],
-                          id='datapath-textfield',
-                          style={'margin-right': '10px'}),
             dbc.ButtonGroup([
                 dbc.Button('Load data', id='load-data', n_clicks=0,
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
@@ -517,8 +517,22 @@ if __name__ == '__main__':
             ])
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
-        # Sensor datatable
-        # dash.dash_table.DataTable
+        # TODO: Before adding sensor table, update backend and connect to dash server. Needs logic that reads in a
+        #  pd.DataFrame from the current sensor object from the session and which initiates the DataTable from there.
+        #  Then callback functions are required that will enable editing the table and updating the sensor object in question.
+        #  The choose sensor dropdown should be used to select the current sensor from the session, while New Sensor
+        #  should add an additional sensor layout and make the new one the active one. Getting this functionality to
+        #  work first is likely a good idea.
+
+        # # Sensor datatable
+        # dash.html.Div([
+        #     dash.html.H4(['Sensor parameters']),
+        #     dash.dash_table.DataTable([
+        #
+        #     ])
+        # ]),
+
+        # Fitting parameters datatable
 
     ])
 
