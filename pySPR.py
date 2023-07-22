@@ -92,7 +92,7 @@ class Session:
         self.analysis_ID = generate_id()
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
-            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can load previous sessions using the "File" tab.'
+            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can load a previous session or import previous results under "File and session controls".'
 
     def remove_sensor(self, sensor_object_id):
         """
@@ -426,115 +426,115 @@ def load_csv_data():
 #     pass
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    # TODO: Add date and time to log messages
-    # Create initial session
-    current_session = Session()
+# Create initial session
+current_session = Session()
 
-    # # Prompt user for initial measurement data
-    # data_path, time, angles, ydata = load_csv_data()
+# # Prompt user for initial measurement data
+data_path, time, angles, ydata = load_csv_data()
 
-    # Launch Dash app
-    app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
+# Launch Dash app
+app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
-    app.layout = dash.html.Div([
+app.layout = dash.html.Div([
 
-        # Heading for page
-        dbc.Container(
-            [
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/SPR_principle.svg', top=True),
-                        # dbc.CardBody([dash.html.H4('Surface plasmon resonance (SPR)', className='card-title')])
-                    ], style={'width': '22rem'}
-                ),
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/fresnel_material.svg', top=True),
-                        # dbc.CardBody([dash.html.H4('Fresnel modelling', className='card-title')])
-                    ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
-                ),
-                dash.dcc.Markdown('''
-                # **#pySPR#**
-                ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/SPR_angular_spectrum.svg', top=True),
-                        # dbc.CardBody([dash.html.H4('SPR sensor', className='card-title')])
-                    ], style={'width': '23rem', 'padding-top': '18px', 'margin-right': '2rem'}
-                ),
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/non-interacting_height_probe.PNG', top=True),
-                        # dbc.CardBody([dash.html.H4('Non-interacting height probing', className='card-title')])
-                    ], style={'width': '17rem', 'padding-top': '20px'}
-                ),
-            ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
-        ),
-
-        # Session log div
-        dash.html.Div([
-            dash.html.H3("Session log", className='dash-bootstrap'),
-            dash.dcc.Textarea(
-                id='console',
-                value=current_session.log,
-                readOnly=True,
-                className='dash-bootstrap',
-                style={'width': '99%', 'height': '150px'}
-            )
-        ], style={'margin-top': '40px', 'margin-left': '10px', 'text-align': 'left'}),
-
-        # PLACEHOLDER: Test button for session log
-        dash.html.Div([
-            dbc.InputGroup(
+    # Heading for page
+    dbc.Container(
+        [
+            dbc.Card(
                 [
-                    dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
-                    dbc.Input(id='test-input', value='', type='text')
-                ]
-            )
+                    dbc.CardImg(src='static/images/SPR_principle.svg', top=True),
+                    # dbc.CardBody([dash.html.H4('Surface plasmon resonance (SPR)', className='card-title')])
+                ], style={'width': '22rem'}
+            ),
+            dbc.Card(
+                [
+                    dbc.CardImg(src='static/images/fresnel_material.svg', top=True),
+                    # dbc.CardBody([dash.html.H4('Fresnel modelling', className='card-title')])
+                ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
+            ),
+            dash.dcc.Markdown('''
+            # **#pySPR#**
+            ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
+            dbc.Card(
+                [
+                    dbc.CardImg(src='static/images/SPR_angular_spectrum.svg', top=True),
+                    # dbc.CardBody([dash.html.H4('SPR sensor', className='card-title')])
+                ], style={'width': '23rem', 'padding-top': '18px', 'margin-right': '2rem'}
+            ),
+            dbc.Card(
+                [
+                    dbc.CardImg(src='static/images/non-interacting_height_probe.PNG', top=True),
+                    # dbc.CardBody([dash.html.H4('Non-interacting height probing', className='card-title')])
+                ], style={'width': '17rem', 'padding-top': '20px'}
+            ),
+        ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
+    ),
 
-        ]),
+    # Session log div
+    dash.html.Div([
+        dash.html.H3("Session log", className='dash-bootstrap'),
+        dash.dcc.Textarea(
+            id='console',
+            value=current_session.log,
+            readOnly=True,
+            className='dash-bootstrap',
+            style={'width': '99%', 'height': '150px'}
+        )
+    ], style={'margin-top': '40px', 'margin-left': '10px', 'text-align': 'left'}),
 
-        # File and session control
-        dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
-        dbc.Container([
-            dbc.ButtonGroup([
-                dbc.Button('Load session', id='load-session', n_clicks=0, title='Load a previous session in its entirety'),
-                dbc.Button('Import from session', id='import-from-session', n_clicks=0, title='Use this to import previous sensors or analysis from another session'),
-                dbc.Button('Load data', id='load-data', n_clicks=0, title='Load data from another measurement'),
-                dbc.Button('New sensor', id='new-sensor', n_clicks=0),
-                dbc.DropdownMenu(
-                    label='Choose sensor',
-                    color='secondary',
-                    children=[
-                        dbc.DropdownMenuItem('Sensor 1'),
-                        dbc.DropdownMenuItem('Sensor 2')
-                    ])
-            ])
-        ], style={'display': 'flex', 'justify-content': 'center'}),
+    # PLACEHOLDER: Test button for session log
+    dash.html.Div([
+        dbc.InputGroup(
+            [
+                dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
+                dbc.Input(id='test-input', value='', type='text')
+            ]
+        )
 
-        # Sensor datatable
-        # dash.dash_table.DataTable
+    ]),
 
-    ])
+    # File and session control
+    dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
+    dbc.Container([
+        dbc.ButtonGroup([
+            dbc.Button('Load data', id='load-data', n_clicks=0,
+                       title='Load data from another measurement. Analysis is always performed on this active measurement'),
+            dbc.Button('Load session', id='load-session', n_clicks=0, title='Load a previous session in its entirety'),
+            dbc.Button('Import result', id='import-from-session', n_clicks=0, title='Use this to import previous results from another session'),
+            dbc.Button('New sensor', id='new-sensor', n_clicks=0),
+            dbc.DropdownMenu(
+                label='Choose sensor',
+                color='secondary',
+                children=[
+                    dbc.DropdownMenuItem('Sensor 1'),
+                    dbc.DropdownMenuItem('Sensor 2')
+                ])
+        ])
+    ], style={'display': 'flex', 'justify-content': 'center'}),
 
-    # PLACEHOLDER: Function for test button
-    @dash.callback(
-        dash.Output('console', 'value'),
-        dash.Input('submit-button', 'n_clicks'),
-        dash.State('console', 'value'),
-        dash.State('test-input', 'value')
-    )
-    def update_session_log(input1, state1, state2):
-        new_message = state1 + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state2
-        current_session.log = new_message
-        return new_message
+    # Sensor datatable
+    # dash.dash_table.DataTable
+
+])
+
+# PLACEHOLDER: Function for test button
+@dash.callback(
+    dash.Output('console', 'value'),
+    dash.Input('submit-button', 'n_clicks'),
+    dash.State('console', 'value'),
+    dash.State('test-input', 'value')
+)
+def update_session_log(input1, state1, state2):
+    new_message = state1 + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state2
+    current_session.log = new_message
+    return new_message
 
 
-    # Connect textarea
+# Connect textarea
 
-    # sys.stdout = output_redirector
-    # sys.stderr = output_redirector
+# sys.stdout = output_redirector
+# sys.stderr = output_redirector
 
-    app.run_server(debug=True)
+app.run_server(debug=True)
