@@ -90,6 +90,9 @@ class Session:
         self.sensor_ID = generate_id()
         self.analysis_instances = {}
         self.analysis_ID = generate_id()
+        self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
+            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
+            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can load previous sessions using the "File" tab.'
 
     def remove_sensor(self, sensor_object_id):
         """
@@ -425,9 +428,10 @@ def load_csv_data():
 
 if __name__ == '__main__':
 
-    # # Create initial session
-    # current_session = Session()
-    #
+    # TODO: Add date and time to log messages
+    # Create initial session
+    current_session = Session()
+
     # # Prompt user for initial measurement data
     # data_path, time, angles, ydata = load_csv_data()
 
@@ -474,7 +478,7 @@ if __name__ == '__main__':
             dash.html.H3("Session log", className='dash-bootstrap'),
             dash.dcc.Textarea(
                 id='console',
-                value='Welcome to pySPR!\nStart your session by defining your SPR sensor layers.\nYou can load previous sessions using the "File" tab.',
+                value=current_session.log,
                 readOnly=True,
                 className='dash-bootstrap',
                 style={'width': '99%', 'height': '150px'}
@@ -523,7 +527,8 @@ if __name__ == '__main__':
         dash.State('test-input', 'value')
     )
     def update_session_log(input1, state1, state2):
-        new_message = state1 + '\n' + state2
+        new_message = state1 + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state2
+        current_session.log = new_message
         return new_message
 
 
