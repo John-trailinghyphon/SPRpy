@@ -323,6 +323,7 @@ class NonInteractingProbe(ModelledReflectivityTrace):
 
 
 def add_sensor(session_handle, data_path_, sensor_metal='Au', polarization=1):
+
     """
     Adds sensor objects to a session object.
     :return: a sensor object
@@ -334,28 +335,28 @@ def add_sensor(session_handle, data_path_, sensor_metal='Au', polarization=1):
     return sensor_object
 
 
-def add_modelled_reflectivity_trace(session_handle, sensor_object, data_path_):
+def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_):
     """
     Adds analysis objects to a session object.
     :return: an analysis object
     """
 
-    id_ = next(session_handle.analysis_ID)
+    id_ = next(session_object.analysis_ID)
     analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, id_)
-    session_handle.analysis_instances[id_] = analysis_object
+    session_object.analysis_instances[id_] = analysis_object
 
     return analysis_object
 
 
-def add_fitted_reflectivity_trace(session_handle, sensor_object, data_path_, ydata_type='R'):
+def add_fitted_reflectivity_trace(session_object, sensor_object, data_path_, ydata_type='R'):
     """
     Adds analysis objects to a session object.
     :return: an analysis object
     """
 
-    id_ = next(session_handle.analysis_ID)
+    id_ = next(session_object.analysis_ID)
     analysis_object = FittedReflectivityTrace(sensor_object, data_path_, id_, ydata_type=ydata_type)
-    session_handle.analysis_instances[id_] = analysis_object
+    session_object.analysis_instances[id_] = analysis_object
 
     return analysis_object
 
@@ -365,8 +366,8 @@ def load_session(filename):
     Loads a previous session.
     :return:
     """
-    # TODO: It should load a session object and load its dictionaries containing measurement_instances and
-    #  analysis_instances.
+    # TODO: ADD DASH CALLBACK FUNCTIONALITY. It should load a session object and load its dictionaries containing
+    #  measurement_instances and analysis_instances.
 
     pass
 
@@ -547,7 +548,6 @@ if __name__ == '__main__':
         new_message = state1 + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state2
         current_session.log = new_message
         return new_message
-
 
     # Connect textarea
 
