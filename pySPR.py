@@ -151,6 +151,9 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0])
+                self.optical_parameters = pd.DataFrame(
+                    data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'], 'd [nm]': self.layer_thicknesses,
+                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
 
             case 'sio2' | 'SiO2' | 'SIO2' | 'glass' | 'silica':
                 # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez.
@@ -168,6 +171,9 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.4592, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0, 0])
+                self.optical_parameters = pd.DataFrame(
+                    data={'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'], 'd [nm]': self.layer_thicknesses,
+                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
 
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
@@ -182,6 +188,9 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 3.0331, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.1010, 0])
+                self.optical_parameters = pd.DataFrame(
+                    data={'Layers': ['Prism', 'Cr', 'Pd', 'Bulk'], 'd [nm]': self.layer_thicknesses,
+                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
 
             case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
@@ -198,8 +207,12 @@ class Sensor:
                         print('WARNING! Default values for Pt, platinum, at 785 and 980 nm not yet supported. Enter values manually')
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
+                self.optical_parameters = pd.DataFrame(
+                    data={'Layers': ['Prism', 'Cr', 'Pt', 'Bulk'], 'd [nm]': self.layer_thicknesses,
+                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
 
     def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
+        # TODO: This function should be reworked as a @dash.callback function responding to the DataTable class.
         """
         Add additional layers on top of the sensor (before bulk medium).
         :return:
@@ -322,15 +335,15 @@ class NonInteractingProbe(ModelledReflectivityTrace):
         pass
 
 
-def add_sensor(session_handle, data_path_, sensor_metal='Au', polarization=1):
+def add_sensor(session_object, data_path_, sensor_metal='Au', polarization=1):
 
     """
     Adds sensor objects to a session object.
     :return: a sensor object
     """
-    id_ = next(session_handle.sensor_ID)
+    id_ = next(session_object.sensor_ID)
     sensor_object = Sensor(data_path_, id_, sensor_metal=sensor_metal, polarization=polarization)
-    session_handle.sensor_instances[id_] = sensor_object
+    session_object.sensor_instances[id_] = sensor_object
 
     return sensor_object
 
@@ -434,6 +447,9 @@ if __name__ == '__main__':
 
     # Prompt user for initial measurement data
     data_path, time, angles, ydata = load_csv_data()
+
+    # Add sensor object based on measurement data
+    current_sensor = add_sensor(current_session, data_path)
 
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
