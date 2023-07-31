@@ -151,9 +151,10 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0])
-                self.optical_parameters = pd.DataFrame(
-                    data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'], 'd [nm]': self.layer_thicknesses,
-                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
+                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],
+                                           'd [nm]': self.layer_thicknesses,
+                                           'n': self.refractive_indices,
+                                           'k': self.extinction_coefficients}
 
             case 'sio2' | 'SiO2' | 'SIO2' | 'glass' | 'silica':
                 # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez.
@@ -171,9 +172,10 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.4592, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0, 0])
-                self.optical_parameters = pd.DataFrame(
-                    data={'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'], 'd [nm]': self.layer_thicknesses,
-                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
+                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'],
+                                           'd [nm]': self.layer_thicknesses,
+                                           'n': self.refractive_indices,
+                                           'k': self.extinction_coefficients}
 
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
@@ -188,9 +190,10 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 3.0331, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.1010, 0])
-                self.optical_parameters = pd.DataFrame(
-                    data={'Layers': ['Prism', 'Cr', 'Pd', 'Bulk'], 'd [nm]': self.layer_thicknesses,
-                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
+                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Pd', 'Bulk'],
+                                           'd [nm]': self.layer_thicknesses,
+                                           'n': self.refractive_indices,
+                                           'k': self.extinction_coefficients}
 
             case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
@@ -207,9 +210,10 @@ class Sensor:
                         print('WARNING! Default values for Pt, platinum, at 785 and 980 nm not yet supported. Enter values manually')
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
-                self.optical_parameters = pd.DataFrame(
-                    data={'Layers': ['Prism', 'Cr', 'Pt', 'Bulk'], 'd [nm]': self.layer_thicknesses,
-                          'n': self.refractive_indices, 'k': self.extinction_coefficients})
+                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Pt', 'Bulk'],
+                                           'd [nm]': self.layer_thicknesses,
+                                           'n': self.refractive_indices,
+                                           'k': self.extinction_coefficients}
 
     def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
         # TODO: This function should be reworked as a @dash.callback function responding to the DataTable class.
@@ -448,12 +452,19 @@ if __name__ == '__main__':
     # Prompt user for initial measurement data
     data_path, time, angles, ydata = load_csv_data()
 
-    # Add sensor object based on measurement data
+    # Add sensor object based on chosen measurement data
     current_sensor = add_sensor(current_session, data_path)
 
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
+    # Programmatically addressable Dash components
+    sensor_table = dash.dash_table.DataTable(data=current_sensor.optical_parameters,
+                                             columns=[{'name': key, 'id': key} for key in
+                                                      current_sensor.optical_parameters.keys()], # TODO: Change this so that each column is addressable!
+                                             editable=True,
+                                             id='sensor-table')
+    # Dash webapp layout
     app.layout = dash.html.Div([
 
         # Heading for page
