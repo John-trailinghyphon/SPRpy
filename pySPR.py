@@ -461,9 +461,16 @@ if __name__ == '__main__':
     # Programmatically addressable Dash components
     sensor_table = dash.dash_table.DataTable(data=current_sensor.optical_parameters,
                                              columns=[{'name': key, 'id': key} for key in
-                                                      current_sensor.optical_parameters.keys()], # TODO: Change this so that each column is addressable!
+                                                      current_sensor.optical_parameters.keys()],
                                              editable=True,
                                              id='sensor-table')
+    chosen_sensor_dropdown = dbc.DropdownMenu(
+        id='chosen-sensor-dropdown',
+        label='Choose sensor',
+        color='secondary',
+        children=[dbc.DropdownMenuItem('Sensor ' + str(sensor.object_id)) for sensor in
+                  current_session.sensor_instances])
+
     # Dash webapp layout
     app.layout = dash.html.Div([
 
@@ -535,13 +542,7 @@ if __name__ == '__main__':
                 dbc.Button('Load session', id='load-session', n_clicks=0, title='Load a previous session in its entirety'),
                 dbc.Button('Import result', id='import-from-session', n_clicks=0, title='Use this to import previous results from another session'),
                 dbc.Button('New sensor', id='new-sensor', n_clicks=0),
-                dbc.DropdownMenu(
-                    label='Choose sensor',
-                    color='secondary',
-                    children=[
-                        dbc.DropdownMenuItem('Sensor 1'),
-                        dbc.DropdownMenuItem('Sensor 2')
-                    ])
+                chosen_sensor_dropdown  # Defined above
             ])
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
