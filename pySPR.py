@@ -339,7 +339,7 @@ class NonInteractingProbe(ModelledReflectivityTrace):
         pass
 
 
-def add_sensor(session_object, data_path_, sensor_metal='Au', polarization=1):
+def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
 
     """
     Adds sensor objects to a session object.
@@ -453,7 +453,7 @@ if __name__ == '__main__':
     data_path, time, angles, ydata = load_csv_data()
 
     # Add sensor object based on chosen measurement data
-    current_sensor = add_sensor(current_session, data_path)
+    current_sensor = add_sensor_backend(current_session, data_path)
 
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
@@ -468,7 +468,7 @@ if __name__ == '__main__':
         id='chosen-sensor-dropdown',
         label='Choose sensor',
         color='secondary',
-        children=[dbc.DropdownMenuItem('Sensor ' + str(sensor.object_id)) for sensor in
+        children=[dbc.DropdownMenuItem('Sensor ' + str(sensor.object_id), id='sensor'+str(sensor.object_id), n_clicks=0) for sensor in
                   current_session.sensor_instances])
 
     # Dash webapp layout
@@ -541,8 +541,15 @@ if __name__ == '__main__':
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
                 dbc.Button('Load session', id='load-session', n_clicks=0, title='Load a previous session in its entirety'),
                 dbc.Button('Import result', id='import-from-session', n_clicks=0, title='Use this to import previous results from another session'),
-                dbc.Button('New sensor', id='new-sensor', n_clicks=0),
-                chosen_sensor_dropdown  # Defined above
+                dbc.DropdownMenu(
+                    id='create-new-sensor-dropdown',
+                    label='Add new sensor',
+                    color='primary',
+                    children=[dbc.DropdownMenuItem('Gold', id='new-sensor-gold', n_clicks=0),
+                              dbc.DropdownMenuItem('Glass', id='new-sensor-glass', n_clicks=0),
+                              dbc.DropdownMenuItem('Palladium', id='new-sensor-palladium', n_clicks=0),
+                              dbc.DropdownMenuItem('Platinum', id='new-sensor-platinum', n_clicks=0)]),
+                chosen_sensor_dropdown  # Defined above app.layout
             ])
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
@@ -565,7 +572,7 @@ if __name__ == '__main__':
 
     ])
 
-    # PLACEHOLDER: Function for test button
+    # Adding note to session log
     @dash.callback(
         dash.Output('console', 'value'),
         dash.Input('submit-button', 'n_clicks'),
@@ -577,9 +584,57 @@ if __name__ == '__main__':
         current_session.log = new_message
         return new_message
 
-    # Connect textarea
 
-    # sys.stdout = output_redirector
-    # sys.stderr = output_redirector
+    # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
+    @dash.callback(
+        # dash.Output('', ''),  # Update sensor datatable
+        # dash.Output('', ''),  # Update choose sensor dropdown
+        dash.Input('new-sensor-gold', 'n_clicks'),
+        dash.Input('new-sensor-glass', 'n_clicks'),
+        dash.Input('new-sensor-palladium', 'n_clicks'),
+        dash.Input('new-sensor-platinum', 'n_clicks'),
+    )
+    def add_sensor_UI(input1, input2, input3, input4):
+
+        if 'new-sensor-gold' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Gold')
+        elif 'new-sensor-glass' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Palladium')
+        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+
+        return
+
+    # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
+    @dash.callback(
+        output=[dash.Output('', '')],  # Update sensor datatable
+        inputs=[dash.Input('sensor0', 'n_clicks'),
+        dash.Input('sensor1', 'n_clicks'),
+        dash.Input('sensor2', 'n_clicks'),
+        dash.Input('sensor3', 'n_clicks'),
+        dash.Input('sensor4', 'n_clicks'),
+        dash.Input('sensor5', 'n_clicks'),
+        dash.Input('sensor6', 'n_clicks'),
+        dash.Input('sensor7', 'n_clicks'),
+        dash.Input('sensor8', 'n_clicks'),
+        dash.Input('sensor9', 'n_clicks'),
+        dash.Input('sensor10', 'n_clicks')],
+    )
+    def select_sensor_UI(in1, in2, in3, in4, in5, in6, in7, in8, in9, in10):
+
+        # for arg in :
+
+        if 'sensor0' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Gold')
+        elif 'new-sensor-glass' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Palladium')
+        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+
+        return
 
     app.run_server(debug=True, use_reloader=False)
