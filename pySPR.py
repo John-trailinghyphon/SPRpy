@@ -151,10 +151,10 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0])
-                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],
-                                           'd [nm]': self.layer_thicknesses,
-                                           'n': self.refractive_indices,
-                                           'k': self.extinction_coefficients}
+                self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],
+                                                             'd [nm]': self.layer_thicknesses,
+                                                             'n': self.refractive_indices,
+                                                             'k': self.extinction_coefficients})
 
             case 'sio2' | 'SiO2' | 'SIO2' | 'glass' | 'silica':
                 # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez.
@@ -172,11 +172,10 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.4592, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0, 0])
-                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'],
-                                           'd [nm]': self.layer_thicknesses,
-                                           'n': self.refractive_indices,
-                                           'k': self.extinction_coefficients}
-
+                self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'],
+                                                             'd [nm]': self.layer_thicknesses,
+                                                             'n': self.refractive_indices,
+                                                             'k': self.extinction_coefficients})
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
                 self.fitted_layer = 'n_im_metal'
@@ -190,10 +189,10 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 3.0331, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.1010, 0])
-                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Pd', 'Bulk'],
-                                           'd [nm]': self.layer_thicknesses,
-                                           'n': self.refractive_indices,
-                                           'k': self.extinction_coefficients}
+                self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Pd', 'Bulk'],
+                                                             'd [nm]': self.layer_thicknesses,
+                                                             'n': self.refractive_indices,
+                                                             'k': self.extinction_coefficients})
 
             case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
@@ -210,10 +209,10 @@ class Sensor:
                         print('WARNING! Default values for Pt, platinum, at 785 and 980 nm not yet supported. Enter values manually')
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
-                self.optical_parameters = {'Layers': ['Prism', 'Cr', 'Pt', 'Bulk'],
-                                           'd [nm]': self.layer_thicknesses,
-                                           'n': self.refractive_indices,
-                                           'k': self.extinction_coefficients}
+                self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Pt', 'Bulk'],
+                                                             'd [nm]': self.layer_thicknesses,
+                                                             'n': self.refractive_indices,
+                                                             'k': self.extinction_coefficients})
 
     def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
         # TODO: This function should be reworked as a @dash.callback function responding to the DataTable class.
@@ -455,21 +454,28 @@ if __name__ == '__main__':
     # Add sensor object based on chosen measurement data
     current_sensor = add_sensor_backend(current_session, data_path)
 
+    print(current_sensor.optical_parameters)
+
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
     # Programmatically addressable Dash components
-    sensor_table = dash.dash_table.DataTable(data=current_sensor.optical_parameters,
-                                             columns=[{'name': key, 'id': key} for key in
-                                                      current_sensor.optical_parameters.keys()],
+    sensor_table = dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
+                                             columns=[{'name': col, 'id': col} for col in current_sensor.optical_parameters.columns],
                                              editable=True,
-                                             id='sensor-table')
+                                             id='sensor-table',
+                                             style_header={
+                                                 'backgroundColor': '#446e9b',
+                                                 'color': 'white',
+                                                 'fontWeight': 'bold'
+                                             },
+                                             style_cell={'textAlign': 'center'})
+
     chosen_sensor_dropdown = dbc.DropdownMenu(
         id='chosen-sensor-dropdown',
         label='Choose sensor',
         color='secondary',
-        children=[dbc.DropdownMenuItem('Sensor ' + str(sensor.object_id), id='sensor'+str(sensor.object_id), n_clicks=0) for sensor in
-                  current_session.sensor_instances])
+        children=[dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id}, n_clicks=0) for sensor_id in current_session.sensor_instances])
 
     # Dash webapp layout
     app.layout = dash.html.Div([
@@ -515,20 +521,20 @@ if __name__ == '__main__':
                 value=current_session.log,
                 readOnly=True,
                 className='dash-bootstrap',
-                style={'width': '99%', 'height': '150px'}
+                style={'width': '98%', 'height': '150px', 'margin-right': '2%'}
             )
-        ], style={'margin-top': '40px', 'margin-left': '10px', 'text-align': 'left'}),
+        ], style={'margin-top': '40px', 'margin-left': '2%', 'text-align': 'left'}),
 
         # PLACEHOLDER: Test button for session log
         dash.html.Div([
             dbc.InputGroup(
                 [
                     dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
-                    dbc.Input(id='test-input', value='', type='text')
+                    dbc.Input(id='test-input', value='', type='text', style={'margin-right': '2%'})
                 ]
             )
 
-        ]),
+        ], style={'margin-left': '2%'}),
 
         # File and session control
         dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
@@ -560,13 +566,11 @@ if __name__ == '__main__':
         #  should add an additional sensor layout and make the new one the active one. Getting this functionality to
         #  work first is likely a good idea. end
 
-        # # Sensor datatable
-        # dash.html.Div([
-        #     dash.html.H4(['Sensor parameters']),
-        #     dash.dash_table.DataTable([
-        #
-        #     ])
-        # ]),
+        # Sensor datatable
+        dash.html.Div([
+            dash.html.H4(['Sensor #0 parameters'], id='sensor_table_title', style={'margin-left': '2%'}),
+            dash.html.Div([sensor_table], style={'width': '30%', 'margin-left': '2%'})
+        ], style={'margin-top': '20px', 'margin-bottom': '20px'}),
 
         # Fitting parameters datatable
 
@@ -585,56 +589,56 @@ if __name__ == '__main__':
         return new_message
 
 
-    # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
-    @dash.callback(
-        # dash.Output('', ''),  # Update sensor datatable
-        # dash.Output('', ''),  # Update choose sensor dropdown
-        dash.Input('new-sensor-gold', 'n_clicks'),
-        dash.Input('new-sensor-glass', 'n_clicks'),
-        dash.Input('new-sensor-palladium', 'n_clicks'),
-        dash.Input('new-sensor-platinum', 'n_clicks'),
-    )
-    def add_sensor_UI(input1, input2, input3, input4):
-
-        if 'new-sensor-gold' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Gold')
-        elif 'new-sensor-glass' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
-        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Palladium')
-        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
-
-        return
-
-    # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
-    @dash.callback(
-        output=[dash.Output('', '')],  # Update sensor datatable
-        inputs=[dash.Input('sensor0', 'n_clicks'),
-        dash.Input('sensor1', 'n_clicks'),
-        dash.Input('sensor2', 'n_clicks'),
-        dash.Input('sensor3', 'n_clicks'),
-        dash.Input('sensor4', 'n_clicks'),
-        dash.Input('sensor5', 'n_clicks'),
-        dash.Input('sensor6', 'n_clicks'),
-        dash.Input('sensor7', 'n_clicks'),
-        dash.Input('sensor8', 'n_clicks'),
-        dash.Input('sensor9', 'n_clicks'),
-        dash.Input('sensor10', 'n_clicks')],
-    )
-    def select_sensor_UI(in1, in2, in3, in4, in5, in6, in7, in8, in9, in10):
-
-        # for arg in :
-
-        if 'sensor0' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Gold')
-        elif 'new-sensor-glass' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
-        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Palladium')
-        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
-
-        return
+    # # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
+    # @dash.callback(
+    #     # dash.Output('', ''),  # Update sensor datatable
+    #     # dash.Output('', ''),  # Update choosen sensor dropdown
+    #     dash.Input('new-sensor-gold', 'n_clicks'),
+    #     dash.Input('new-sensor-glass', 'n_clicks'),
+    #     dash.Input('new-sensor-palladium', 'n_clicks'),
+    #     dash.Input('new-sensor-platinum', 'n_clicks'),
+    # )
+    # def add_sensor_UI(input1, input2, input3, input4):
+    #
+    #     if 'new-sensor-gold' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Gold')
+    #     elif 'new-sensor-glass' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+    #     elif 'new-sensor-palladium' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Palladium')
+    #     elif 'new-sensor-platinum' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+    #
+    #     return
+    #
+    # # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
+    # @dash.callback(
+    #     # output=[dash.Output('', '')],  # Update sensor datatable
+    #     inputs=[dash.Input('sensor0', 'n_clicks'),
+    #     dash.Input('sensor1', 'n_clicks'),
+    #     dash.Input('sensor2', 'n_clicks'),
+    #     dash.Input('sensor3', 'n_clicks'),
+    #     dash.Input('sensor4', 'n_clicks'),
+    #     dash.Input('sensor5', 'n_clicks'),
+    #     dash.Input('sensor6', 'n_clicks'),
+    #     dash.Input('sensor7', 'n_clicks'),
+    #     dash.Input('sensor8', 'n_clicks'),
+    #     dash.Input('sensor9', 'n_clicks'),
+    #     dash.Input('sensor10', 'n_clicks')],
+    # )
+    # def select_sensor_UI(in1, in2, in3, in4, in5, in6, in7, in8, in9, in10):
+    #
+    #     # for arg in :
+    #
+    #     if 'sensor0' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Gold')
+    #     elif 'new-sensor-glass' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+    #     elif 'new-sensor-palladium' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Palladium')
+    #     elif 'new-sensor-platinum' == dash.ctx.triggered_id:
+    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
+    #
+    #     return
 
     app.run_server(debug=True, use_reloader=False)
