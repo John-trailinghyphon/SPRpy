@@ -42,7 +42,7 @@
 # TODO: "Main control DIV". Need buttons for controlling a lot of things:
 #  - Which measurement file to load data from (.csv)
 #  - Choosing analysis method (default should be fitting reflectivity traces, like background)
-#  - Session control
+#  - Session control (this should be done lasts, as it requires to figure out how to reinitiate the whole Dash interface with new values)
 #     * loading previous session
 #     * importing previous session into current one
 #     * importing sensor and analysis objects from previous session (like background)
@@ -112,8 +112,7 @@ class Session:
 
 
 class Sensor:
-    # TODO: Is this class actually necessary? If the dash_table.DataTable() class is used, then updating the layer
-    #  properties from there is actually easier? Maybe default values should be determined from that instead?
+
     """
       An SPR measurement typically have some things in common, such as the sensor layers, measured angles,
     measured reflectivity, measurement time, etc. This information can be shared between different analysis methods for
@@ -156,7 +155,7 @@ class Sensor:
                                                              'n': self.refractive_indices,
                                                              'k': self.extinction_coefficients})
 
-            case 'sio2' | 'SiO2' | 'SIO2' | 'glass' | 'silica':
+            case 'sio2' | 'SiO2' | 'SIO2' | 'Glass' | 'glass' | 'silica':
                 # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez.
                 # Self-consistent optical constants of SiO2 and Ta2O5 films
                 # Opt. Mater. Express 6, 3622-3637 (2016) (Numerical data kindly provided by Juan Larruquert)
@@ -454,8 +453,6 @@ if __name__ == '__main__':
     # Add sensor object based on chosen measurement data
     current_sensor = add_sensor_backend(current_session, data_path)
 
-    print(current_sensor.optical_parameters)
-
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
@@ -525,7 +522,7 @@ if __name__ == '__main__':
             )
         ], style={'margin-top': '40px', 'margin-left': '2%', 'text-align': 'left'}),
 
-        # PLACEHOLDER: Test button for session log
+        # Button for adding note to session log
         dash.html.Div([
             dbc.InputGroup(
                 [
@@ -559,16 +556,14 @@ if __name__ == '__main__':
             ])
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
-        # TODO: Before adding sensor table, update backend and connect to dash server. Needs logic that reads in a
-        #  pd.DataFrame from the current sensor object from the session and which initiates the DataTable from there.
-        #  Then callback functions are required that will enable editing the table and updating the sensor object in question.
+        # TODO: Before adding sensor table, update backend and connect to dash server. Then callback functions are required that will enable editing the table and updating the sensor object in question.
         #  The choose sensor dropdown should be used to select the current sensor from the session, while New Sensor
         #  should add an additional sensor layout and make the new one the active one. Getting this functionality to
         #  work first is likely a good idea. end
 
         # Sensor datatable
         dash.html.Div([
-            dash.html.H4(['Sensor #0 parameters'], id='sensor_table_title', style={'margin-left': '2%'}),
+            dash.html.H4(['Sensor 0'], id='sensor-table-title', style={'margin-left': '2%'}),
             dash.html.Div([sensor_table], style={'width': '30%', 'margin-left': '2%'})
         ], style={'margin-top': '20px', 'margin-bottom': '20px'}),
 
@@ -589,28 +584,43 @@ if __name__ == '__main__':
         return new_message
 
 
-    # # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
-    # @dash.callback(
-    #     # dash.Output('', ''),  # Update sensor datatable
-    #     # dash.Output('', ''),  # Update choosen sensor dropdown
-    #     dash.Input('new-sensor-gold', 'n_clicks'),
-    #     dash.Input('new-sensor-glass', 'n_clicks'),
-    #     dash.Input('new-sensor-palladium', 'n_clicks'),
-    #     dash.Input('new-sensor-platinum', 'n_clicks'),
-    # )
-    # def add_sensor_UI(input1, input2, input3, input4):
-    #
-    #     if 'new-sensor-gold' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Gold')
-    #     elif 'new-sensor-glass' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
-    #     elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Palladium')
-    #     elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Glass')
-    #
-    #     return
-    #
+    @dash.callback(
+        dash.Output('sensor-table', 'data'),  # Update sensor table data
+        dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
+        dash.Output('sensor-table-title', 'children'),  # Update sensor table title
+        dash.Input('new-sensor-gold', 'n_clicks'),
+        dash.Input('new-sensor-glass', 'n_clicks'),
+        dash.Input('new-sensor-palladium', 'n_clicks'),
+        dash.Input('new-sensor-platinum', 'n_clicks'),
+    )
+    def add_sensor_UI(input1, input2, input3, input4):
+        '''
+        Dictates what happens when creating a new sensor under the "Add new sensor" dropdown menu.
+
+        :param input1: Adding gold sensor
+        :param input2: Adding glass sensor
+        :param input3: Adding palladium sensor
+        :param input4: Adding platinum sensor
+        :return:
+        '''
+
+        global current_sensor
+        if 'new-sensor-gold' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Au')
+        elif 'new-sensor-glass' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='SiO2')
+        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pd')
+        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pt')
+
+        data_rows = current_sensor.optical_parameters.to_dict('records')
+        sensor_options = [dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id},
+                                               n_clicks=0) for sensor_id in current_session.sensor_instances]
+        sensor_table_title = 'Sensor ' + str(current_sensor.object_id)
+
+        return data_rows, sensor_options, sensor_table_title
+
     # # TODO: FIX THIS BY READING UP ON PATTERN-MATCHING CALLBACKS
     # @dash.callback(
     #     # output=[dash.Output('', '')],  # Update sensor datatable
