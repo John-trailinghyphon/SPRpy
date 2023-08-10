@@ -584,72 +584,70 @@ if __name__ == '__main__':
         current_session.log = new_message
         return new_message
 
-    # TODO: NEED to remake the callbacks so that they use chained callbacks for common outputs
-    #  (it doesn't work to have multiple callbacks for the same output component).
-    # @dash.callback(
-    #     dash.Output('sensor-table', 'data'),  # Update sensor table data
-    #     dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
-    #     dash.Output('sensor-table-title', 'children'),  # Update sensor table title
-    #     dash.Input('new-sensor-gold', 'n_clicks'),
-    #     dash.Input('new-sensor-glass', 'n_clicks'),
-    #     dash.Input('new-sensor-palladium', 'n_clicks'),
-    #     dash.Input('new-sensor-platinum', 'n_clicks'),
-    #     prevent_initial_call=True)
-    # def add_sensor_UI(input1, input2, input3, input4):
-    #     '''
-    #     Dictates what happens when creating a new sensor under the "Add new sensor" dropdown menu.
-    #
-    #     :param input1: Adding gold sensor
-    #     :param input2: Adding glass sensor
-    #     :param input3: Adding palladium sensor
-    #     :param input4: Adding platinum sensor
-    #     :return:
-    #     '''
-    #
-    #     global current_sensor
-    #     if 'new-sensor-gold' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Au')
-    #     elif 'new-sensor-glass' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='SiO2')
-    #     elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pd')
-    #     elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-    #         current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pt')
-    #
-    #     data_rows = current_sensor.optical_parameters.to_dict('records')
-    #     sensor_options = [dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor-list', 'index': sensor_id},
-    #                                            n_clicks=0) for sensor_id in current_session.sensor_instances]
-    #     sensor_table_title = 'Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)
-    #
-    #     return data_rows, sensor_options, sensor_table_title
-    #
-    # # TODO: Potential FIX TO THIS by using dash.callback_context.triggered_prop_ids
-    # @dash.callback(
-    #     dash.Output('sensor-table', 'data'),  # Update sensor table data
-    #     dash.Output('sensor-table-title', 'children'),  # Update sensor table title
-    #     dash.Input({'type': 'sensor-list', 'index': dash.ALL}, 'value'),
-    #     dash.State({'type': 'sensor-list', 'index': dash.ALL}, 'id')
-    # )
-    # def switch_sensor_UI(value, id_):
-    #     '''
-    #     This callback function dictates what happens when the Chosen sensor dropdown list is interacted with.
-    #
-    #     :param value:
-    #     :param id:
-    #     :return: Updated data rows in sensor table and the sensor table title.
-    #     '''
-    #
-    #     global current_session
-    #     global current_sensor
-    #
-    #     for ids in id_:
-    #         if ids == dash.ctx.triggered_id:
-    #             current_sensor = current_session.sensor_instances[ids['index']]
-    #             break
-    #
-    #     data_rows = current_sensor.optical_parameters.to_dict('records')
-    #     sensor_table_title = 'Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)
-    #
-    #     return data_rows, sensor_table_title
+
+    # TODO: Potential FIX TO THIS by using dash.callback_context.triggered_prop_ids
+    @dash.callback(
+        dash.Output('sensor-table', 'data', allow_duplicate=True),  # Update sensor table data
+        dash.Output('sensor-table-title', 'children', allow_duplicate=True),  # Update sensor table title
+        dash.Input({'type': 'sensor-list', 'index': dash.ALL}, 'n_clicks'),
+        prevent_initial_call=True)
+    def switch_sensor_UI(value):
+        '''
+        This callback function dictates what happens when the Chosen sensor dropdown list is interacted with.
+
+        :param value:
+        :param id:
+        :return: Updated data rows in sensor table and the sensor table title.
+        '''
+
+        global current_session
+        global current_sensor
+
+        current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
+
+        data_rows = current_sensor.optical_parameters.to_dict('records')
+        sensor_table_title = 'Sensor {id} - {channel}'.format(id=current_sensor.object_id,
+                                                              channel=current_sensor.channel)
+
+        return data_rows, sensor_table_title
+
+
+    @dash.callback(
+        dash.Output('sensor-table', 'data'),  # Update sensor table data
+        dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
+        dash.Output('sensor-table-title', 'children'),  # Update sensor table title
+        dash.Input('new-sensor-gold', 'n_clicks'),
+        dash.Input('new-sensor-glass', 'n_clicks'),
+        dash.Input('new-sensor-palladium', 'n_clicks'),
+        dash.Input('new-sensor-platinum', 'n_clicks')
+    )
+    def add_sensor_UI(input1, input2, input3, input4):
+        '''
+        Dictates what happens when creating a new sensor under the "Add new sensor" dropdown menu.
+
+        :param input1: Adding gold sensor
+        :param input2: Adding glass sensor
+        :param input3: Adding palladium sensor
+        :param input4: Adding platinum sensor
+        :return:
+        '''
+
+        global current_sensor
+        if 'new-sensor-gold' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Au')
+        elif 'new-sensor-glass' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='SiO2')
+        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pd')
+        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
+            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pt')
+
+        data_rows = current_sensor.optical_parameters.to_dict('records')
+        sensor_options = [dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor-list', 'index': sensor_id},
+                                               n_clicks=0) for sensor_id in current_session.sensor_instances]
+        sensor_table_title = 'Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)
+
+        return data_rows, sensor_options, sensor_table_title
+
 
     app.run_server(debug=True, use_reloader=False)
