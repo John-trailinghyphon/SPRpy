@@ -456,23 +456,6 @@ if __name__ == '__main__':
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
-    # Programmatically addressable Dash components
-    sensor_table = dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
-                                             columns=[{'name': col, 'id': col} for col in current_sensor.optical_parameters.columns],
-                                             editable=True,
-                                             id='sensor-table',
-                                             style_header={
-                                                 'backgroundColor': '#446e9b',
-                                                 'color': 'white',
-                                                 'fontWeight': 'bold'
-                                             },
-                                             style_cell={'textAlign': 'center'})
-
-    chosen_sensor_dropdown = dbc.DropdownMenu(
-        id='chosen-sensor-dropdown',
-        label='Choose sensor',
-        color='secondary',
-        children=[dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id}, n_clicks=0) for sensor_id in current_session.sensor_instances])
 
     # Dash webapp layout
     app.layout = dash.html.Div([
@@ -552,22 +535,35 @@ if __name__ == '__main__':
                               dbc.DropdownMenuItem('Glass', id='new-sensor-glass', n_clicks=0),
                               dbc.DropdownMenuItem('Palladium', id='new-sensor-palladium', n_clicks=0),
                               dbc.DropdownMenuItem('Platinum', id='new-sensor-platinum', n_clicks=0)]),
-                chosen_sensor_dropdown  # Defined above app.layout
+                dbc.DropdownMenu(
+                    id='chosen-sensor-dropdown',
+                    label='Choose sensor',
+                    color='secondary',
+                    children=[
+                        dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id},
+                                             n_clicks=0) for sensor_id in current_session.sensor_instances])
             ])
         ], style={'display': 'flex', 'justify-content': 'center'}),
-
-        # TODO: Before adding sensor table, update backend and connect to dash server. Then callback functions are required that will enable editing the table and updating the sensor object in question.
-        #  The choose sensor dropdown should be used to select the current sensor from the session, while New Sensor
-        #  should add an additional sensor layout and make the new one the active one. Getting this functionality to
-        #  work first is likely a good idea. end
 
         # Sensor datatable
         dash.html.Div([
             dash.html.H4(['Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)], id='sensor-table-title', style={'margin-left': '2%'}),
-            dash.html.Div([sensor_table], style={'width': '30%', 'margin-left': '2%'}),
+            dash.html.Div([
+                dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
+                                          columns=[{'name': col, 'id': col} for col in
+                                                   current_sensor.optical_parameters.columns],
+                                          editable=True,
+                                          id='sensor-table',
+                                          style_header={
+                                              'backgroundColor': '#446e9b',
+                                              'color': 'white',
+                                              'fontWeight': 'bold'
+                                          },
+                                          style_cell={'textAlign': 'center'})
+            ], style={'width': '30%', 'margin-left': '2%'}),
         ], style={'margin-top': '20px', 'margin-bottom': '20px'}),
 
-        # Fitting parameters datatable
+        # Analysis tabs
 
     ])
 
