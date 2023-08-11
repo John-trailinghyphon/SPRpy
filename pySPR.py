@@ -565,7 +565,6 @@ if __name__ == '__main__':
         dash.html.Div([
             dash.html.H4(['Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)], id='sensor-table-title', style={'margin-left': '2%'}),
             dash.html.Div([sensor_table], style={'width': '30%', 'margin-left': '2%'}),
-            dash.dcc.Store(id='block-sensor-list-signal', storage_type='local')
         ], style={'margin-top': '20px', 'margin-bottom': '20px'}),
 
         # Fitting parameters datatable
