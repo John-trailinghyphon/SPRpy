@@ -523,10 +523,21 @@ if __name__ == '__main__':
                       style={'margin-right': '10px', 'textAlign': 'center'}),
         dbc.Container([
             dbc.ButtonGroup([
-                dbc.Button('Load data', id='load-data', n_clicks=0,
+                dbc.Button('Load data',
+                           id='load-data',
+                           n_clicks=0,
+                           color='primary',
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
-                dbc.Button('Load session', id='load-session', n_clicks=0, title='Load a previous session in its entirety'),
-                dbc.Button('Import result', id='import-from-session', n_clicks=0, title='Use this to import previous results from another session'),
+                dbc.Button('Load session',  # TODO: It is probably best to prompt for this outside the dash app.
+                           id='load-session',
+                           n_clicks=0,
+                           color='primary',
+                           title='Load a previous session in its entirety'),
+                dbc.Button('Import result',
+                           id='import-from-session',
+                           n_clicks=0,
+                           color='primary',
+                           title='Use this to import previous results from another session'),
                 dbc.DropdownMenu(
                     id='create-new-sensor-dropdown',
                     label='Add new sensor',
@@ -538,30 +549,73 @@ if __name__ == '__main__':
                 dbc.DropdownMenu(
                     id='chosen-sensor-dropdown',
                     label='Choose sensor',
-                    color='secondary',
+                    color='primary',
                     children=[
                         dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id},
                                              n_clicks=0) for sensor_id in current_session.sensor_instances])
             ])
-        ], style={'display': 'flex', 'justify-content': 'center'}),
+        ], style={'margin-bottom': '20px', 'display': 'flex', 'justify-content': 'center'}),
 
         # Sensor datatable
         dash.html.Div([
-            dash.html.H4(['Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)], id='sensor-table-title', style={'margin-left': '2%'}),
             dash.html.Div([
-                dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
-                                          columns=[{'name': col, 'id': col} for col in
-                                                   current_sensor.optical_parameters.columns],
-                                          editable=True,
-                                          id='sensor-table',
-                                          style_header={
-                                              'backgroundColor': '#446e9b',
-                                              'color': 'white',
-                                              'fontWeight': 'bold'
-                                          },
-                                          style_cell={'textAlign': 'center'})
-            ], style={'width': '30%', 'margin-left': '2%'}),
-        ], style={'margin-top': '20px', 'margin-bottom': '20px'}),
+                dash.html.H4(['Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)], id='sensor-table-title', style={'text-align': 'center'}),
+                dash.html.Div([
+                    dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
+                                              columns=[{'name': col, 'id': col} for col in
+                                                       current_sensor.optical_parameters.columns],
+                                              editable=True,
+                                              id='sensor-table',
+                                              style_header={
+                                                  'backgroundColor': '#446e9b',
+                                                  'color': 'white',
+                                                  'fontWeight': 'bold'
+                                              },
+                                              style_cell={'textAlign': 'center'}),
+                ]),
+                dbc.ButtonGroup([
+                    dbc.Button('Add layer',
+                               id='add-table-layer',
+                               n_clicks=0,
+                               color='primary',
+                               title='Add a new layer on the sensor surface'),
+                    dbc.Button('Update table values',
+                               id='table-update-values',
+                               n_clicks=0,
+                               color='danger',
+                               title='Refresh the table after editing its values or changing fitted layer'),
+                    dbc.Button('Update fitted variable',
+                               id='table-update-fitted',
+                               n_clicks=0,
+                               color='success',
+                               title='Click this button after selecting a different parameter to fit by clicking it such'
+                                     ' that it is marked in red. The current fitted parameter is indicated by the green '
+                                     'colored cell.'),
+                    dbc.Button(
+                        "Show default values",
+                        id="show-default-param-button",
+                        color="secondary",
+                        n_clicks=0,
+                    ),
+                ], style={'margin-left': '15px', 'margin-top': '5px', 'margin-bottom': '20px'}),
+            ], style={'width': '675px'}),
+            dash.html.Div([
+                dbc.Collapse(
+                    dbc.Card(
+                        dbc.CardBody(
+                            "Layer----d[nm]--------n(670/785/980)---------k(670/785/980)---"
+                            "Prism----NaN------1.5202/1.5162/1.5130--------------0---------------"
+                            "Cr---------2--------3.3105/3.3225/3.4052--3.4556/3.6148/3.5678-"
+                            "Au--------50-------0.2238/0.2580/0.2800--3.9259/4.8800/6.7406-"
+                            "SiO2-----14-------1.4628/1.4610/1.4592-----------------0---------------"
+                            "Pd--------20-------2.2500/2.5467/3.0331--4.6000/5.1250/6.1010-"
+                            "Pt---------20-------2.4687/ ?????? / ?????? ----5.2774/??????/??????--"
+                        ), style={'width': '500px'}),
+                    id='default-values-collapse',
+                    is_open=False
+                )
+            ], style={'margin-top': '40px', 'margin-left': '10px'}),
+        ], style={'display': 'flex', 'justify-content': 'center'}),
 
         # Analysis tabs
 
@@ -616,24 +670,41 @@ if __name__ == '__main__':
         dash.Output('sensor-table', 'data'),  # Update sensor table data
         dash.Output('sensor-table-title', 'children'),  # Update sensor table title
         dash.Input({'type': 'sensor-list', 'index': dash.ALL}, 'n_clicks'),
+        dash.Input('table-update-values', 'n_clicks'),
+        dash.State('sensor-table', 'data'),
         prevent_initial_call=True)
-    def update_sensor_table(n_clicks):
+    def update_sensor_table(n_clicks, update, table_state):
         """
-        This callback function dictates what happens when the Chosen sensor dropdown list is interacted with.
+        This callback function controls all updates to the sensor table.
 
         :param n_clicks: For checking triggered_id.index of sensor-list
         :return: Updated data rows in sensor table and the sensor table title
         """
 
-        global current_session
-        global current_sensor
+        if 'table-refresh-values' == dash.ctx.triggered_id:
+            pass
+            return dash.no_update, dash.no_update
+        else:
+            global current_session
+            global current_sensor
 
-        current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
+            current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
 
-        data_rows = current_sensor.optical_parameters.to_dict('records')
-        sensor_table_title = 'Sensor {id} - {channel}'.format(id=current_sensor.object_id,
-                                                              channel=current_sensor.channel)
-        return data_rows, sensor_table_title
+            data_rows = current_sensor.optical_parameters.to_dict('records')
+            sensor_table_title = 'Sensor {id} - {channel}'.format(id=current_sensor.object_id,
+                                                                  channel=current_sensor.channel)
+            return data_rows, sensor_table_title
 
+    @dash.callback(
+        dash.Output('default-values-collapse', 'is_open'),
+        dash.Input('show-default-param-button', 'n_clicks'),
+        dash.State('default-values-collapse', 'is_open')
+    )
+    def show_default_parameters(n_clicks, is_open):
+
+        if n_clicks:
+            return not is_open
+
+        return is_open
 
     app.run_server(debug=True, use_reloader=False)
