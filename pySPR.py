@@ -139,7 +139,7 @@ class Sensor:
         match sensor_metal:
             case 'Au' | 'gold' | 'Gold' | 'GOLD':
                 self.layer_thicknesses = np.array([np.NaN, 2, 50, np.NaN])
-                self.fitted_layer = 'n_im_metal'
+                self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.0003])
@@ -160,7 +160,7 @@ class Sensor:
                 # Self-consistent optical constants of SiO2 and Ta2O5 films
                 # Opt. Mater. Express 6, 3622-3637 (2016) (Numerical data kindly provided by Juan Larruquert)
                 self.layer_thicknesses = np.array([np.NaN, 2, 50, 14, np.NaN])
-                self.fitted_layer = 'h_SiO2'
+                self.fitted_layer_index = (3, 1)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.4628, 1.0003])
@@ -177,7 +177,7 @@ class Sensor:
                                                              'k': self.extinction_coefficients})
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
-                self.fitted_layer = 'n_im_metal'
+                self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.25, 1.0003])
@@ -195,7 +195,7 @@ class Sensor:
 
             case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
                 self.layer_thicknesses = np.array([np.NaN, 2, 20, np.NaN])
-                self.fitted_layer = 'n_im_metal'
+                self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
@@ -565,6 +565,8 @@ if __name__ == '__main__':
                                               columns=[{'name': col, 'id': col} for col in
                                                        current_sensor.optical_parameters.columns],
                                               editable=True,
+                                              row_deletable=True,
+                                              cell_selectable=True,
                                               id='sensor-table',
                                               style_header={
                                                   'backgroundColor': '#446e9b',
@@ -572,18 +574,18 @@ if __name__ == '__main__':
                                                   'fontWeight': 'bold'
                                               },
                                               style_cell={'textAlign': 'center'}),
-                ]),
+                ], style={'margin-left': '6px'}),
                 dbc.ButtonGroup([
                     dbc.Button('Add layer',
                                id='add-table-layer',
                                n_clicks=0,
                                color='primary',
                                title='Add a new layer on the sensor surface'),
-                    dbc.Button('Update table values',
+                    dbc.Button('Update table',
                                id='table-update-values',
                                n_clicks=0,
                                color='danger',
-                               title='Refresh the table after editing its values or changing fitted layer'),
+                               title='Refresh the table after editing its values'),
                     dbc.Button('Update fitted variable',
                                id='table-update-fitted',
                                n_clicks=0,
@@ -597,20 +599,20 @@ if __name__ == '__main__':
                         color="secondary",
                         n_clicks=0,
                     ),
-                ], style={'margin-left': '15px', 'margin-top': '5px', 'margin-bottom': '20px'}),
+                ], style={'width': '672px', 'margin-left': '4px', 'margin-top': '5px', 'margin-bottom': '20px'}),
             ], style={'width': '675px'}),
             dash.html.Div([
                 dbc.Collapse(
                     dbc.Card(
                         dbc.CardBody(
-                            "Layer----d[nm]--------n(670/785/980)---------k(670/785/980)---"
-                            "Prism----NaN------1.5202/1.5162/1.5130--------------0---------------"
-                            "Cr---------2--------3.3105/3.3225/3.4052--3.4556/3.6148/3.5678-"
-                            "Au--------50-------0.2238/0.2580/0.2800--3.9259/4.8800/6.7406-"
-                            "SiO2-----14-------1.4628/1.4610/1.4592-----------------0---------------"
-                            "Pd--------20-------2.2500/2.5467/3.0331--4.6000/5.1250/6.1010-"
-                            "Pt---------20-------2.4687/ ?????? / ?????? ----5.2774/??????/??????--"
-                        ), style={'width': '500px'}),
+                            "Layer----d[nm]-------------n(670/785/980)--------------------k(670/785/980)-----"
+                            "Prism----NaN-----------1.5202/1.5162/1.5130-------------------------0---------------"
+                            "Cr---------2----------------3.3105/3.3225/3.4052----------3.4556/3.6148/3.5678-"
+                            "Au--------50---------------0.2238/0.2580/0.2800----------3.9259/4.8800/6.7406-"
+                            "SiO2-----14---------------1.4628/1.4610/1.4592-------------------------0---------------"
+                            "Pd--------20---------------2.2500/2.5467/3.0331----------4.6000/5.1250/6.1010-"
+                            "Pt---------20---------------2.4687/ ?????? / ?????? ------------5.2774/??????/??????--"
+                        ), style={'width': '585px'}),
                     id='default-values-collapse',
                     is_open=False
                 )
@@ -633,6 +635,8 @@ if __name__ == '__main__':
         current_session.log = new_message
         return new_message
 
+    # TODO: Perhaps I need to add a "copy current sensor" button? So that you can have a sensor with the background
+    #  saved? YES! Is important for when fitting is performed.
     @dash.callback(
         dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
         dash.Input('new-sensor-gold', 'n_clicks'),
@@ -670,23 +674,48 @@ if __name__ == '__main__':
         dash.Output('sensor-table', 'data'),  # Update sensor table data
         dash.Output('sensor-table-title', 'children'),  # Update sensor table title
         dash.Input({'type': 'sensor-list', 'index': dash.ALL}, 'n_clicks'),
+        dash.Input('add-table-layer', 'n_clicks'),
         dash.Input('table-update-values', 'n_clicks'),
+        dash.Input('table-update-fitted', 'n_clicks'),
         dash.State('sensor-table', 'data'),
+        dash.State('sensor-table', 'columns'),
         prevent_initial_call=True)
-    def update_sensor_table(n_clicks, update, table_state):
+    def update_sensor_table(n_clicks_sensor_list, n_clicks_add_row, n_clicks_update, n_clicks_fitted, table_rows, table_columns):
         """
         This callback function controls all updates to the sensor table.
 
-        :param n_clicks: For checking triggered_id.index of sensor-list
+        :param n_clicks_sensor_list: Choose sensor dropdown menu
+        :param n_clicks_add_row: Add layers button
+        :param n_clicks_update: Update table values button
+        :param n_clicks_fitted: Update fitted variable
+        :param table_rows: Data rows (state)
+        :param table_columns: Column names (state)
+
         :return: Updated data rows in sensor table and the sensor table title
         """
+        global current_session
+        global current_sensor
 
-        if 'table-refresh-values' == dash.ctx.triggered_id:
-            pass
-            return dash.no_update, dash.no_update
+        if 'table-update-values' == dash.ctx.triggered_id:
+
+            # Update background sensor object with new row
+            current_sensor.optical_parameters = pd.DataFrame.from_records(table_rows)
+            current_sensor.layer_thicknesses = current_sensor.optical_parameters['d [nm]'].to_numpy()
+            current_sensor.refractive_indices = current_sensor.optical_parameters['n'].to_numpy()
+            current_sensor.extinction_coefficients = current_sensor.optical_parameters['k'].to_numpy()
+
+            return table_rows, dash.no_update
+
+        elif 'add-table-layer' == dash.ctx.triggered_id:
+            table_rows.insert(-1, {c['id']: '' for c in table_columns})
+
+            return table_rows, dash.no_update
+
+        elif 'table-update-fitted' == dash.ctx.triggered_id:
+            pass  # TODO: Set the current_sensor.fitted_layer attribute to the dataframe index of the chosen cell. Also change this in the Sensor class.
+            return table_rows, dash.no_update
+
         else:
-            global current_session
-            global current_sensor
 
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
 
