@@ -232,7 +232,8 @@ class Sensor:
     def remove_material_layer(self, layer_index_):
 
         """
-        Removes a layer from a sensor.
+        Removes a layer from a sensor. (Not used by dash app UI.)
+
         :param layer_index_: int, which layer to remove (starting from 1)
         :return:
         """
@@ -363,6 +364,7 @@ def copy_sensor_backend(session_object, sensor_object):
     session_object.sensor_instances[id_] = copied_sensor_object
 
     return copied_sensor_object
+
 
 def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_):
     """
@@ -559,7 +561,7 @@ if __name__ == '__main__':
                     children=[dbc.DropdownMenuItem('Gold', id='new-sensor-gold', n_clicks=0),
                               dbc.DropdownMenuItem('Glass', id='new-sensor-glass', n_clicks=0),
                               dbc.DropdownMenuItem('Palladium', id='new-sensor-palladium', n_clicks=0),
-                              dbc.DropdownMenuItem('Platinum', id='new-sensor-platinum', n_clicks=0)]),
+                              dbc.DropdownMenuItem('Platinum', id='new-sensor-platinum', n_clicks=0)], style={'margin-left': '-5px'}),
                 dbc.Button('Copy current sensor',
                            id='copy-sensor',
                            n_clicks=0,
@@ -571,14 +573,19 @@ if __name__ == '__main__':
                     color='primary',
                     children=[
                         dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id},
-                                             n_clicks=0) for sensor_id in current_session.sensor_instances])
+                                             n_clicks=0) for sensor_id in current_session.sensor_instances], style={'margin-left': '-5px'})
             ])
         ], style={'margin-bottom': '20px', 'display': 'flex', 'justify-content': 'center'}),
 
         # Sensor datatable
         dash.html.Div([
             dash.html.Div([
-                dash.html.H4(['Sensor {id} - {channel}'.format(id=current_sensor.object_id, channel=current_sensor.channel)], id='sensor-table-title', style={'text-align': 'center'}),
+                dash.html.H4(['Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                    sensor_number=current_sensor.object_id,
+                    channel=current_sensor.channel,
+                    fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                    fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+                              ], id='sensor-table-title', style={'text-align': 'center'}),
                 dash.html.Div([
                     dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
                                               columns=[{'name': col, 'id': col} for col in
@@ -605,13 +612,12 @@ if __name__ == '__main__':
                                n_clicks=0,
                                color='danger',
                                title='Refresh the table after editing its values'),
-                    dbc.Button('Update fitted variable',
-                               id='table-update-fitted',
+                    dbc.Button('Select fitted variable',
+                               id='table-select-fitted',
                                n_clicks=0,
                                color='success',
                                title='Click this button after selecting a different parameter to fit by clicking it such'
-                                     ' that it is marked in red. The current fitted parameter is indicated by the green '
-                                     'colored cell.'),
+                                     ' that it is marked in red.'),
                     dbc.Button(
                         "Show default values",
                         id="show-default-param-button",
@@ -659,8 +665,6 @@ if __name__ == '__main__':
         current_session.log = new_message
         return new_message
 
-    # TODO: Perhaps I need to add a "copy current sensor" button? So that you can have a sensor with the background
-    #  saved? YES! Is important for when fitting is performed.
     @dash.callback(
         dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
         dash.Input('new-sensor-gold', 'n_clicks'),
@@ -684,13 +688,13 @@ if __name__ == '__main__':
         global current_session
 
         if 'new-sensor-gold' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Au')
+            add_sensor_backend(current_session, data_path, sensor_metal='Au')
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='SiO2')
+            add_sensor_backend(current_session, data_path, sensor_metal='SiO2')
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pd')
+            add_sensor_backend(current_session, data_path, sensor_metal='Pd')
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pt')
+            add_sensor_backend(current_session, data_path, sensor_metal='Pt')
         elif 'copy-sensor' == dash.ctx.triggered_id:
             copy_sensor_backend(current_session, current_sensor)
 
@@ -705,11 +709,12 @@ if __name__ == '__main__':
         dash.Input({'type': 'sensor-list', 'index': dash.ALL}, 'n_clicks'),
         dash.Input('add-table-layer', 'n_clicks'),
         dash.Input('table-update-values', 'n_clicks'),
-        dash.Input('table-update-fitted', 'n_clicks'),
+        dash.Input('table-select-fitted', 'n_clicks'),
         dash.State('sensor-table', 'data'),
         dash.State('sensor-table', 'columns'),
+        dash.State('sensor-table', 'active_cell'),
         prevent_initial_call=True)
-    def update_sensor_table(n_clicks_sensor_list, n_clicks_add_row, n_clicks_update, n_clicks_fitted, table_rows, table_columns):
+    def update_sensor_table(n_clicks_sensor_list, n_clicks_add_row, n_clicks_update, n_clicks_fitted, table_rows, table_columns, active_cell):
         """
         This callback function controls all updates to the sensor table.
 
@@ -719,6 +724,7 @@ if __name__ == '__main__':
         :param n_clicks_fitted: Update fitted variable
         :param table_rows: Data rows (state)
         :param table_columns: Column names (state)
+        :param active_cell: Dict with columns and rows of highlighted cell (state)
 
         :return: Updated data rows in sensor table and the sensor table title
         """
@@ -741,16 +747,29 @@ if __name__ == '__main__':
             return table_rows, dash.no_update
 
         elif 'table-update-fitted' == dash.ctx.triggered_id:
-            pass  # TODO: Set the current_sensor.fitted_layer attribute to the dataframe index of the chosen cell. Also change this in the Sensor class.
-            return table_rows, dash.no_update
+            # TODO: Fix bug with Select fitted variable button.
+            row_index = active_cell['row']
+            column_index = active_cell['column']
+            current_sensor.fitted_layer_index = (row_index, column_index)
+            sensor_table_title = 'Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                sensor_number=current_sensor.object_id,
+                channel=current_sensor.channel,
+                fitted_layer=current_sensor.optical_parameters.iloc[row_index, 0],
+                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+
+            return dash.no_update, sensor_table_title
 
         else:
 
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'Sensor {id} - {channel}'.format(id=current_sensor.object_id,
-                                                                  channel=current_sensor.channel)
+            sensor_table_title = 'Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                sensor_number=current_sensor.object_id,
+                channel=current_sensor.channel,
+                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+
             return data_rows, sensor_table_title
 
     @dash.callback(
