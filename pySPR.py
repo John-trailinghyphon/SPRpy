@@ -71,6 +71,7 @@ from tkinter.filedialog import askopenfilename
 import pandas as pd
 import dash
 import dash_bootstrap_components as dbc
+import copy
 
 
 class Session:
@@ -350,6 +351,19 @@ def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarizati
     return sensor_object
 
 
+def copy_sensor_backend(session_object, sensor_object):
+
+    """
+    Copies sensor object to a session object.
+    :return: a sensor object
+    """
+    id_ = next(session_object.sensor_ID)
+    copied_sensor_object = copy.deepcopy(sensor_object)
+    copied_sensor_object.object_id = id_
+    session_object.sensor_instances[id_] = copied_sensor_object
+
+    return copied_sensor_object
+
 def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_):
     """
     Adds analysis objects to a session object.
@@ -546,9 +560,14 @@ if __name__ == '__main__':
                               dbc.DropdownMenuItem('Glass', id='new-sensor-glass', n_clicks=0),
                               dbc.DropdownMenuItem('Palladium', id='new-sensor-palladium', n_clicks=0),
                               dbc.DropdownMenuItem('Platinum', id='new-sensor-platinum', n_clicks=0)]),
+                dbc.Button('Copy current sensor',
+                           id='copy-sensor',
+                           n_clicks=0,
+                           color='primary',
+                           title='Use this to copy a sensor table\'s values into a new sensor'),
                 dbc.DropdownMenu(
                     id='chosen-sensor-dropdown',
-                    label='Choose sensor',
+                    label='Sensors',
                     color='primary',
                     children=[
                         dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id},
@@ -605,14 +624,19 @@ if __name__ == '__main__':
                 dbc.Collapse(
                     dbc.Card(
                         dbc.CardBody(
-                            "Layer----d[nm]-------------n(670/785/980)--------------------k(670/785/980)-----"
-                            "Prism----NaN-----------1.5202/1.5162/1.5130-------------------------0---------------"
-                            "Cr---------2----------------3.3105/3.3225/3.4052----------3.4556/3.6148/3.5678-"
-                            "Au--------50---------------0.2238/0.2580/0.2800----------3.9259/4.8800/6.7406-"
-                            "SiO2-----14---------------1.4628/1.4610/1.4592-------------------------0---------------"
-                            "Pd--------20---------------2.2500/2.5467/3.0331----------4.6000/5.1250/6.1010-"
-                            "Pt---------20---------------2.4687/ ?????? / ?????? ------------5.2774/??????/??????--"
-                        ), style={'width': '585px'}),
+                            dbc.Table.from_dataframe(pd.DataFrame(
+                                {
+                                    "Layer": ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt'],
+                                    "d[nm]": ['', '2', '50', '14', '20', '20'],
+                                    "n (670)": ['1.5202', '3.3105', '0.2238', '1.4628', '2.2500', '2.4687'],
+                                    "n (785)": ['1.5162', '3.3225', '0.2580', '1.4610', '2.5467', '?'],
+                                    "n (980)": ['1.5130', '3.4052', '0.2800', '1.4592', '3.0331', '?'],
+                                    "k (670)": ['0', '3.4556', '3.9259', '0', '4.6000', '5.2774'],
+                                    "k (785)": ['0', '3.6148', '4.8800', '0', '5.1250', '?'],
+                                    "k (980)": ['0', '3.5678', '6.7406', '0', '6.7406', '?'],
+                                }
+                            ), size='sm', striped=True, bordered=True, hover=True)
+                        ), style={'width': '650px'}),
                     id='default-values-collapse',
                     is_open=False
                 )
@@ -642,9 +666,10 @@ if __name__ == '__main__':
         dash.Input('new-sensor-gold', 'n_clicks'),
         dash.Input('new-sensor-glass', 'n_clicks'),
         dash.Input('new-sensor-palladium', 'n_clicks'),
-        dash.Input('new-sensor-platinum', 'n_clicks')
+        dash.Input('new-sensor-platinum', 'n_clicks'),
+        dash.Input('copy-sensor', 'n_clicks'),
     )
-    def add_sensor_UI(input1, input2, input3, input4):
+    def add_sensor_UI(input1, input2, input3, input4, copy):
         """
         Dictates what happens when creating a new sensor under the "Add new sensor" dropdown menu.
 
@@ -656,6 +681,8 @@ if __name__ == '__main__':
         """
 
         global current_sensor
+        global current_session
+
         if 'new-sensor-gold' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Au')
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
@@ -664,6 +691,8 @@ if __name__ == '__main__':
             current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pd')
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, data_path, sensor_metal='Pt')
+        elif 'copy-sensor' == dash.ctx.triggered_id:
+            copy_sensor_backend(current_session, current_sensor)
 
         sensor_options = [dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor-list', 'index': sensor_id},
                                                n_clicks=0) for sensor_id in current_session.sensor_instances]
@@ -693,7 +722,7 @@ if __name__ == '__main__':
 
         :return: Updated data rows in sensor table and the sensor table title
         """
-        global current_session
+
         global current_sensor
 
         if 'table-update-values' == dash.ctx.triggered_id:
