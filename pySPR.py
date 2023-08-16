@@ -366,6 +366,7 @@ def copy_sensor_backend(session_object, sensor_object):
     return copied_sensor_object
 
 
+
 def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_):
     """
     Adds analysis objects to a session object.
@@ -651,6 +652,7 @@ if __name__ == '__main__':
 
         # Analysis tabs
 
+
     ])
 
     # Adding note to session log
@@ -746,21 +748,18 @@ if __name__ == '__main__':
 
             return table_rows, dash.no_update
 
-        elif 'table-update-fitted' == dash.ctx.triggered_id:
-            # TODO: Fix bug with Select fitted variable button.
-            row_index = active_cell['row']
-            column_index = active_cell['column']
-            current_sensor.fitted_layer_index = (row_index, column_index)
+        elif 'table-select-fitted' == dash.ctx.triggered_id:
+
+            current_sensor.fitted_layer_index = (active_cell['row'], active_cell['column'])
             sensor_table_title = 'Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 channel=current_sensor.channel,
-                fitted_layer=current_sensor.optical_parameters.iloc[row_index, 0],
-                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+                fitted_layer=current_sensor.optical_parameters.iloc[active_cell['row'], 0],
+                fitted_param=current_sensor.optical_parameters.columns[active_cell['column']])
 
             return dash.no_update, sensor_table_title
 
         else:
-
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
