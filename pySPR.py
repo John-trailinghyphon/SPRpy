@@ -652,6 +652,16 @@ if __name__ == '__main__':
 
         # Analysis tabs
 
+        dash.html.Div([
+            dash.html.H1(['Analysis options']),
+            dbc.Tabs([
+                dbc.Tab([dash.html.Div([], id='analysis-tabs-content', style={'margin-bot': '500px'})], label='Data plotting', tab_id='plotting'),
+                dbc.Tab(label='Fresnel modelling', tab_id='fresnel'),
+                dbc.Tab(label='Non-interacting height probing', tab_id='height_probing'),
+                dbc.Tab(label='Result summary', tab_id='summary'),
+            ], id='analysis-tabs', active_tab='plotting'),
+
+        ])
 
     ])
 
