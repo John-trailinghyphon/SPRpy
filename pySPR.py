@@ -651,7 +651,7 @@ if __name__ == '__main__':
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
         # Analysis tabs
-
+        # TODO: Build upon this layout and add analysis functionality
         dash.html.Div([
             dash.html.H1(['Analysis options']),
             dbc.Tabs([
