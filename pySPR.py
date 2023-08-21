@@ -72,6 +72,7 @@ import pandas as pd
 import dash
 import dash_bootstrap_components as dbc
 import copy
+import plotly.express as px
 
 
 class Session:
@@ -437,11 +438,13 @@ def load_csv_data():
     data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')])
 
     # Load in the measurement data from a .csv file
-    data_table = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
-    time_ = data_table.iloc[:, 0]
-    angles_ = data_table.iloc[0, 1:]
-    ydata_ = data_table.iloc[1:, 1:]
-    return data_path_, time_, angles_, ydata_
+    data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
+    time_ = data_frame_.iloc[:, 0]
+    angles_ = data_frame_.iloc[0, 1:]
+    ydata_ = data_frame_.iloc[1:, 1:]
+    reflectivity_df_ = pd.DataFrame(data={'angles': angles_, 'ydata': ydata_.iloc[-1, :]})
+
+    return data_path_, time_, angles_, ydata_, reflectivity_df_
 
 
 # def save_new_measurement(self):
@@ -465,7 +468,7 @@ if __name__ == '__main__':
     current_session = Session()
 
     # Prompt user for initial measurement data
-    data_path, time, angles, ydata = load_csv_data()
+    data_path, time, angles, ydata, reflectivity_df = load_csv_data()
 
     # Add sensor object based on chosen measurement data
     current_sensor = add_sensor_backend(current_session, data_path)
@@ -473,6 +476,9 @@ if __name__ == '__main__':
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
+    # Dash figures
+    reflectivity_fig = px.line(reflectivity_df, x='angles', y='ydata')
+    reflectivity_fig.update_layout(xaxis_title=r'Incident angle [$^{\circ}$]', yaxis_title=r'Reflectivity [au.]')
 
     # Dash webapp layout
     app.layout = dash.html.Div([
@@ -655,13 +661,30 @@ if __name__ == '__main__':
         dash.html.Div([
             dash.html.H1(['Analysis options']),
             dbc.Tabs([
-                dbc.Tab([dash.html.Div([], id='analysis-tabs-content', style={'margin-bot': '500px'})], label='Data plotting', tab_id='plotting'),
-                dbc.Tab(label='Fresnel modelling', tab_id='fresnel'),
-                dbc.Tab(label='Non-interacting height probing', tab_id='height_probing'),
-                dbc.Tab(label='Result summary', tab_id='summary'),
-            ], id='analysis-tabs', active_tab='plotting'),
+                dbc.Tab([
+                    dash.html.Div(
+                        [dash.dcc.Graph(id='angular-reflectivity-graph',
+                                        figure=reflectivity_fig)],
+                        id='plotting-tab-content')
+                ], label='Data plotting', tab_id='plotting-tab', style={'margin-top': '10px'}),
+                dbc.Tab([
+                    dash.html.Div(
+                        ['Fresnel'],
+                        id='fresnel-tab-content')
+                ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
+                dbc.Tab([
+                    dash.html.Div(
+                        ['Non-interacting height probe'],
+                        id='probe-tab-content')
+                ], label='Non-interacting height probing', tab_id='probe-tab', style={'margin-top': '10px'}),
+                dbc.Tab([
+                    dash.html.Div(
+                        ['Summary'],
+                        id='summary-tab-content')
+                ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
+            ], id='analysis-tabs', active_tab='plotting-tab'),
 
-        ])
+        ], style={'margin-left': '2%', 'margin-right': '2%'})
 
     ])
 
