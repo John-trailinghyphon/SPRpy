@@ -73,7 +73,7 @@ import dash
 import dash_bootstrap_components as dbc
 import copy
 import plotly.express as px
-
+import plotly.io as pio
 
 class Session:
 
@@ -478,7 +478,16 @@ if __name__ == '__main__':
 
     # Dash figures
     reflectivity_fig = px.line(reflectivity_df, x='angles', y='ydata')
-    reflectivity_fig.update_layout(xaxis_title=r'Incident angle [$^{\circ}$]', yaxis_title=r'Reflectivity [au.]')
+    reflectivity_fig.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                   yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                   font_family='Balto',
+                                   font_size=19,
+                                   margin_r=25,
+                                   margin_l=60,
+                                   template='simple_white')
+    reflectivity_fig.update_xaxes(mirror=True, showline=True)
+    reflectivity_fig.update_yaxes(mirror=True, showline=True)
+
 
     # Dash webapp layout
     app.layout = dash.html.Div([
@@ -662,10 +671,42 @@ if __name__ == '__main__':
             dash.html.H1(['Analysis options']),
             dbc.Tabs([
                 dbc.Tab([
-                    dash.html.Div(
-                        [dash.dcc.Graph(id='angular-reflectivity-graph',
-                                        figure=reflectivity_fig)],
-                        id='plotting-tab-content')
+                    dash.html.Div([
+                        dash.html.Div([
+                            dash.dcc.Graph(id='angular-reflectivity-graph',
+                                           figure=reflectivity_fig,
+                                           mathjax=True),
+                            dbc.ButtonGroup([
+                                dbc.Button('Save as SVG',
+                                           id='reflectivity-save-svg',
+                                           n_clicks=0,
+                                           color='info',
+                                           title='Save as .svg'),
+                                dbc.Button('Save as HTML',
+                                           id='reflectivity-save-html',
+                                           n_clicks=0,
+                                           color='info',
+                                           title='Save as .html')
+                            ]),
+                        ], style={'width': '35%'}),
+                        dash.html.Div([
+                            dash.dcc.Graph(id='sensorgram-graph',
+                                           figure=reflectivity_fig,
+                                           mathjax=True),
+                            dbc.ButtonGroup([
+                                dbc.Button('Save as SVG',
+                                   id='sensorgram-save-svg',
+                                   n_clicks=0,
+                                   color='info',
+                                   title='Save as .svg'),
+                                dbc.Button('Save as SVG',
+                                           id='sensorgram-save-html',
+                                           n_clicks=0,
+                                           color='info',
+                                           title='Save as .svg')
+                                ], style={'margin-left': '30%'}),
+                        ], style={'width': '60%'})
+                    ], id='plotting-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Data plotting', tab_id='plotting-tab', style={'margin-top': '10px'}),
                 dbc.Tab([
                     dash.html.Div(
