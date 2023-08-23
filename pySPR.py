@@ -67,13 +67,17 @@ import fresnel_transfer_matrix as ftm
 import numpy as np
 import datetime
 import os
-from tkinter.filedialog import askopenfilename
+import tkinter
+from tkinter.filedialog import askopenfilename, askdirectory
 import pandas as pd
 import dash
 import dash_bootstrap_components as dbc
 import copy
+import plotly
 import plotly.express as px
+import plotly.graph_objects as go
 import plotly.io as pio
+
 
 class Session:
 
@@ -687,7 +691,7 @@ if __name__ == '__main__':
                                            n_clicks=0,
                                            color='info',
                                            title='Save as .html')
-                            ]),
+                            ], style={'margin-left': '30%'}),
                         ], style={'width': '35%'}),
                         dash.html.Div([
                             dash.dcc.Graph(id='sensorgram-graph',
@@ -699,12 +703,12 @@ if __name__ == '__main__':
                                    n_clicks=0,
                                    color='info',
                                    title='Save as .svg'),
-                                dbc.Button('Save as SVG',
+                                dbc.Button('Save as HTML',
                                            id='sensorgram-save-html',
                                            n_clicks=0,
                                            color='info',
-                                           title='Save as .svg')
-                                ], style={'margin-left': '30%'}),
+                                           title='Save as .html')
+                                ], style={'margin-left': '40%'}),
                         ], style={'width': '60%'})
                     ], id='plotting-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Data plotting', tab_id='plotting-tab', style={'margin-top': '10px'}),
@@ -856,5 +860,32 @@ if __name__ == '__main__':
             return not is_open
 
         return is_open
+
+    @dash.callback(
+        dash.Output('angular-reflectivity-graph', 'figure'),
+        dash.Input('reflectivity-save-svg', 'n_clicks'),
+        dash.Input('reflectivity-save-html', 'n_clicks'),
+        dash.State('angular-reflectivity-graph', 'figure'),
+    )
+    def update_reflectivity_plotting_tab(save_svg, save_html, figure_JSON):
+
+        figure_object = go.Figure(figure_JSON)
+
+        if 'reflectivity-save-html' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_html(figure_object, save_folder+r'\reflectivity_plot.html', include_mathjax='cdn')
+        elif 'reflectivity-save-svg' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.svg', format='svg')
+
+        return figure_object
 
     app.run_server(debug=True, use_reloader=False)
