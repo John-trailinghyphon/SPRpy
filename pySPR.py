@@ -439,7 +439,8 @@ def generate_id():
 
 def load_csv_data():
     print('Select the measurement data file (.csv)')
-    data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')])
+    data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')],
+                                 initialdir=r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR\Electrochemistry\230815 ESPR PEG-PMAA 75kDa')
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
@@ -488,6 +489,7 @@ if __name__ == '__main__':
                                    font_size=19,
                                    margin_r=25,
                                    margin_l=60,
+                                   margin_t=20,
                                    template='simple_white')
     reflectivity_fig.update_xaxes(mirror=True, showline=True)
     reflectivity_fig.update_yaxes(mirror=True, showline=True)
