@@ -439,8 +439,12 @@ def generate_id():
 
 def load_csv_data():
     print('Select the measurement data file (.csv)')
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
     data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')],
-                                 initialdir=r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR\Electrochemistry\230815 ESPR PEG-PMAA 75kDa')
+                                 initialdir=r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR')
+    root.destroy()
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
@@ -489,7 +493,7 @@ if __name__ == '__main__':
                                    font_size=19,
                                    margin_r=25,
                                    margin_l=60,
-                                   margin_t=20,
+                                   margin_t=40,
                                    template='simple_white')
     reflectivity_fig.update_xaxes(mirror=True, showline=True)
     reflectivity_fig.update_yaxes(mirror=True, showline=True)
@@ -672,58 +676,68 @@ if __name__ == '__main__':
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
         # Analysis tabs
-        # TODO: Build upon this layout and add analysis functionality
         dash.html.Div([
             dash.html.H1(['Analysis options']),
             dbc.Tabs([
+
+                # Data plotting tab
+                # TODO: Add a button to the reflectivity plot that makes it possible to add traces from other dryscans
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
-                            dash.dcc.Graph(id='angular-reflectivity-graph',
+                            dash.dcc.Graph(id='plotting-angular-reflectivity-graph',
                                            figure=reflectivity_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
-                                dbc.Button('Save as SVG',
-                                           id='reflectivity-save-svg',
+                                dbc.Button('Add trace',
+                                           id='plotting-reflectivity-add-trace',
                                            n_clicks=0,
                                            color='info',
-                                           title='Save as .svg'),
-                                dbc.Button('Save as HTML',
-                                           id='reflectivity-save-html',
-                                           n_clicks=0,
-                                           color='info',
-                                           title='Save as .html')
+                                           title='Add a trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
+                                dbc.DropdownMenu(
+                                    id='reflectivity-save-dropdown',
+                                    label='Save as...',
+                                    color='info',
+                                    children=[
+                                        dbc.DropdownMenuItem('.PNG', id='plotting-reflectivity-save-png', n_clicks=0),
+                                        dbc.DropdownMenuItem('.SVG', id='plotting-reflectivity-save-svg', n_clicks=0),
+                                        dbc.DropdownMenuItem('.HTML', id='plotting-reflectivity-save-html', n_clicks=0)],
+                                    style={'margin-left': '-5px'})
                             ], style={'margin-left': '30%'}),
                         ], style={'width': '35%'}),
                         dash.html.Div([
-                            dash.dcc.Graph(id='sensorgram-graph',
+                            dash.dcc.Graph(id='plotting-sensorgram-graph',
                                            figure=reflectivity_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
-                                dbc.Button('Save as SVG',
-                                   id='sensorgram-save-svg',
-                                   n_clicks=0,
-                                   color='info',
-                                   title='Save as .svg'),
-                                dbc.Button('Save as HTML',
-                                           id='sensorgram-save-html',
-                                           n_clicks=0,
-                                           color='info',
-                                           title='Save as .html')
+                                dbc.DropdownMenu(
+                                    id='sensorgram-save-dropdown',
+                                    label='Save as...',
+                                    color='info',
+                                    children=[dbc.DropdownMenuItem('.PNG', id='plotting-sensorgram-save-png', n_clicks=0),
+                                              dbc.DropdownMenuItem('.SVG', id='plotting-sensorgram-save-svg', n_clicks=0),
+                                              dbc.DropdownMenuItem('.HTML', id='plotting-sensorgram-save-html', n_clicks=0)],
+                                    style={'margin-left': '-5px'}),
                                 ], style={'margin-left': '40%'}),
                         ], style={'width': '60%'})
                     ], id='plotting-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Data plotting', tab_id='plotting-tab', style={'margin-top': '10px'}),
+
+                # Fresnel modelling tab
                 dbc.Tab([
                     dash.html.Div(
                         ['Fresnel'],
                         id='fresnel-tab-content')
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
+
+                # Non-interacting height probe tab
                 dbc.Tab([
                     dash.html.Div(
                         ['Non-interacting height probe'],
                         id='probe-tab-content')
                 ], label='Non-interacting height probing', tab_id='probe-tab', style={'margin-top': '10px'}),
+
+                # Result summary tab
                 dbc.Tab([
                     dash.html.Div(
                         ['Summary'],
@@ -864,29 +878,85 @@ if __name__ == '__main__':
         return is_open
 
     @dash.callback(
-        dash.Output('angular-reflectivity-graph', 'figure'),
-        dash.Input('reflectivity-save-svg', 'n_clicks'),
-        dash.Input('reflectivity-save-html', 'n_clicks'),
-        dash.State('angular-reflectivity-graph', 'figure'),
+        dash.Output('plotting-angular-reflectivity-graph', 'figure'),
+        dash.Input('plotting-reflectivity-add-trace', 'n_clicks'),
+        dash.Input('plotting-reflectivity-save-png', 'n_clicks'),
+        dash.Input('plotting-reflectivity-save-svg', 'n_clicks'),
+        dash.Input('plotting-reflectivity-save-html', 'n_clicks'),
+        dash.State('plotting-angular-reflectivity-graph', 'figure'),
     )
-    def update_reflectivity_plotting_tab(save_svg, save_html, figure_JSON):
+    def update_reflectivity_plotting_graph(add_trace, save_png, save_svg, save_html, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
 
-        if 'reflectivity-save-html' == dash.ctx.triggered_id:
+        if 'plotting-reflectivity-add-trace' == dash.ctx.triggered_id:
+
+            trace_data_path, trace_time, trace_angles, trace_ydata, trace_reflectivity_df = load_csv_data()
+            figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
+                                               y=trace_reflectivity_df['ydata'],
+                                               mode='lines',
+                                               showlegend=False))
+
+        elif 'plotting-reflectivity-save-html' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
             save_folder = askdirectory(title='Choose folder', parent=root)
             root.destroy()
             plotly.io.write_html(figure_object, save_folder+r'\reflectivity_plot.html', include_mathjax='cdn')
-        elif 'reflectivity-save-svg' == dash.ctx.triggered_id:
+
+        elif 'plotting-reflectivity-save-svg' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
             save_folder = askdirectory(title='Choose folder', parent=root)
             root.destroy()
             plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.svg', format='svg')
+
+        elif 'plotting-reflectivity-save-png' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.png', format='png')
+
+        return figure_object
+
+
+    @dash.callback(
+        dash.Output('plotting-sensorgram-graph', 'figure'),
+        dash.Input('plotting-sensorgram-save-png', 'n_clicks'),
+        dash.Input('plotting-sensorgram-save-svg', 'n_clicks'),
+        dash.Input('plotting-sensorgram-save-html', 'n_clicks'),
+        dash.State('plotting-sensorgram-graph', 'figure'),
+    )
+    def update_sensorgram_plotting_tab(save_png, save_svg, save_html, figure_JSON):
+
+        figure_object = go.Figure(figure_JSON)
+
+        if 'plotting-sensorgram-save-html' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_html(figure_object, save_folder + r'\reflectivity_plot.html', include_mathjax='cdn')
+        elif 'plotting-sensorgram-save-svg' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.svg', format='svg')
+
+        elif 'plotting-sensorgram-save-png' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.png', format='png')
 
         return figure_object
 
