@@ -133,6 +133,7 @@ class Sensor:
         """
         # Load sensor's default optical properties
         self.object_id = object_id_
+        self.data_path = data_path_
         self.polarization = polarization
         self.wavelength = int(data_path_[-9:-6])
         self.channel = data_path_[-12:-4].replace('_', ' ')
@@ -259,7 +260,7 @@ class ModelledReflectivityTrace:
     This class defines how a modelled reflectivity trace behaves. Note that a different sensor object should be used for
     each layer added to the sensor!
 
-    Each object should also have a .csv export function.
+    TODO: Each object should also have a .csv export function.
     """
 
     def __init__(self, sensor_object, data_path_, object_id_):
@@ -268,8 +269,9 @@ class ModelledReflectivityTrace:
         self.polarization = sensor_object.polarization
         self.wavelength = sensor_object.wavelength
         self.layer_thicknesses = sensor_object.layer_thicknesses
-        self.fitted_layer = sensor_object.fitted_layer
+        self.fitted_layer = sensor_object.fitted_layer_index  # TODO: Fix a connection between the dash data table fitted variable and the backend
         self.refractive_indices = sensor_object.refractive_indices
+        self.optical_parameters = sensor_object.optical_parameters
         self.extinction_coefficients = sensor_object.extinction_coefficients
         self.data_path = data_path_
 
@@ -279,7 +281,7 @@ class ModelledReflectivityTrace:
         #  match the global current data path then load in the correct one.
         ftm.fresnel_calculation(ini_guess,
                                 angles=xdata_,
-                                layer=self.fitted_layer,
+                                layer=self.fitted_layer,  # TODO: Fix a connection between the dash data table fitted variable and the backend
                                 wavelength=self.wavelength,
                                 layer_thicknesses=self.layer_thicknesses,
                                 n_re=self.refractive_indices,
@@ -437,14 +439,17 @@ def generate_id():
         new_id += 1
 
 
-def load_csv_data():
-    print('Select the measurement data file (.csv)')
-    root = tkinter.Tk()
-    root.attributes("-topmost", 1)
-    root.withdraw()
-    data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')],
-                                 initialdir=r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR')
-    root.destroy()
+def load_csv_data(path=False):
+    if not path:
+        print('Select the measurement data file (.csv)')
+        root = tkinter.Tk()
+        root.attributes("-topmost", 1)
+        root.withdraw()
+        data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')],
+                                     initialdir=r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR')
+        root.destroy()
+    else:
+        data_path_ = path
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
@@ -681,7 +686,7 @@ if __name__ == '__main__':
             dbc.Tabs([
 
                 # Data plotting tab
-                # TODO: Add a button to the reflectivity plot that makes it possible to add traces from other dryscans
+                # TODO: Load sensorgram plot with sensorgram data. Require backend functionality.
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
