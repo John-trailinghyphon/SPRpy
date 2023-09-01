@@ -117,7 +117,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
         file_identifier = spr2_file_name[:-5] + '-L4_785nm.csv'
 
     save_name = os.path.join(spr2_path, file_identifier)
-    header_string = 'Left most column is Time (min), First row is Angles (deg)'
+    header_string = 'Left most column is Time (min), First row is Angles (deg), Scanspeed=' + str(step_length)
 
     np.savetxt(save_name, spectra_full_array, fmt='%1.6f', delimiter=';', header=header_string)
 
