@@ -63,7 +63,7 @@
 #   * DataTable to display current sensor parameters
 #   * DataTable to display fitting parameters
 
-import fresnel_transfer_matrix as ftm
+
 import numpy as np
 import datetime
 import os
@@ -77,6 +77,7 @@ import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy
+import fresnel_transfer_matrix as ftm
 
 
 class Session:
@@ -263,6 +264,7 @@ class ModelledReflectivityTrace:
     each layer added to the sensor!
 
     TODO: Each object should also have a .csv export function.
+    TODO: IN dash app, add functionality to update current sensor object with the model object optical parameters
     """
 
     def __init__(self, sensor_object, data_path_, object_id_):
@@ -280,21 +282,25 @@ class ModelledReflectivityTrace:
         self.data_path = data_path_
         self.fit_result = None
         self.y_offset = 0
+        self.TIR_range = (40.9, 41.8)  # Default for air. For water: (60.8, 63)
+        self.angle_range = (0, 90)
+        self.scan_speed = 5  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
 
-    def calculate_fresnel_trace(self):
+    def calculate_fresnel_trace(self, angles_=np.linspace(39, 50, 1567)):
 
-        angles_, fresnel_coefficients_ = ftm.fresnel_calculation(None,
-                                                                 fitted_layer_index=self.fitted_layer_index,
-                                                                 wavelength=self.wavelength,
-                                                                 layer_thicknesses=self.layer_thicknesses,
-                                                                 n_re=self.refractive_indices,
-                                                                 n_im=self.extinction_coefficients,
-                                                                 ydata=None,
-                                                                 ydata_type=self.data_type,
-                                                                 polarization=self.polarization)
-        return angles_, fresnel_coefficients_
+        fresnel_coefficients_ = ftm.fresnel_calculation(None,
+                                                        angles=angles_,
+                                                        fitted_layer_index=self.fitted_layer_index,
+                                                        wavelength=self.wavelength,
+                                                        layer_thicknesses=self.layer_thicknesses,
+                                                        n_re=self.refractive_indices,
+                                                        n_im=self.extinction_coefficients,
+                                                        ydata=None,
+                                                        ydata_type=self.data_type,
+                                                        polarization=self.polarization)
+        return fresnel_coefficients_
 
-    def model_reflectivity_trace(self, ini_guess, bounds, TIR_range, scanspeed):
+    def model_reflectivity_trace(self, ini_guess, bounds):
         """
 
         :param ini_guess:
@@ -317,15 +323,13 @@ class ModelledReflectivityTrace:
             xdata_ = reflectivity_df_['angles']
             ydata_ = reflectivity_df_['ydata']
 
-        # TODO: Calculate the bulk refractive index from the TIR angle
-
-        TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = ftm.TIR_det(xdata_, ydata_, TIR_range, scanspeed)
+        # Calculate TIR angle and bulk refractive index
+        TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = ftm.TIR_determination(xdata_, ydata_, self.TIR_range, self.scan_speed)
         self.refractive_indices[-1] = self.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)  # TODO: Currently, the sensor bulk RI in optical parameters do not update according to the TIR angle
 
-        # TODO: Make a selection of xdata_ and ydata_ in the calculation, including an offset in ydata
-
-        selection_xdata_ = None
-        selection_ydata_ = None
+        # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity
+        selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
+        selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] - self.y_offset
 
         # Perform the fitting
         result = scipy.optimize.least_squares(ftm.fresnel_calculation,
@@ -341,12 +345,21 @@ class ModelledReflectivityTrace:
                                                       'ydata_type': self.data_type,
                                                       'polarization': self.polarization}
                                               )
-        # Set the result for the object
+        # Collect the results from least_squares object and calculate corresponding fresnel coefficients
         self.fit_result = result['x']
+        fresnel_coefficients = ftm.fresnel_calculation(self.fit_result,
+                                                       fitted_layer_index=self.fitted_layer_index,
+                                                       angles=selection_xdata_,
+                                                       wavelength=self.wavelength,
+                                                       layer_thicknesses=self.layer_thicknesses,
+                                                       n_re=self.refractive_indices,
+                                                       n_im=self.extinction_coefficients,
+                                                       ydata=None,
+                                                       ydata_type='R',
+                                                       polarization=1
+                                                       )
 
-        # Provide
-
-        return self.fit_result
+        return self.fit_result, selection_xdata_, fresnel_coefficients
 
     def export_results(self):
         """

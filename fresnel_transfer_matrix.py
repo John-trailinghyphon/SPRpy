@@ -3,6 +3,7 @@
 import numpy as np
 import bottleneck
 
+
 def fresnel_calculation(fitted_var,
                         fitted_layer_index=(2, 3),
                         angles=np.linspace(39, 50, 1567),
@@ -111,11 +112,11 @@ def fresnel_calculation(fitted_var,
     if ydata is None:
         match ydata_type:
             case 'R':
-                return angles, fresnel_coefficients_reflection
+                return fresnel_coefficients_reflection
             case 'T':
-                return angles, fresnel_coefficients_transmission
+                return fresnel_coefficients_transmission
             case 'A':
-                return angles, fresnel_coefficients_absorption
+                return fresnel_coefficients_absorption
 
     else:
         fresnel_residuals = np.array([]*len(ydata))
@@ -130,12 +131,12 @@ def fresnel_calculation(fitted_var,
         return fresnel_residuals
 
 
-def TIR_det(xdata, ydata, TIR_range, scanspeed):
+def TIR_determination(xdata, ydata, TIR_range, scan_speed):
 
     TIR_ydata = ydata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
     TIR_xdata = xdata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
 
-    if scanspeed == 5 or scanspeed == 1:
+    if scan_speed == 5 or scan_speed == 1:
         # Filter the data with a moving-average filter to smoothen the signal
         TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=7, min_count=1)
         TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=7, min_count=1)
@@ -151,7 +152,7 @@ def TIR_det(xdata, ydata, TIR_range, scanspeed):
         # Recreate the curve with a lot more points
         deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-4], TIR_xdata_filtered[dTIR_i+4], 2000)
 
-    elif scanspeed == 10:
+    elif scan_speed == 10:
         # Filter the data with a moving-average filter to smoothen the signal
         TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=3, min_count=1)
         TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=3, min_count=1)
