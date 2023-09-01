@@ -1,7 +1,7 @@
 # Contains fresnel function for the transfer-matrix method and curve fitting
 
 import numpy as np
-
+import bottleneck
 
 def fresnel_calculation(fitted_var,
                         fitted_layer_index=(2, 3),
@@ -128,3 +128,60 @@ def fresnel_calculation(fitted_var,
                 fresnel_residuals = fresnel_coefficients_absorption - ydata
 
         return fresnel_residuals
+
+
+def TIR_det(xdata, ydata, TIR_range, scanspeed):
+
+    TIR_ydata = ydata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
+    TIR_xdata = xdata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
+
+    if scanspeed == 5 or scanspeed == 1:
+        # Filter the data with a moving-average filter to smoothen the signal
+        TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=7, min_count=1)
+        TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=7, min_count=1)
+
+        # Find maximum derivative
+        deriv_ydata = np.concatenate(([0], np.diff(TIR_ydata_filtered)))  # Add extra 0 for dimensions
+        dTIR_i = np.argmax(deriv_ydata)
+
+        # Fit against the derivative spike where the derivative is max, considering also -3 +2 nearest neighbors
+        pd = np.polyfit(TIR_xdata_filtered[dTIR_i-4:dTIR_i+5],
+                        deriv_ydata[dTIR_i-4:dTIR_i+5], 3)
+
+        # Recreate the curve with a lot more points
+        deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-4], TIR_xdata_filtered[dTIR_i+4], 2000)
+
+    elif scanspeed == 10:
+        # Filter the data with a moving-average filter to smoothen the signal
+        TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=3, min_count=1)
+        TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=3, min_count=1)
+
+        # Find maximum derivative
+        deriv_ydata = np.concatenate(([0], np.diff(TIR_ydata_filtered)))  # Add extra 0 for dimensions
+        dTIR_i = np.argmax(deriv_ydata)
+
+        # Fit against the derivative spike where the derivative is max, considering also -3 +2 nearest neighbors
+        pd = np.polyfit(TIR_xdata_filtered[dTIR_i-3:dTIR_i+3],
+                        deriv_ydata[dTIR_i-3:dTIR_i+3], 3)
+
+        # Recreate the curve with a lot more points
+        deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-3], TIR_xdata_filtered[dTIR_i+3], 2000)
+
+    else:
+        raise ValueError('Invalid scanspeed value')
+
+    # Find TIR from max of deriv fit
+    deriv_TIR_fit_y = np.polyval(pd, deriv_TIR_fit_x)
+    dTIR_final = np.argmax(deriv_TIR_fit_y)
+    TIR_theta = deriv_TIR_fit_x[dTIR_final]
+
+    # # Plotting to double-check correctness
+    # if plot_tangents == 'y':
+    #     plt.figure()
+    #     plt.subplot(2, 1, 1)
+    #     plt.plot(TIR_xdata, TIR_ydata, 'k')
+    #     plt.subplot(2, 1, 2)
+    #     plt.plot(TIR_xdata_filtered, deriv_ydata)
+    #     plt.plot(deriv_fit_x, deriv_fit_y)
+
+    return TIR_theta, deriv_TIR_fit_x, deriv_TIR_fit_y
