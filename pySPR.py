@@ -279,6 +279,7 @@ class ModelledReflectivityTrace:
         self.extinction_coefficients = sensor_object.extinction_coefficients
         self.data_path = data_path_
         self.fit_result = None
+        self.y_offset = 0
 
     def calculate_fresnel_trace(self):
 
@@ -293,14 +294,14 @@ class ModelledReflectivityTrace:
                                                                  polarization=self.polarization)
         return angles_, fresnel_coefficients_
 
-    def model_reflectivity_trace(self, ini_guess, lower_bound, upper_bound):
+    def model_reflectivity_trace(self, ini_guess, bounds, TIR_range, scanspeed):
         """
-        This method uses the
 
-        :param ini_guess: initial guess of the fitted variable
-        :param lower_bound: a lower bound to the fitted variable
-        :param upper_bound: an upper bound to the fitted variable
-        :return: result of the optimization algorithm
+        :param ini_guess:
+        :param bounds:
+        :param TIR_range:
+        :param scanspeed:
+        :return:
         """
 
         global current_data_path
@@ -318,6 +319,9 @@ class ModelledReflectivityTrace:
 
         # TODO: Calculate the bulk refractive index from the TIR angle
 
+        TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = ftm.TIR_det(xdata_, ydata_, TIR_range, scanspeed)
+        self.refractive_indices[-1] = self.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)  # TODO: Currently, the sensor bulk RI in optical parameters do not update according to the TIR angle
+
         # TODO: Make a selection of xdata_ and ydata_ in the calculation, including an offset in ydata
 
         selection_xdata_ = None
@@ -326,7 +330,7 @@ class ModelledReflectivityTrace:
         # Perform the fitting
         result = scipy.optimize.least_squares(ftm.fresnel_calculation,
                                               ini_guess,
-                                              bounds=(lower_bound, upper_bound),
+                                              bounds=bounds,
                                               kwargs={'fitted_layer_index': self.fitted_layer_index,
                                                       'wavelength': self.wavelength,
                                                       'layer_thicknesses': self.layer_thicknesses,
