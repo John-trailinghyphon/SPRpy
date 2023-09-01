@@ -76,7 +76,7 @@ import copy
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.io as pio
+import scipy
 
 
 class Session:
@@ -125,7 +125,7 @@ class Sensor:
     layers and their optical properties.
     """
 
-    def __init__(self, data_path_, object_id_, sensor_metal='Au', polarization=1):
+    def __init__(self, data_path_, object_id_, sensor_metal='Au', data_type='R', polarization=1):
         """
         :param data_path_: string
         :param sensor_metal: string, see options in method "set_default_optical_properties"
@@ -135,10 +135,12 @@ class Sensor:
         self.object_id = object_id_
         self.data_path = data_path_
         self.polarization = polarization
+        self.data_type = data_type
         self.wavelength = int(data_path_[-9:-6])
         self.channel = data_path_[-12:-4].replace('_', ' ')
         self.sensor_metal = sensor_metal
         self.set_default_optical_properties(self.sensor_metal)
+        self.fitted_var = self.optical_parameters.iloc[self.fitted_layer_index]
 
     def set_default_optical_properties(self, sensor_metal):
 
@@ -267,46 +269,80 @@ class ModelledReflectivityTrace:
         self.object_id = object_id_
         self.sensor_id = sensor_object.object_id
         self.polarization = sensor_object.polarization
+        self.data_type = sensor_object.data_type
         self.wavelength = sensor_object.wavelength
         self.layer_thicknesses = sensor_object.layer_thicknesses
-        self.fitted_layer = sensor_object.fitted_layer_index  # TODO: Fix a connection between the dash data table fitted variable and the backend
+        self.fitted_var = sensor_object.fitted_var
+        self.fitted_layer_index = sensor_object.fitted_layer_index
         self.refractive_indices = sensor_object.refractive_indices
         self.optical_parameters = sensor_object.optical_parameters
         self.extinction_coefficients = sensor_object.extinction_coefficients
         self.data_path = data_path_
+        self.fit_result = None
 
-    def calculate_trace(self,  xdata_, ydata_, ini_guess, lower_bond, upper_bound):
-        # TODO: This must handle data correctly, in that the data path should be checked to match the current global
-        #  data path so that the calculation is performed with the right data. If the self.data_path_ attribute doesn't
-        #  match the global current data path then load in the correct one.
-        ftm.fresnel_calculation(ini_guess,
-                                angles=xdata_,
-                                layer=self.fitted_layer,  # TODO: Fix a connection between the dash data table fitted variable and the backend
-                                wavelength=self.wavelength,
-                                layer_thicknesses=self.layer_thicknesses,
-                                n_re=self.refractive_indices,
-                                n_im=self.extinction_coefficients,
-                                ydata=None,
-                                ydata_type='R',
-                                polarization=1
-                                )
+    def calculate_fresnel_trace(self):
 
-    def plot_reflectivity_trace(self, xdata_, ydata_, time_index=0, rlines_=None):
+        angles_, fresnel_coefficients_ = ftm.fresnel_calculation(None,
+                                                                 fitted_layer_index=self.fitted_layer_index,
+                                                                 wavelength=self.wavelength,
+                                                                 layer_thicknesses=self.layer_thicknesses,
+                                                                 n_re=self.refractive_indices,
+                                                                 n_im=self.extinction_coefficients,
+                                                                 ydata=None,
+                                                                 ydata_type=self.data_type,
+                                                                 polarization=self.polarization)
+        return angles_, fresnel_coefficients_
+
+    def model_reflectivity_trace(self, ini_guess, lower_bound, upper_bound):
+        """
+        This method uses the
+
+        :param ini_guess: initial guess of the fitted variable
+        :param lower_bound: a lower bound to the fitted variable
+        :param upper_bound: an upper bound to the fitted variable
+        :return: result of the optimization algorithm
         """
 
-        :param xdata_:
-        :param ydata_:
-        :param time_index:
-        :param rlines_:
-        :return:
-        """
-        pass
+        global current_data_path
 
-    def plot_sensorgram(self, time_=None, ydata_=None, rlines_=None):
-        """
+        # Check if current data path matches data_path when object was first initialized, otherwise load previous data
+        if current_data_path == self.data_path:
+            global reflectivity_df
+            xdata_ = reflectivity_df['angles']
+            ydata_ = reflectivity_df['ydata']
 
-        """
-        pass
+        else:
+            _, _, _, _, reflectivity_df_ = load_csv_data(path=self.data_path)
+            xdata_ = reflectivity_df_['angles']
+            ydata_ = reflectivity_df_['ydata']
+
+        # TODO: Calculate the bulk refractive index from the TIR angle
+
+        # TODO: Make a selection of xdata_ and ydata_ in the calculation, including an offset in ydata
+
+        selection_xdata_ = None
+        selection_ydata_ = None
+
+        # Perform the fitting
+        result = scipy.optimize.least_squares(ftm.fresnel_calculation,
+                                              ini_guess,
+                                              bounds=(lower_bound, upper_bound),
+                                              kwargs={'fitted_layer_index': self.fitted_layer_index,
+                                                      'wavelength': self.wavelength,
+                                                      'layer_thicknesses': self.layer_thicknesses,
+                                                      'n_re': self.refractive_indices,
+                                                      'n_im': self.extinction_coefficients,
+                                                      'angles': selection_xdata_,
+                                                      'ydata': selection_ydata_,
+                                                      'ydata_type': self.data_type,
+                                                      'polarization': self.polarization}
+                                              )
+        # Set the result for the object
+        self.fit_result = result['x']
+
+        # Provide
+
+        return self.fit_result
 
     def export_results(self):
         """
@@ -482,10 +518,10 @@ if __name__ == '__main__':
     current_session = Session()
 
     # Prompt user for initial measurement data
-    data_path, time, angles, ydata, reflectivity_df = load_csv_data()
+    current_data_path, time, angles, ydata, reflectivity_df = load_csv_data()
 
     # Add sensor object based on chosen measurement data
-    current_sensor = add_sensor_backend(current_session, data_path)
+    current_sensor = add_sensor_backend(current_session, current_data_path)
 
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
@@ -565,7 +601,7 @@ if __name__ == '__main__':
 
         # File and session control
         dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
-        dash.html.Div(['Current measurement file:', dash.html.Br(), data_path.split('/')[-1]],
+        dash.html.Div(['Current measurement file:', dash.html.Br(), current_data_path.split('/')[-1]],
                       id='datapath-textfield',
                       style={'margin-right': '10px', 'textAlign': 'center'}),
         dbc.Container([
@@ -787,15 +823,16 @@ if __name__ == '__main__':
 
         global current_sensor
         global current_session
+        global current_data_path
 
         if 'new-sensor-gold' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, data_path, sensor_metal='Au')
+            add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, data_path, sensor_metal='SiO2')
+            add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, data_path, sensor_metal='Pd')
+            add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, data_path, sensor_metal='Pt')
+            add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
         elif 'copy-sensor' == dash.ctx.triggered_id:
             copy_sensor_backend(current_session, current_sensor)
 
@@ -839,6 +876,7 @@ if __name__ == '__main__':
             current_sensor.layer_thicknesses = current_sensor.optical_parameters['d [nm]'].to_numpy()
             current_sensor.refractive_indices = current_sensor.optical_parameters['n'].to_numpy()
             current_sensor.extinction_coefficients = current_sensor.optical_parameters['k'].to_numpy()
+            current_sensor.fitted_var = current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index]
 
             return table_rows, dash.no_update
 
@@ -850,6 +888,7 @@ if __name__ == '__main__':
         elif 'table-select-fitted' == dash.ctx.triggered_id:
 
             current_sensor.fitted_layer_index = (active_cell['row'], active_cell['column'])
+            current_sensor.fitted_var = current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index]
             sensor_table_title = 'Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 channel=current_sensor.channel,

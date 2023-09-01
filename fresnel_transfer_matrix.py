@@ -4,10 +4,11 @@ import numpy as np
 
 
 def fresnel_calculation(fitted_var,
+                        fitted_layer_index=(2, 3),
                         angles=np.linspace(39, 50, 1567),
-                        layer='h_surf', wavelength=670,
+                        wavelength=670,
                         layer_thicknesses=np.array([np.NaN, 2, 50, 4, np.NaN]),
-                        n_re=np.array([1.5202, 3.3105, 0.2238, 1.35, 1.0003]),
+                        n_re=np.array([1.5202, 3.3105, 0.2238, 1.5, 1.0003]),
                         n_im=np.array([0, 3.4556, 3.9259, 0, 0]),
                         ydata=None,
                         ydata_type='R',
@@ -16,11 +17,11 @@ def fresnel_calculation(fitted_var,
 
     """
     Function for calculating fresnel coefficients or for fitting angular reflectivity traces based on the residuals of
-    a measurement. By default the function provides the thickness of a monolayer of BSA on gold in air.
+    a measurement. By default, the function provides the thickness of a monolayer of BSA on gold in air.
 
+    :param fitted_var: variable to be fitted
     :param angles: ndarray
-    :param fitted_var: float
-    :param layer: string, determines which layer is fitted, see cases below for valid options
+    :param fitted_layer_index: tuple
     :param wavelength: int
     :param layer_thicknesses: ndarray
     :param n_re: ndarray
@@ -31,43 +32,21 @@ def fresnel_calculation(fitted_var,
     :return: ndarray(s), either the fresnel coefficients or the residuals between modelled intensity and measured intensity
     """
 
-    # Selecting layer to fit
-    match layer:
-        case 'h_Cr':
-            layer_thicknesses[1] = fitted_var
-        case 'h_Au':
-            layer_thicknesses[2] = fitted_var
-        case 'h_SiO2':
-            layer_thicknesses[3] = fitted_var
-        case 'h_surf':
-            layer_thicknesses[-2] = fitted_var
-        case 'n_re_prism':
-            n_re[0] = fitted_var
-        case 'n_re_Cr':
-            n_re[1] = fitted_var
-        case 'n_im_Cr':
-            n_im[1] = fitted_var
-        case 'n_re_metal':
-            n_re[2] = fitted_var
-        case 'n_im_metal':
-            n_im[2] = fitted_var
-        case 'n_re_surf':
-            n_re[-2] = fitted_var
-        case 'n_im_surf':
-            n_im[-2] = fitted_var
-        case 'n_re_sol':
-            n_re[-1] = fitted_var
-        case 'n_im_sol':
-            n_im[-1] = fitted_var
-        case 'N_surf':
-            n_im[-2] = fitted_var[1]
-            n_re[-2] = fitted_var[0]
-        case 'H_surf':
-            n_im[-2] = fitted_var[1]
-            layer_thicknesses[-2] = fitted_var[0]
-        case 'N_metal':
-            n_im[2] = fitted_var[1]
-            n_re[2] = fitted_var[0]
+    # Check first if fitting is performed or not
+    if fitted_var is not None:
+
+        # Selecting layer to fit
+        match fitted_layer_index[1]:
+            case 0:
+                print('Invalid fitting variable!')
+                return 0
+            case 1:
+                layer_thicknesses[fitted_layer_index[0]] = fitted_var
+            case 2:
+                n_re[fitted_layer_index[0]] = fitted_var
+            case 3:
+                n_im[fitted_layer_index[0]] = fitted_var
+
 
     # # Create complex refractive index (this is unnecessary)
     # n = np.array([0] * len(n_re))
@@ -130,7 +109,13 @@ def fresnel_calculation(fitted_var,
 
     # Return fresnel coefficients or residuals depending on if fitting is performed against ydata
     if ydata is None:
-        return fresnel_coefficients_reflection, fresnel_coefficients_transmission, fresnel_coefficients_absorption
+        match ydata_type:
+            case 'R':
+                return angles, fresnel_coefficients_reflection
+            case 'T':
+                return angles, fresnel_coefficients_transmission
+            case 'A':
+                return angles, fresnel_coefficients_absorption
 
     else:
         fresnel_residuals = np.array([]*len(ydata))
