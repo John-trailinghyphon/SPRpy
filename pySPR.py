@@ -78,7 +78,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy
 import fresnel_transfer_matrix as ftm
-
+import re
 
 class Session:
 
@@ -504,15 +504,71 @@ def load_csv_data(path=False):
     else:
         data_path_ = path
 
+    #  Determine the scanning speed/step length if present in the file
+    try:
+        with open(data_path_, 'r') as file:
+            step_pattern = re.compile(r'<scan rtime="\d+" step_len="\d{1,2}" dir="Forward">')
+            step_length_pattern = re.compile(r'=\d{1,2}')
+            scanspeed = int(step_length_pattern.search(file.readline()).group().strip('='))
+
+    except:
+        scanspeed = 5
+
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
-    time_ = data_frame_.iloc[:, 0]
-    angles_ = data_frame_.iloc[0, 1:]
-    ydata_ = data_frame_.iloc[1:, 1:]
-    reflectivity_df_ = pd.DataFrame(data={'angles': angles_, 'ydata': ydata_.iloc[-1, :]})
+    time_df = data_frame_.iloc[:, 0]
+    angles_df = data_frame_.iloc[0, 1:]
+    ydata_df = data_frame_.iloc[1:, 1:]
 
-    return data_path_, time_, angles_, ydata_, reflectivity_df_
+    # Select last scan as default reflectivity plot
+    reflectivity_df_ = pd.DataFrame(data={'angles': angles_df, 'ydata': ydata_df.iloc[-1, :]})
 
+    return data_path_, scanspeed, time_df, angles_df, ydata_df, reflectivity_df_
+
+
+def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(70, 70)):
+
+    # Convert dataframes to numpy ndarrays
+    time = time.to_numpy()
+    angles = angles.to_numpy()
+    ydata = ydata.to_numpy()
+
+    # Calculating SPR and TIR angles
+    sensorgram_SPR_angles = np.NaN(len(time))
+    sensorgram_TIR_angles = np.NaN(len(time))
+    for ind, val in enumerate(time):
+        reflectivity_spectrum = ydata[ind, :]
+        min_index = np.argmin(reflectivity_spectrum)
+
+        # SPR angles
+        try:
+            y_selection = reflectivity_spectrum[min_index-SPR_points[0]:min_index+SPR_points[1]]
+
+            polynomial = np.polyfit(angles[min_index - SPR_points[0]:min_index + SPR_points[1]],
+                                    y_selection, 3)
+            x_selection = np.linspace(angles[min_index - SPR_points[0]],
+                                      angles[min_index + SPR_points[1]], 4000)
+            y_polyfit = np.polyval(polynomial, x_selection)
+            y_fit_min_ind = np.argmin(y_polyfit)
+
+            sensorgram_SPR_angles[ind] = x_selection[y_fit_min_ind]
+
+        except:
+            print('No SPR minimum found. Skipping measurement point...')
+            sensorgram_SPR_angles[ind] = np.NaN
+
+        # TIR angles
+        try:
+            TIR_theta, _, _ = ftm.TIR_determination(angles, reflectivity_spectrum, TIR_range, scanspeed)
+            sensorgram_TIR_angles[ind] = TIR_theta
+
+        except:
+            print('No TIR found. Skipping measurement point...')
+            sensorgram_TIR_angles[ind] = np.NaN
+
+    sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles})
+
+    return sensorgram_df
 
 # def save_new_measurement(self):
 #     """
@@ -535,7 +591,19 @@ if __name__ == '__main__':
     current_session = Session()
 
     # Prompt user for initial measurement data
-    current_data_path, time, angles, ydata, reflectivity_df = load_csv_data()
+    current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
+
+    # Calculate sensorgram from loaded data (assume air or liquid medium for TIR calculation based on number of scans)
+    # TODO: Check what the others typically use for TIR range of their really thick polymer brushes
+
+    if ydata_df.shape[0] > 20:
+        TIR_range = (60.8, 63)  # Typical TIR range for water
+    else:
+        TIR_range = (40.9, 41.8)  # Typical TIR range for air
+
+    # TODO: Prompt user here for typical TIR range!
+
+    sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
     # Add sensor object based on chosen measurement data
     current_sensor = add_sensor_backend(current_session, current_data_path)
