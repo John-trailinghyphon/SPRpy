@@ -1064,9 +1064,12 @@ if __name__ == '__main__':
                                          margin_r=25,
                                          margin_l=60,
                                          margin_t=40,
-                                         template='simple_white')
-                new_figure.update_xaxes(mirror=True, showline=True)
-                new_figure.update_yaxes(mirror=True, showline=True)
+                                         template='simple_white',
+                                         uirevision=True)
+                new_figure.update_xaxes(mirror=True,
+                                        showline=True)
+                new_figure.update_yaxes(mirror=True,
+                                        showline=True)
 
                 return new_figure
 
