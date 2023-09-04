@@ -1048,15 +1048,15 @@ if __name__ == '__main__':
             if figure_object.data.__len__() == 1:
 
                 global ydata_df
-                global time_df
 
-                time_index = time_df[time_df == hoverData['points'][0]['x']].index[0]
+                time_index = hoverData['points'][0]['pointIndex']
                 new_trace_data = ydata_df.loc[time_index+1]
 
                 new_figure = go.Figure(go.Scatter(x=angles_df,
                                                   y=new_trace_data,
                                                   mode='lines',
-                                                  showlegend=False))
+                                                  showlegend=False,
+                                                  line_color='#636efa'))
                 new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
                                          yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
                                          font_family='Balto',
@@ -1117,19 +1117,49 @@ if __name__ == '__main__':
         dash.Input('plotting-sensorgram-save-png', 'n_clicks'),
         dash.Input('plotting-sensorgram-save-svg', 'n_clicks'),
         dash.Input('plotting-sensorgram-save-html', 'n_clicks'),
+        dash.Input('plotting-sensorgram-graph', 'clickData'),
         dash.State('plotting-sensorgram-graph', 'figure'),
     )
-    def update_sensorgram_plotting_tab(save_png, save_svg, save_html, figure_JSON):
+    def update_sensorgram_plotting_tab(save_png, save_svg, save_html, clickData, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
 
-        if 'plotting-sensorgram-save-html' == dash.ctx.triggered_id:
+        if 'plotting-sensorgram-graph' == dash.ctx.triggered_id:
+            global sensorgram_df_selection
+
+            offset_index = clickData['points'][0]['pointIndex']
+
+            new_sensorgram_fig = go.Figure(go.Scatter(x=sensorgram_df_selection['time'],
+                                                      y=sensorgram_df_selection['SPR angle']-sensorgram_df_selection['SPR angle'].loc[offset_index-1],
+                                                      name='SPR angle'))
+
+            new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
+                                                    y=sensorgram_df_selection['TIR angle']-sensorgram_df_selection['TIR angle'].loc[offset_index-1],
+                                                    name='TIR angle'))
+
+            new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
+                                             yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
+                                             font_family='Balto',
+                                             font_size=19,
+                                             margin_r=25,
+                                             margin_l=60,
+                                             margin_t=40,
+                                             template='simple_white')
+            new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
+            new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
+
+            return new_sensorgram_fig
+
+        elif 'plotting-sensorgram-save-html' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
             save_folder = askdirectory(title='Choose folder', parent=root)
             root.destroy()
             plotly.io.write_html(figure_object, save_folder + r'\reflectivity_plot.html', include_mathjax='cdn')
+
+            return figure_object
+
         elif 'plotting-sensorgram-save-svg' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
@@ -1137,6 +1167,8 @@ if __name__ == '__main__':
             save_folder = askdirectory(title='Choose folder', parent=root)
             root.destroy()
             plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.svg', format='svg')
+
+            return figure_object
 
         elif 'plotting-sensorgram-save-png' == dash.ctx.triggered_id:
             root = tkinter.Tk()
@@ -1146,6 +1178,7 @@ if __name__ == '__main__':
             root.destroy()
             plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.png', format='png')
 
-        return figure_object
+            return figure_object
 
-    app.run_server(debug=True, use_reloader=False)
+
+    # app.run_server(debug=True, use_reloader=False)
