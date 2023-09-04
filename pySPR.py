@@ -26,7 +26,7 @@
 # TODO: For the non-interacting probe method where a previously calculated background is used in the calculations, there
 #  is a need of some way to select a previous analysis. The easiest way is probably to make sure that each analysis is
 #  named something? I imagine that the user selects from a list of names of each analysis (and there should be a default
-#  name that auto-increments.
+#  name that auto-increments with the object ID.
 
 # TODO: There should be a way to load objects from one previous session into the active session. So that the background
 #  does not have to be remade every time for instance.
@@ -48,11 +48,6 @@
 #     * importing sensor and analysis objects from previous session (like background)
 #     * saving session
 #     * removing sensor objects and analysis objects from the active session
-#     *
-#  - Adding sensor object
-#     * adding material layers to sensor (maybe using a table interface)
-#     * modifying existing layers
-#     * removing layers
 #  - Adding new analysis object (starting an analysis DIV)
 #     * Selecting between different available types, which will change the analysis interface DIV and its options
 #     * run calculations, fitting, plotting, selecting values, etc.
@@ -79,6 +74,12 @@ import plotly.graph_objects as go
 import scipy
 import fresnel_transfer_matrix as ftm
 import re
+
+# Configuration parameters
+
+TIR_range_water_or_long_measurement = (60.8, 63)  # TIR range for water --> Automatically used for 50 or more scans per file
+TIR_range_air_or_few_scans = (40.9, 41.8)  # TIR range for dry scans --> Automatically used for less than 50 scans per file
+
 
 class Session:
 
@@ -319,7 +320,7 @@ class ModelledReflectivityTrace:
             ydata_ = reflectivity_df['ydata']
 
         else:
-            _, _, _, _, reflectivity_df_ = load_csv_data(path=self.data_path)
+            _, _, _, _, _, reflectivity_df_ = load_csv_data(path=self.data_path)
             xdata_ = reflectivity_df_['angles']
             ydata_ = reflectivity_df_['ydata']
 
@@ -507,7 +508,6 @@ def load_csv_data(path=False):
     #  Determine the scanning speed/step length if present in the file
     try:
         with open(data_path_, 'r') as file:
-            step_pattern = re.compile(r'<scan rtime="\d+" step_len="\d{1,2}" dir="Forward">')
             step_length_pattern = re.compile(r'=\d{1,2}')
             scanspeed = int(step_length_pattern.search(file.readline()).group().strip('='))
 
@@ -534,10 +534,10 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
     ydata = ydata.to_numpy()
 
     # Calculating SPR and TIR angles
-    sensorgram_SPR_angles = np.NaN(len(time))
-    sensorgram_TIR_angles = np.NaN(len(time))
+    sensorgram_SPR_angles = np.empty(len(time)) * np.nan
+    sensorgram_TIR_angles = np.empty(len(time)) * np.nan
     for ind, val in enumerate(time):
-        reflectivity_spectrum = ydata[ind, :]
+        reflectivity_spectrum = ydata[ind-1, :]
         min_index = np.argmin(reflectivity_spectrum)
 
         # SPR angles
@@ -551,20 +551,20 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
             y_polyfit = np.polyval(polynomial, x_selection)
             y_fit_min_ind = np.argmin(y_polyfit)
 
-            sensorgram_SPR_angles[ind] = x_selection[y_fit_min_ind]
+            sensorgram_SPR_angles[ind-1] = x_selection[y_fit_min_ind]
 
         except:
             print('No SPR minimum found. Skipping measurement point...')
-            sensorgram_SPR_angles[ind] = np.NaN
+            sensorgram_SPR_angles[ind-1] = np.NaN
 
         # TIR angles
         try:
             TIR_theta, _, _ = ftm.TIR_determination(angles, reflectivity_spectrum, TIR_range, scanspeed)
-            sensorgram_TIR_angles[ind] = TIR_theta
+            sensorgram_TIR_angles[ind-1] = TIR_theta
 
         except:
             print('No TIR found. Skipping measurement point...')
-            sensorgram_TIR_angles[ind] = np.NaN
+            sensorgram_TIR_angles[ind-1] = np.NaN
 
     sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles})
 
@@ -594,16 +594,17 @@ if __name__ == '__main__':
     current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
 
     # Calculate sensorgram from loaded data (assume air or liquid medium for TIR calculation based on number of scans)
-    # TODO: Check what the others typically use for TIR range of their really thick polymer brushes
-
-    if ydata_df.shape[0] > 20:
-        TIR_range = (60.8, 63)  # Typical TIR range for water
+    if ydata_df.shape[0] > 50:
+        TIR_range = TIR_range_water_or_long_measurement
     else:
-        TIR_range = (40.9, 41.8)  # Typical TIR range for air
-
-    # TODO: Prompt user here for typical TIR range!
+        TIR_range = TIR_range_air_or_few_scans
 
     sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+
+    # Offset to start at 0 degrees at 0 minutes
+    sensorgram_df_selection = sensorgram_df
+    sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection['SPR angle'][0]
+    sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - sensorgram_df_selection['TIR angle'][0]
 
     # Add sensor object based on chosen measurement data
     current_sensor = add_sensor_backend(current_session, current_data_path)
@@ -624,6 +625,23 @@ if __name__ == '__main__':
     reflectivity_fig.update_xaxes(mirror=True, showline=True)
     reflectivity_fig.update_yaxes(mirror=True, showline=True)
 
+    sensorgram_fig = px.line(sensorgram_df_selection, x='time', y='SPR angle')
+    sensorgram_fig['data'][0]['showlegend'] = True
+    sensorgram_fig['data'][0]['name'] = 'SPR angle'
+    sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
+                                        y=sensorgram_df_selection['TIR angle'],
+                                        name='TIR angle'))
+    sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
+                                 yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
+                                 font_family='Balto',
+                                 font_size=19,
+                                 margin_r=25,
+                                 margin_l=60,
+                                 margin_t=40,
+                                 template='simple_white',
+                                 clickmode='event+select')
+    sensorgram_fig.update_xaxes(mirror=True, showline=True)
+    sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
     # Dash webapp layout
     app.layout = dash.html.Div([
@@ -833,7 +851,7 @@ if __name__ == '__main__':
                         ], style={'width': '35%'}),
                         dash.html.Div([
                             dash.dcc.Graph(id='plotting-sensorgram-graph',
-                                           figure=reflectivity_fig,
+                                           figure=sensorgram_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
                                 dbc.DropdownMenu(
@@ -887,6 +905,7 @@ if __name__ == '__main__':
         current_session.log = new_message
         return new_message
 
+    # Adding new sensor
     @dash.callback(
         dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
         dash.Input('new-sensor-gold', 'n_clicks'),
@@ -926,6 +945,7 @@ if __name__ == '__main__':
 
         return sensor_options
 
+    # Updating the sensor table with new values and properties
     @dash.callback(
         dash.Output('sensor-table', 'data'),  # Update sensor table data
         dash.Output('sensor-table-title', 'children'),  # Update sensor table title
@@ -994,6 +1014,7 @@ if __name__ == '__main__':
 
             return data_rows, sensor_table_title
 
+    # Toggle view of default optical parameters for different materials
     @dash.callback(
         dash.Output('default-values-collapse', 'is_open'),
         dash.Input('show-default-param-button', 'n_clicks'),
@@ -1006,21 +1027,56 @@ if __name__ == '__main__':
 
         return is_open
 
+    # Update the reflectivity plot in the Data plotting tab
     @dash.callback(
         dash.Output('plotting-angular-reflectivity-graph', 'figure'),
         dash.Input('plotting-reflectivity-add-trace', 'n_clicks'),
         dash.Input('plotting-reflectivity-save-png', 'n_clicks'),
         dash.Input('plotting-reflectivity-save-svg', 'n_clicks'),
         dash.Input('plotting-reflectivity-save-html', 'n_clicks'),
+        dash.Input('plotting-sensorgram-graph', 'hoverData'),
         dash.State('plotting-angular-reflectivity-graph', 'figure'),
     )
-    def update_reflectivity_plotting_graph(add_trace, save_png, save_svg, save_html, figure_JSON):
+    def update_reflectivity_plotting_graph(add_trace, save_png, save_svg, save_html, hoverData, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
 
-        if 'plotting-reflectivity-add-trace' == dash.ctx.triggered_id:
+        # Update based on hover over sensorgram figure
+        if 'plotting-sensorgram-graph' == dash.ctx.triggered_id:
 
-            trace_data_path, trace_time, trace_angles, trace_ydata, trace_reflectivity_df = load_csv_data()
+            # First make sure no other traces has been added
+            if figure_object.data.__len__() == 1:
+
+                global ydata_df
+                global time_df
+
+                time_index = time_df[time_df == hoverData['points'][0]['x']].index[0]
+                new_trace_data = ydata_df.loc[time_index+1]
+
+                new_figure = go.Figure(go.Scatter(x=angles_df,
+                                                  y=new_trace_data,
+                                                  mode='lines',
+                                                  showlegend=False))
+                new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                         yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                         font_family='Balto',
+                                         font_size=19,
+                                         margin_r=25,
+                                         margin_l=60,
+                                         margin_t=40,
+                                         template='simple_white')
+                new_figure.update_xaxes(mirror=True, showline=True)
+                new_figure.update_yaxes(mirror=True, showline=True)
+
+                return new_figure
+
+            else:
+                return dash.no_update
+
+        # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
+        elif 'plotting-reflectivity-add-trace' == dash.ctx.triggered_id:
+
+            _, _, _, _, _, trace_reflectivity_df = load_csv_data()
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
                                                y=trace_reflectivity_df['ydata'],
                                                mode='lines',
@@ -1052,7 +1108,7 @@ if __name__ == '__main__':
 
         return figure_object
 
-
+    # Update the sensorgram plot in the Data plotting tab
     @dash.callback(
         dash.Output('plotting-sensorgram-graph', 'figure'),
         dash.Input('plotting-sensorgram-save-png', 'n_clicks'),
