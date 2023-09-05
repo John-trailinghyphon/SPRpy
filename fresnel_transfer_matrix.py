@@ -176,13 +176,4 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
     dTIR_final = np.argmax(deriv_TIR_fit_y)
     TIR_theta = deriv_TIR_fit_x[dTIR_final]
 
-    # # Plotting to double-check correctness
-    # if plot_tangents == 'y':
-    #     plt.figure()
-    #     plt.subplot(2, 1, 1)
-    #     plt.plot(TIR_xdata, TIR_ydata, 'k')
-    #     plt.subplot(2, 1, 2)
-    #     plt.plot(TIR_xdata_filtered, deriv_ydata)
-    #     plt.plot(deriv_fit_x, deriv_fit_y)
-
     return TIR_theta, deriv_TIR_fit_x, deriv_TIR_fit_y
