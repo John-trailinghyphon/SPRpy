@@ -1119,7 +1119,7 @@ if __name__ == '__main__':
         dash.Input('plotting-sensorgram-save-html', 'n_clicks'),
         dash.Input('plotting-sensorgram-graph', 'clickData'),
         dash.State('plotting-sensorgram-graph', 'figure'),
-    )
+        prevent_initial_call=True)  # Adding this fixed a weird bug with graph not updating after clickData event
     def update_sensorgram_plotting_tab(save_png, save_svg, save_html, clickData, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
@@ -1130,11 +1130,12 @@ if __name__ == '__main__':
             offset_index = clickData['points'][0]['pointIndex']
 
             new_sensorgram_fig = go.Figure(go.Scatter(x=sensorgram_df_selection['time'],
-                                                      y=sensorgram_df_selection['SPR angle']-sensorgram_df_selection['SPR angle'].loc[offset_index-1],
-                                                      name='SPR angle'))
+                                                      y=sensorgram_df_selection['SPR angle']-sensorgram_df_selection['SPR angle'].loc[offset_index],
+                                                      name='SPR angle',
+                                                      line_color='#636efa'))
 
             new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
-                                                    y=sensorgram_df_selection['TIR angle']-sensorgram_df_selection['TIR angle'].loc[offset_index-1],
+                                                    y=sensorgram_df_selection['TIR angle']-sensorgram_df_selection['TIR angle'].loc[offset_index],
                                                     name='TIR angle'))
 
             new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
@@ -1144,7 +1145,8 @@ if __name__ == '__main__':
                                              margin_r=25,
                                              margin_l=60,
                                              margin_t=40,
-                                             template='simple_white')
+                                             template='simple_white',
+                                             uirevision=True)
             new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
             new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
@@ -1181,4 +1183,4 @@ if __name__ == '__main__':
             return figure_object
 
 
-    # app.run_server(debug=True, use_reloader=False)
+    app.run_server(debug=True, use_reloader=False)
