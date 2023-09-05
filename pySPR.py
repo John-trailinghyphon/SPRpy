@@ -14,9 +14,6 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
-# TODO: It is probably smartest to build the dash webapp last, since all functionality will be tied to it
-#  and piped through it. The callbacks need to be made through function calls, targeting the active analysis objects.
-#  Best to flush out the underlying logic first, but also think a bit about how the dash app layout will be?
 
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
 #  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
@@ -28,35 +25,22 @@
 #  named something? I imagine that the user selects from a list of names of each analysis (and there should be a default
 #  name that auto-increments with the object ID.
 
-# TODO: There should be a way to load objects from one previous session into the active session. So that the background
-#  does not have to be remade every time for instance.
-
 # Regarding the dash app below
-
-# TODO: My overall design vision is to have DIV elements with buttons, dropdown menus and graphs to control and visualize
-#  each different type of analysis (like fresnel modelling of reflectivity traces, Non-interacting probe method etc.).
-#  Maybe toggle buttons could be used to control which analysis method is used? This would also change the layout of the
-#  displayed divs under the "main control DIV".
-
 
 # TODO: "Main control DIV". Need buttons for controlling a lot of things:
 #  - Which measurement file to load data from (.csv)
 #  - Choosing analysis method (default should be fitting reflectivity traces, like background)
 #  - Session control (this should be done lasts, as it requires to figure out how to reinitiate the whole Dash interface with new values)
-#     * loading previous session
-#     * importing previous session into current one
+#     * loading previous session ("Continue from previous session")
 #     * importing sensor and analysis objects from previous session (like background)
-#     * saving session
-#     * removing sensor objects and analysis objects from the active session
+#     * saving session automatically
+#     * removing sensor objects and analysis objects from the active session (this can be done by deleting their pickled files)
 #  - Adding new analysis object (starting an analysis DIV)
 #     * Selecting between different available types, which will change the analysis interface DIV and its options
 #     * run calculations, fitting, plotting, selecting values, etc.
 #  - Exporting the finished analysis as a HTML file with retained interactivity (omitting control DIV elements). This
 #  can then be added to obsidian notes for instance, allowing straight forward result documentation.
 
-#  TODO: Dash concepts to implement:
-#   * DataTable to display current sensor parameters
-#   * DataTable to display fitting parameters
 
 
 import numpy as np
@@ -225,9 +209,8 @@ class Sensor:
                                                              'k': self.extinction_coefficients})
 
     def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
-        # TODO: This function should be reworked as a @dash.callback function responding to the DataTable class.
         """
-        Add additional layers on top of the sensor (before bulk medium).
+        Add additional layers on top of the sensor (before bulk medium). not used by dash app
         :return:
         """
         # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
@@ -268,7 +251,7 @@ class ModelledReflectivityTrace:
     TODO: IN dash app, add functionality to update current sensor object with the model object optical parameters
     """
 
-    def __init__(self, sensor_object, data_path_, object_id_):
+    def __init__(self, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_):
         self.object_id = object_id_
         self.sensor_id = sensor_object.object_id
         self.polarization = sensor_object.polarization
@@ -283,9 +266,9 @@ class ModelledReflectivityTrace:
         self.data_path = data_path_
         self.fit_result = None
         self.y_offset = 0
-        self.TIR_range = (40.9, 41.8)  # Default for air. For water: (60.8, 63)
-        self.angle_range = (0, 90)
-        self.scan_speed = 5  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
+        self.TIR_range = TIR_range_  # Default for air. For water: (60.8, 63)
+        self.angle_range = angle_range_
+        self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
 
     def calculate_fresnel_trace(self, angles_=np.linspace(39, 50, 1567)):
 
@@ -325,7 +308,7 @@ class ModelledReflectivityTrace:
             ydata_ = reflectivity_df_['ydata']
 
         # Calculate TIR angle and bulk refractive index
-        TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = ftm.TIR_determination(xdata_, ydata_, self.TIR_range, self.scan_speed)
+        TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = ftm.TIR_determination(xdata_, ydata_, self.TIR_range, self.scanspeed)
         self.refractive_indices[-1] = self.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)  # TODO: Currently, the sensor bulk RI in optical parameters do not update according to the TIR angle
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity
@@ -516,7 +499,7 @@ def load_csv_data(path=False):
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
-    time_df = data_frame_.iloc[:, 0]
+    time_df = data_frame_.iloc[1:, 0]
     angles_df = data_frame_.iloc[0, 1:]
     ydata_df = data_frame_.iloc[1:, 1:]
 
@@ -534,8 +517,8 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
     ydata = ydata.to_numpy()
 
     # Calculating SPR and TIR angles
-    sensorgram_SPR_angles = np.empty(len(time)) * np.nan
-    sensorgram_TIR_angles = np.empty(len(time)) * np.nan
+    sensorgram_SPR_angles = np.empty(len(ydata)) * np.nan
+    sensorgram_TIR_angles = np.empty(len(ydata)) * np.nan
     for ind, val in enumerate(time):
         reflectivity_spectrum = ydata[ind-1, :]
         min_index = np.argmin(reflectivity_spectrum)
@@ -714,7 +697,7 @@ if __name__ == '__main__':
                            n_clicks=0,
                            color='primary',
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
-                dbc.Button('Load session',  # TODO: It is probably best to prompt for this outside the dash app.
+                dbc.Button('Load session',  # TODO: It is probably best to prompt for this outside the dash app, if at all.
                            id='load-session',
                            n_clicks=0,
                            color='primary',
@@ -825,7 +808,6 @@ if __name__ == '__main__':
             dbc.Tabs([
 
                 # Data plotting tab
-                # TODO: Load sensorgram plot with sensorgram data. Require backend functionality.
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
@@ -836,7 +818,7 @@ if __name__ == '__main__':
                                 dbc.Button('Add trace',
                                            id='plotting-reflectivity-add-trace',
                                            n_clicks=0,
-                                           color='info',
+                                           color='warning',
                                            title='Add a trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
                                 dbc.DropdownMenu(
                                     id='reflectivity-save-dropdown',
@@ -869,9 +851,29 @@ if __name__ == '__main__':
 
                 # Fresnel modelling tab
                 dbc.Tab([
-                    dash.html.Div(
-                        ['Fresnel'],
-                        id='fresnel-tab-content')
+                    dash.html.Div([
+                        dash.html.Div([
+                            dash.dcc.Graph(id='fresnel-angular-reflectivity-graph',
+                                           figure=reflectivity_fig,
+                                           mathjax=True),
+                            dbc.ButtonGroup([
+                                dbc.Button('Run modelling',
+                                           id='fresnel-reflectivity-run-model',
+                                           n_clicks=0,
+                                           color='warning',
+                                           title='Run the fresnel model'),
+                                dbc.DropdownMenu(
+                                    id='fresnel-save-dropdown',
+                                    label='Save as...',
+                                    color='info',
+                                    children=[
+                                        dbc.DropdownMenuItem('.PNG', id='fresnel-reflectivity-save-png', n_clicks=0),
+                                        dbc.DropdownMenuItem('.SVG', id='fresnel-reflectivity-save-svg', n_clicks=0),
+                                        dbc.DropdownMenuItem('.HTML', id='fresnel-reflectivity-save-html', n_clicks=0)],
+                                    style={'margin-left': '-5px'})
+                            ], style={'margin-left': '30%'}),
+                        ], style={'width': '35%'})
+                    ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
                 # Non-interacting height probe tab
@@ -1044,12 +1046,11 @@ if __name__ == '__main__':
         # Update based on hover over sensorgram figure
         if 'plotting-sensorgram-graph' == dash.ctx.triggered_id:
 
-            # First make sure no other traces has been added
+            # First make sure no other traces has been added and the very first value is ignored
             if figure_object.data.__len__() == 1:
 
-                global ydata_df
-
                 time_index = hoverData['points'][0]['pointIndex']
+
                 new_trace_data = ydata_df.loc[time_index+1]
 
                 new_figure = go.Figure(go.Scatter(x=angles_df,
@@ -1119,7 +1120,7 @@ if __name__ == '__main__':
         dash.Input('plotting-sensorgram-save-html', 'n_clicks'),
         dash.Input('plotting-sensorgram-graph', 'clickData'),
         dash.State('plotting-sensorgram-graph', 'figure'),
-        prevent_initial_call=True)  # Adding this fixed a weird bug with graph not updating after clickData event
+        prevent_initial_call=True)  # Adding this fixed a weird bug with graph not updating after firing clickData callbacks
     def update_sensorgram_plotting_tab(save_png, save_svg, save_html, clickData, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
@@ -1179,6 +1180,50 @@ if __name__ == '__main__':
             save_folder = askdirectory(title='Choose folder', parent=root)
             root.destroy()
             plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.png', format='png')
+
+            return figure_object
+
+        # Update the reflectivity plot in the Data plotting tab
+        @dash.callback(
+            dash.Output('fresnel-angular-reflectivity-graph', 'figure'),
+            dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
+            dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
+            dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
+            dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
+            dash.State('fresnel-angular-reflectivity-graph', 'figure'),
+        )
+        def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, figure_JSON):
+
+            figure_object = go.Figure(figure_JSON)
+
+            # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
+            if 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
+                fresnel_figure = None
+                return fresnel_figure
+
+            elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
+                root = tkinter.Tk()
+                root.attributes("-topmost", 1)
+                root.withdraw()
+                save_folder = askdirectory(title='Choose folder', parent=root)
+                root.destroy()
+                plotly.io.write_html(figure_object, save_folder + r'\fresnel_plot.html', include_mathjax='cdn')
+
+            elif 'fresnel-reflectivity-save-svg' == dash.ctx.triggered_id:
+                root = tkinter.Tk()
+                root.attributes("-topmost", 1)
+                root.withdraw()
+                save_folder = askdirectory(title='Choose folder', parent=root)
+                root.destroy()
+                plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.svg', format='svg')
+
+            elif 'fresnel-reflectivity-save-png' == dash.ctx.triggered_id:
+                root = tkinter.Tk()
+                root.attributes("-topmost", 1)
+                root.withdraw()
+                save_folder = askdirectory(title='Choose folder', parent=root)
+                root.destroy()
+                plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.png', format='png')
 
             return figure_object
 
