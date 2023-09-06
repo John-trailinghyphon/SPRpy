@@ -797,8 +797,7 @@ if __name__ == '__main__':
                             ), size='sm', striped=True, bordered=True, hover=True)
                         ), style={'width': '650px'}),
                     id='default-values-collapse',
-                    is_open=False
-                )
+                    is_open=False)
             ], style={'margin-top': '40px', 'margin-left': '10px'}),
         ], style={'display': 'flex', 'justify-content': 'center'}),
 
@@ -872,7 +871,35 @@ if __name__ == '__main__':
                                         dbc.DropdownMenuItem('.HTML', id='fresnel-reflectivity-save-html', n_clicks=0)],
                                     style={'margin-left': '-5px'})
                             ], style={'margin-left': '30%'}),
-                        ], style={'width': '35%'})
+                        ], style={'width': '35%'}),
+                        dash.html.Div([
+                            dash.html.H3(['Fitting options']),
+                            dbc.Form([
+                                dash.html.Div([
+                                    dbc.ButtonGroup([
+                                        dbc.Button('Add new analysis',
+                                                   id='fresnel-add-analysis-button',
+                                                   n_clicks=0,
+                                                   color='primary',
+                                                   title='Add a new analysis object for the current sensor.'),
+                                        dbc.DropdownMenu(id='fresnel-analysis-dropdown',
+                                                         label='Chose analysis',
+                                                         color='primary',
+                                                         children=[])
+                                    ])
+                                ]),
+                                dash.html.Div([
+                                    dbc.Collapse(
+                                        dbc.Card(
+                                            dbc.CardBody(
+
+                                            )
+                                        ), id='fresnel-analysis-options-collapse', is_open=False)
+                                ])
+
+
+                            ])
+                        ])
                     ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
