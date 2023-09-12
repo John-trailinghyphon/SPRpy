@@ -687,7 +687,7 @@ if __name__ == '__main__':
 
         # File and session control
         dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
-        dash.html.Div(['Current measurement file:', dash.html.Br(), current_data_path.split('/')[-1]],
+        dash.html.Div(['Current measurement file:    ', current_data_path.split('/')[-1]],
                       id='datapath-textfield',
                       style={'margin-right': '10px', 'textAlign': 'center'}),
         dbc.Container([
@@ -776,6 +776,7 @@ if __name__ == '__main__':
                         id="show-default-param-button",
                         color="secondary",
                         n_clicks=0,
+                        title='CTRL+Z not supported, check default values here.'
                     ),
                 ], style={'width': '672px', 'margin-left': '4px', 'margin-top': '5px', 'margin-bottom': '20px'}),
             ], style={'width': '675px'}),
@@ -892,14 +893,35 @@ if __name__ == '__main__':
                                     dbc.Collapse(
                                         dbc.Card(
                                             dbc.CardBody(
+                                                dbc.Form([
+                                                    #  TIR_range, scanspeed (for TIR)
+                                                    #  polarization, angle_range, ini_guess, upper_lowerbound, offset, weight_factor
 
+                                                    dbc.InputGroup([
+                                                        dbc.InputGroupText('Angle range'),
+                                                        dbc.Input(placeholder='Lower bound', type='number', min=0, max=79),
+                                                        dbc.Input(placeholder='Upper bound', type='number', min=0, max=79)
+                                                    ]),
+                                                    dbc.InputGroup([
+                                                            dbc.InputGroupText('Initial guess'),
+                                                            dbc.Input(value=current_sensor.fitted_var, type='number'),
+                                                        ]),
+                                                    dbc.InputGroup([
+                                                            dbc.InputGroupText('Lower bound'),
+                                                            dbc.Input(value=current_sensor.fitted_var - current_sensor.fitted_var / 2, type='number')
+                                                        ], style={'margin-bot': '20px'}),
+                                                    dbc.InputGroup([
+                                                        dbc.InputGroupText('Upper bound'),
+                                                        dbc.Input(value=current_sensor.fitted_var + current_sensor.fitted_var / 2, type='number')
+                                                    ], style={'margin-bot': '20px'})
+                                                ])
                                             )
-                                        ), id='fresnel-analysis-options-collapse', is_open=False)
+                                        ), id='fresnel-analysis-options-collapse', is_open=True)
                                 ])
 
 
                             ])
-                        ])
+                        ], style={'margin-top': '1.9rem'})
                     ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
@@ -908,7 +930,7 @@ if __name__ == '__main__':
                     dash.html.Div(
                         ['Non-interacting height probe'],
                         id='probe-tab-content')
-                ], label='Non-interacting height probing', tab_id='probe-tab', style={'margin-top': '10px'}),
+                ], label='Exclusion height probing', tab_id='probe-tab', style={'margin-top': '10px'}),
 
                 # Result summary tab
                 dbc.Tab([
