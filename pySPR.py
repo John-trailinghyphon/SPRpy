@@ -896,24 +896,40 @@ if __name__ == '__main__':
                                                 dbc.Form([
                                                     #  TIR_range, scanspeed (for TIR)
                                                     #  polarization, angle_range, ini_guess, upper_lowerbound, offset, weight_factor
-
-                                                    dbc.InputGroup([
-                                                        dbc.InputGroupText('Angle range'),
-                                                        dbc.Input(placeholder='Lower bound', type='number', min=0, max=79),
-                                                        dbc.Input(placeholder='Upper bound', type='number', min=0, max=79)
-                                                    ]),
-                                                    dbc.InputGroup([
-                                                            dbc.InputGroupText('Initial guess'),
-                                                            dbc.Input(value=current_sensor.fitted_var, type='number'),
-                                                        ]),
-                                                    dbc.InputGroup([
-                                                            dbc.InputGroupText('Lower bound'),
-                                                            dbc.Input(value=current_sensor.fitted_var - current_sensor.fitted_var / 2, type='number')
-                                                        ], style={'margin-bot': '20px'}),
-                                                    dbc.InputGroup([
-                                                        dbc.InputGroupText('Upper bound'),
-                                                        dbc.Input(value=current_sensor.fitted_var + current_sensor.fitted_var / 2, type='number')
-                                                    ], style={'margin-bot': '20px'})
+                                                    dbc.Row([
+                                                        dbc.Label('Initial guess', width='auto'),
+                                                        dbc.Col([
+                                                            dbc.Input(id='fresnel-fit-option-iniguess',
+                                                                      value=current_sensor.fitted_var, type='number')
+                                                        ], width=2),
+                                                        dbc.Label('Bounds', width='auto'),
+                                                        dbc.Col([
+                                                            dbc.InputGroup([
+                                                                dbc.Input(id='fresnel-fit-option-lowerbound',
+                                                                          value=current_sensor.fitted_var - current_sensor.fitted_var / 2,
+                                                                          type='number'),
+                                                                dbc.Input(id='fresnel-fit-option-upperbound',
+                                                                          value=current_sensor.fitted_var + current_sensor.fitted_var / 2,
+                                                                          type='number')
+                                                            ])
+                                                        ], width=4)
+                                                    ], style={'margin-bottom': '10px'}),
+                                                    dbc.Row([
+                                                        dbc.Label('Angle range', width='auto'),
+                                                        dbc.Col([
+                                                            dash.dcc.RangeSlider(40, 80,
+                                                                                 marks={'40': '40', '45': '45',
+                                                                                        '50': '50', '55': '55',
+                                                                                        '60': '60', '65': '65',
+                                                                                        '70': '70', '75': '75',
+                                                                                        '80': '80'},
+                                                                                 step=0.1,
+                                                                                 allowCross=False,
+                                                                                 tooltip={"placement": "top",
+                                                                                          "always_visible": True},
+                                                                                 id='fresnel-fit-options-rangeslider')
+                                                        ])
+                                                    ], style={'margin-bottom': '10px'}),
                                                 ])
                                             )
                                         ), id='fresnel-analysis-options-collapse', is_open=True)
@@ -1239,14 +1255,18 @@ if __name__ == '__main__':
             dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
             dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
             dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
-            dash.State('fresnel-angular-reflectivity-graph', 'figure'),
+            dash.Input('fresnel-fit-options-rangeslider', 'value'),
+            dash.State('fresnel-angular-reflectivity-graph', 'figure')
         )
-        def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, figure_JSON):
+        def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, rangeslider, figure_JSON):
 
             figure_object = go.Figure(figure_JSON)
 
             # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
-            if 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
+            if 'fresnel-fit-options-rangeslider' == dash.ctx.triggered_id:
+                    # TODO: update the figure to show lines at the selected ranges
+
+            elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
                 fresnel_figure = None
                 return fresnel_figure
 
