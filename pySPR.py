@@ -41,7 +41,17 @@
 #  - Exporting the finished analysis as a HTML file with retained interactivity (omitting control DIV elements). This
 #  can then be added to obsidian notes for instance, allowing straight forward result documentation.
 
-
+# Plotly default discrete colors
+# 1 '#636EFA',
+# 2 '#EF553B',
+# 3 '#00CC96',
+# 4 '#AB63FA',
+# 5 '#FFA15A',
+# 6 '#19D3F3',
+# 7 '#FF6692',
+# 8 '#B6E880',
+# 9 '#FF97FF',
+# 10 '#FECB52'
 
 import numpy as np
 import datetime
@@ -930,13 +940,29 @@ if __name__ == '__main__':
                                                                                  id='fresnel-fit-options-rangeslider')
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
+                                                    dbc.Row([
+                                                        dbc.Label('Extinction correction', width='auto'),
+                                                        dbc.Col([
+                                                            dash.dcc.Slider(min=0, max=0.1,
+                                                                            step=0.005,
+                                                                            marks={0: '0', 0.01: '0.01',
+                                                                                   0.02: '0.02', 0.03: '0.03',
+                                                                                   0.04: '0.04', 0.05: '0.05',
+                                                                                   0.06: '0.06', 0.07: '0.07',
+                                                                                   0.08: '0.08', 0.09: '0.09',
+                                                                                   0.1: '0.1'},
+                                                                            tooltip={"placement": "top",
+                                                                                     "always_visible": True},
+                                                                            id='fresnel-fit-options-extinctionslider')
+                                                        ])
+                                                    ], style={'margin-bottom': '10px'}),
                                                 ])
                                             )
                                         ), id='fresnel-analysis-options-collapse', is_open=True)
                                 ])
 
 
-                            ])
+                            ], id='fresnel-fit-options-form')
                         ], style={'margin-top': '1.9rem'})
                     ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
@@ -954,7 +980,7 @@ if __name__ == '__main__':
                         ['Summary'],
                         id='summary-tab-content')
                 ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
-            ], id='analysis-tabs', active_tab='plotting-tab'),
+            ], id='analysis-tabs', active_tab='fresnel-tab'),
 
         ], style={'margin-left': '2%', 'margin-right': '2%'})
 
@@ -1202,7 +1228,8 @@ if __name__ == '__main__':
 
             new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
                                                     y=sensorgram_df_selection['TIR angle']-sensorgram_df_selection['TIR angle'].loc[offset_index],
-                                                    name='TIR angle'))
+                                                    name='TIR angle',
+                                                    line_color='#ef553b'))
 
             new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
                                              yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
@@ -1248,53 +1275,111 @@ if __name__ == '__main__':
 
             return figure_object
 
-        # Update the reflectivity plot in the Data plotting tab
-        @dash.callback(
-            dash.Output('fresnel-angular-reflectivity-graph', 'figure'),
-            dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
-            dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
-            dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
-            dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
-            dash.Input('fresnel-fit-options-rangeslider', 'value'),
-            dash.State('fresnel-angular-reflectivity-graph', 'figure')
+    # Update the reflectivity plot in the Fresnel fitting tab
+    @dash.callback(
+        dash.Output('fresnel-angular-reflectivity-graph', 'figure'),
+        dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
+        dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
+        dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
+        dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
+        dash.Input('fresnel-fit-options-rangeslider', 'value'),
+        dash.State('fresnel-angular-reflectivity-graph', 'figure'),
+        dash.State('fresnel-fit-options-rangeslider', 'value'),
+        dash.State('fresnel-fit-options-iniguess', 'value'),
+        dash.State('fresnel-fit-options-lowerbound', 'value'),
+        dash.State('fresnel-fit-options-upperbound', 'value'),
+        dash.State('fresnel-fit-options-extinctionslider', 'value'),
         )
-        def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, rangeslider, figure_JSON):
+    def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, rangeslider_inp,
+                                          figure_JSON, rangeslider_state, ini_guess, lower_bound, upper_bound,
+                                          extinction_correction):
 
-            figure_object = go.Figure(figure_JSON)
+        figure_object = go.Figure(figure_JSON)
 
-            # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
-            if 'fresnel-fit-options-rangeslider' == dash.ctx.triggered_id:
-                    # TODO: update the figure to show lines at the selected ranges
+        if 'fresnel-fit-options-rangeslider' == dash.ctx.triggered_id:
 
-            elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
-                fresnel_figure = None
-                return fresnel_figure
+            # First check if model has been run previously, then include model data before adding angle range lines
+            if figure_object.data.__len__() > 3:
+                new_figure = go.Figure(go.Scatter(x=figure_object.data[0]['x'],
+                                                  y=figure_object.data[0]['y'],
+                                                  mode='lines',
+                                                  showlegend=False,
+                                                  line_color='#636efa'
+                                                  ))
+                new_figure.add_trace(go.Scatter(x=figure_object.data[1]['x'],
+                                                y=figure_object.data[1]['y'],
+                                                mode='lines',
+                                                showlegend=False,
+                                                line_color='#ef553b'
+                                                ))
+            else:
+                new_figure = go.Figure(go.Scatter(x=figure_object.data[0]['x'],
+                                                  y=figure_object.data[0]['y'],
+                                                  mode='lines',
+                                                  showlegend=False,
+                                                  line_color='#636efa'
+                                                  ))
+            # Adding angle range lines
+            new_figure.add_trace(go.Scatter(x=[rangeslider_inp[0], rangeslider_inp[0]],
+                                            y=[min(figure_object.data[0]['y']), max(figure_object.data[0]['y'])],
+                                            mode='lines',
+                                            showlegend=False,
+                                            line_color='black',
+                                            line_dash='dash'
+                                            ))
+            new_figure.add_trace(go.Scatter(x=[rangeslider_inp[1], rangeslider_inp[1]],
+                                            y=[min(figure_object.data[0]['y']), max(figure_object.data[0]['y'])],
+                                            mode='lines',
+                                            showlegend=False,
+                                            line_color='black',
+                                            line_dash='dash'
+                                            ))
+            # Updating layout
+            new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                     yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                     font_family='Balto',
+                                     font_size=19,
+                                     margin_r=25,
+                                     margin_l=60,
+                                     margin_t=40,
+                                     template='simple_white',
+                                     uirevision=True)
+            new_figure.update_xaxes(mirror=True,
+                                    showline=True)
+            new_figure.update_yaxes(mirror=True,
+                                    showline=True)
+            return new_figure
 
-            elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
-                root = tkinter.Tk()
-                root.attributes("-topmost", 1)
-                root.withdraw()
-                save_folder = askdirectory(title='Choose folder', parent=root)
-                root.destroy()
-                plotly.io.write_html(figure_object, save_folder + r'\fresnel_plot.html', include_mathjax='cdn')
+        # TODO: Incorporate fresnel fitting backend functionality into the "Run modelling" button
+        elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
+            fresnel_figure = None
+            return fresnel_figure
 
-            elif 'fresnel-reflectivity-save-svg' == dash.ctx.triggered_id:
-                root = tkinter.Tk()
-                root.attributes("-topmost", 1)
-                root.withdraw()
-                save_folder = askdirectory(title='Choose folder', parent=root)
-                root.destroy()
-                plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.svg', format='svg')
+        elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_html(figure_object, save_folder + r'\fresnel_plot.html', include_mathjax='cdn')
 
-            elif 'fresnel-reflectivity-save-png' == dash.ctx.triggered_id:
-                root = tkinter.Tk()
-                root.attributes("-topmost", 1)
-                root.withdraw()
-                save_folder = askdirectory(title='Choose folder', parent=root)
-                root.destroy()
-                plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.png', format='png')
+        elif 'fresnel-reflectivity-save-svg' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.svg', format='svg')
 
-            return figure_object
+        elif 'fresnel-reflectivity-save-png' == dash.ctx.triggered_id:
+            root = tkinter.Tk()
+            root.attributes("-topmost", 1)
+            root.withdraw()
+            save_folder = askdirectory(title='Choose folder', parent=root)
+            root.destroy()
+            plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.png', format='png')
+
+        return figure_object
 
 
     app.run_server(debug=True, use_reloader=False)
