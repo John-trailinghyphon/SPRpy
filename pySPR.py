@@ -17,13 +17,16 @@
 
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
 #  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
-#  it is better to avoid saving the raw data, unless that is all that was used (simply plotting reflectivity trace for
+#  it is better to avoid saving the raw data, unless that is all that was used (simply quantification reflectivity trace for
 #  instance).
 
 # TODO: For the non-interacting probe method where a previously calculated background is used in the calculations, there
 #  is a need of some way to select a previous analysis. The easiest way is probably to make sure that each analysis is
 #  named something? I imagine that the user selects from a list of names of each analysis (and there should be a default
 #  name that auto-increments with the object ID.
+
+# TODO: Add an analysis section with de Feijter surface coverage analysis. The idea is that one could select different
+#  parts of the response curve and calculate the surface coverage based on provided constants
 
 # Regarding the dash app below
 
@@ -37,7 +40,7 @@
 #     * removing sensor objects and analysis objects from the active session (this can be done by deleting their pickled files)
 #  - Adding new analysis object (starting an analysis DIV)
 #     * Selecting between different available types, which will change the analysis interface DIV and its options
-#     * run calculations, fitting, plotting, selecting values, etc.
+#     * run calculations, fitting, quantification, selecting values, etc.
 #  - Exporting the finished analysis as a HTML file with retained interactivity (omitting control DIV elements). This
 #  can then be added to obsidian notes for instance, allowing straight forward result documentation.
 
@@ -817,16 +820,16 @@ if __name__ == '__main__':
             dash.html.H1(['Analysis options']),
             dbc.Tabs([
 
-                # Data plotting tab
+                # Response quantification tab
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
-                            dash.dcc.Graph(id='plotting-angular-reflectivity-graph',
+                            dash.dcc.Graph(id='quantification-angular-reflectivity-graph',
                                            figure=reflectivity_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
                                 dbc.Button('Add trace',
-                                           id='plotting-reflectivity-add-trace',
+                                           id='quantification-reflectivity-add-trace',
                                            n_clicks=0,
                                            color='warning',
                                            title='Add a trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
@@ -835,14 +838,14 @@ if __name__ == '__main__':
                                     label='Save as...',
                                     color='info',
                                     children=[
-                                        dbc.DropdownMenuItem('.PNG', id='plotting-reflectivity-save-png', n_clicks=0),
-                                        dbc.DropdownMenuItem('.SVG', id='plotting-reflectivity-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='plotting-reflectivity-save-html', n_clicks=0)],
+                                        dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
+                                        dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
+                                        dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0)],
                                     style={'margin-left': '-5px'})
                             ], style={'margin-left': '30%'}),
                         ], style={'width': '35%'}),
                         dash.html.Div([
-                            dash.dcc.Graph(id='plotting-sensorgram-graph',
+                            dash.dcc.Graph(id='quantification-sensorgram-graph',
                                            figure=sensorgram_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
@@ -850,14 +853,14 @@ if __name__ == '__main__':
                                     id='sensorgram-save-dropdown',
                                     label='Save as...',
                                     color='info',
-                                    children=[dbc.DropdownMenuItem('.PNG', id='plotting-sensorgram-save-png', n_clicks=0),
-                                              dbc.DropdownMenuItem('.SVG', id='plotting-sensorgram-save-svg', n_clicks=0),
-                                              dbc.DropdownMenuItem('.HTML', id='plotting-sensorgram-save-html', n_clicks=0)],
+                                    children=[dbc.DropdownMenuItem('.PNG', id='quantification-sensorgram-save-png', n_clicks=0),
+                                              dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
+                                              dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0)],
                                     style={'margin-left': '-5px'}),
                                 ], style={'margin-left': '40%'}),
                         ], style={'width': '60%'})
-                    ], id='plotting-tab-content', style={'display': 'flex', 'justify-content': 'center'})
-                ], label='Data plotting', tab_id='plotting-tab', style={'margin-top': '10px'}),
+                    ], id='quantification-tab-content', style={'display': 'flex', 'justify-content': 'center'})
+                ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
 
                 # Fresnel modelling tab
                 dbc.Tab([
@@ -1120,22 +1123,22 @@ if __name__ == '__main__':
 
         return is_open
 
-    # Update the reflectivity plot in the Data plotting tab
+    # Update the reflectivity plot in the Response quantification tab
     @dash.callback(
-        dash.Output('plotting-angular-reflectivity-graph', 'figure'),
-        dash.Input('plotting-reflectivity-add-trace', 'n_clicks'),
-        dash.Input('plotting-reflectivity-save-png', 'n_clicks'),
-        dash.Input('plotting-reflectivity-save-svg', 'n_clicks'),
-        dash.Input('plotting-reflectivity-save-html', 'n_clicks'),
-        dash.Input('plotting-sensorgram-graph', 'hoverData'),
-        dash.State('plotting-angular-reflectivity-graph', 'figure'),
+        dash.Output('quantification-angular-reflectivity-graph', 'figure'),
+        dash.Input('quantification-reflectivity-add-trace', 'n_clicks'),
+        dash.Input('quantification-reflectivity-save-png', 'n_clicks'),
+        dash.Input('quantification-reflectivity-save-svg', 'n_clicks'),
+        dash.Input('quantification-reflectivity-save-html', 'n_clicks'),
+        dash.Input('quantification-sensorgram-graph', 'hoverData'),
+        dash.State('quantification-angular-reflectivity-graph', 'figure'),
     )
-    def update_reflectivity_plotting_graph(add_trace, save_png, save_svg, save_html, hoverData, figure_JSON):
+    def update_reflectivity_quantification_graph(add_trace, save_png, save_svg, save_html, hoverData, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
 
         # Update based on hover over sensorgram figure
-        if 'plotting-sensorgram-graph' == dash.ctx.triggered_id:
+        if 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
 
             # First make sure no other traces has been added and the very first value is ignored
             if figure_object.data.__len__() == 1:
@@ -1169,7 +1172,7 @@ if __name__ == '__main__':
                 return dash.no_update
 
         # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
-        elif 'plotting-reflectivity-add-trace' == dash.ctx.triggered_id:
+        elif 'quantification-reflectivity-add-trace' == dash.ctx.triggered_id:
 
             _, _, _, _, _, trace_reflectivity_df = load_csv_data()
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
@@ -1177,7 +1180,7 @@ if __name__ == '__main__':
                                                mode='lines',
                                                showlegend=False))
 
-        elif 'plotting-reflectivity-save-html' == dash.ctx.triggered_id:
+        elif 'quantification-reflectivity-save-html' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
@@ -1185,7 +1188,7 @@ if __name__ == '__main__':
             root.destroy()
             plotly.io.write_html(figure_object, save_folder+r'\reflectivity_plot.html', include_mathjax='cdn')
 
-        elif 'plotting-reflectivity-save-svg' == dash.ctx.triggered_id:
+        elif 'quantification-reflectivity-save-svg' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
@@ -1193,7 +1196,7 @@ if __name__ == '__main__':
             root.destroy()
             plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.svg', format='svg')
 
-        elif 'plotting-reflectivity-save-png' == dash.ctx.triggered_id:
+        elif 'quantification-reflectivity-save-png' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
@@ -1203,20 +1206,20 @@ if __name__ == '__main__':
 
         return figure_object
 
-    # Update the sensorgram plot in the Data plotting tab
+    # Update the sensorgram plot in the Response quantification tab
     @dash.callback(
-        dash.Output('plotting-sensorgram-graph', 'figure'),
-        dash.Input('plotting-sensorgram-save-png', 'n_clicks'),
-        dash.Input('plotting-sensorgram-save-svg', 'n_clicks'),
-        dash.Input('plotting-sensorgram-save-html', 'n_clicks'),
-        dash.Input('plotting-sensorgram-graph', 'clickData'),
-        dash.State('plotting-sensorgram-graph', 'figure'),
+        dash.Output('quantification-sensorgram-graph', 'figure'),
+        dash.Input('quantification-sensorgram-save-png', 'n_clicks'),
+        dash.Input('quantification-sensorgram-save-svg', 'n_clicks'),
+        dash.Input('quantification-sensorgram-save-html', 'n_clicks'),
+        dash.Input('quantification-sensorgram-graph', 'clickData'),
+        dash.State('quantification-sensorgram-graph', 'figure'),
         prevent_initial_call=True)  # Adding this fixed a weird bug with graph not updating after firing clickData callbacks
-    def update_sensorgram_plotting_tab(save_png, save_svg, save_html, clickData, figure_JSON):
+    def update_sensorgram_quantification_tab(save_png, save_svg, save_html, clickData, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
 
-        if 'plotting-sensorgram-graph' == dash.ctx.triggered_id:
+        if 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
             global sensorgram_df_selection
 
             offset_index = clickData['points'][0]['pointIndex']
@@ -1245,7 +1248,7 @@ if __name__ == '__main__':
 
             return new_sensorgram_fig
 
-        elif 'plotting-sensorgram-save-html' == dash.ctx.triggered_id:
+        elif 'quantification-sensorgram-save-html' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
@@ -1255,7 +1258,7 @@ if __name__ == '__main__':
 
             return figure_object
 
-        elif 'plotting-sensorgram-save-svg' == dash.ctx.triggered_id:
+        elif 'quantification-sensorgram-save-svg' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
@@ -1265,7 +1268,7 @@ if __name__ == '__main__':
 
             return figure_object
 
-        elif 'plotting-sensorgram-save-png' == dash.ctx.triggered_id:
+        elif 'quantification-sensorgram-save-png' == dash.ctx.triggered_id:
             root = tkinter.Tk()
             root.attributes("-topmost", 1)
             root.withdraw()
