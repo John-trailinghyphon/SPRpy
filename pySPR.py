@@ -14,6 +14,7 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
+# TODO: add session saving and load functionality
 
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
 #  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
@@ -85,11 +86,11 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, name='Initial session', directory=os.getcwd()):
+    def __init__(self, name='Experiments', directory=os.getcwd()):
         self.name = datetime.datetime.now().__str__()[0:16] + ' ' + name
         if not os.path.exists(directory + r'\\pySPR sessions'):
             os.mkdir(directory + r'\\pySPR sessions')
-        self.location = directory + r'\\pySPR sessions'
+        self.location = directory + r'\\pySPR sessions' + r'\\' + self.name
         self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
         self.sensor_ID = generate_id()
         self.analysis_instances = {}
@@ -113,6 +114,13 @@ class Session:
         """
         removed = self.analysis_instances.pop(analysis_object_id)
         print('Removed the following analysis object: ' + str(removed))
+
+    def save_session(self):
+        """
+
+        :return:
+        """
+
 
 
 class Sensor:
@@ -372,9 +380,8 @@ class FittedReflectivityTrace(ModelledReflectivityTrace):
 
     """
 
-    def __init__(self, sensor_object, data_path_, object_id_, ydata_type='R'):
-        super().__init__(sensor_object, data_path_, sensor_object.object_id)  # Initializes the same way as parent objects, to shorten code
-        self.object_id = object_id_
+    def __init__(self, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_, ydata_type='R'):
+        super().__init__(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_)  # Initializes the same way as parent objects, to shorten code
         self.ydata_type = ydata_type
 
     def calculate_fit(self):
@@ -824,7 +831,7 @@ if __name__ == '__main__':
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
-                            dash.dcc.Graph(id='quantification-angular-reflectivity-graph',
+                            dash.dcc.Graph(id='quantification-reflectivity-graph',
                                            figure=reflectivity_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
@@ -866,14 +873,14 @@ if __name__ == '__main__':
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
-                            dash.dcc.Graph(id='fresnel-angular-reflectivity-graph',
+                            dash.dcc.Graph(id='fresnel-reflectivity-graph',
                                            figure=reflectivity_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
                                 dbc.Button('Run modelling',
                                            id='fresnel-reflectivity-run-model',
                                            n_clicks=0,
-                                           color='warning',
+                                           color='danger',
                                            title='Run the fresnel model'),
                                 dbc.DropdownMenu(
                                     id='fresnel-save-dropdown',
@@ -940,7 +947,7 @@ if __name__ == '__main__':
                                                                                  allowCross=False,
                                                                                  tooltip={"placement": "top",
                                                                                           "always_visible": True},
-                                                                                 id='fresnel-fit-options-rangeslider')
+                                                                                 id='fresnel-fit-option-rangeslider')
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
@@ -956,12 +963,12 @@ if __name__ == '__main__':
                                                                                    0.1: '0.1'},
                                                                             tooltip={"placement": "top",
                                                                                      "always_visible": True},
-                                                                            id='fresnel-fit-options-extinctionslider')
+                                                                            id='fresnel-fit-option-extinctionslider')
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
                                                 ])
                                             )
-                                        ), id='fresnel-analysis-options-collapse', is_open=True)
+                                        ), id='fresnel-analysis-option-collapse', is_open=True)
                                 ])
 
 
@@ -971,6 +978,7 @@ if __name__ == '__main__':
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
                 # Non-interacting height probe tab
+                # TODO: Make sure the quality of fit for each d,n pair can be viewed in the hover mode.
                 dbc.Tab([
                     dash.html.Div(
                         ['Non-interacting height probe'],
@@ -1125,13 +1133,13 @@ if __name__ == '__main__':
 
     # Update the reflectivity plot in the Response quantification tab
     @dash.callback(
-        dash.Output('quantification-angular-reflectivity-graph', 'figure'),
+        dash.Output('quantification-reflectivity-graph', 'figure'),
         dash.Input('quantification-reflectivity-add-trace', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-png', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-svg', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-html', 'n_clicks'),
         dash.Input('quantification-sensorgram-graph', 'hoverData'),
-        dash.State('quantification-angular-reflectivity-graph', 'figure'),
+        dash.State('quantification-reflectivity-graph', 'figure'),
     )
     def update_reflectivity_quantification_graph(add_trace, save_png, save_svg, save_html, hoverData, figure_JSON):
 
@@ -1278,20 +1286,38 @@ if __name__ == '__main__':
 
             return figure_object
 
+    # Callback for adding new modelled reflectivity analysis object to the session
+    @dash.callback(
+        dash.Output('fresnel-analysis-dropdown', 'children'),
+        dash.Output('fresnel-analysis-option-collapse', 'is_open'),
+        dash.Input('frsenel-add-analysis-button', 'n_clicks'),
+        dash.State('fresnel-fit-option-rangeslider', 'value'),
+        dash.State('fresnel-fit-option-iniguess', 'value'),
+        dash.State('fresnel-fit-option-lowerbound', 'value'),
+        dash.State('fresnel-fit-option-upperbound', 'value'),
+        dash.State('fresnel-fit-option-extinctionslider', 'value'),
+    )
+    def add_modelled_reflectivity_object_ui(n_clicks, rangeslider_state, ini_guess, lower_bound, upper_bound,
+                                          extinction_correction):
+
+        analysis_options = ''
+        return analysis_options, True
+
+
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
-        dash.Output('fresnel-angular-reflectivity-graph', 'figure'),
+        dash.Output('fresnel-reflectivity-graph', 'figure'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
-        dash.Input('fresnel-fit-options-rangeslider', 'value'),
-        dash.State('fresnel-angular-reflectivity-graph', 'figure'),
-        dash.State('fresnel-fit-options-rangeslider', 'value'),
-        dash.State('fresnel-fit-options-iniguess', 'value'),
-        dash.State('fresnel-fit-options-lowerbound', 'value'),
-        dash.State('fresnel-fit-options-upperbound', 'value'),
-        dash.State('fresnel-fit-options-extinctionslider', 'value'),
+        dash.Input('fresnel-fit-option-rangeslider', 'value'),
+        dash.State('fresnel-reflectivity-graph', 'figure'),
+        dash.State('fresnel-fit-option-rangeslider', 'value'),
+        dash.State('fresnel-fit-option-iniguess', 'value'),
+        dash.State('fresnel-fit-option-lowerbound', 'value'),
+        dash.State('fresnel-fit-option-upperbound', 'value'),
+        dash.State('fresnel-fit-option-extinctionslider', 'value'),
         )
     def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, rangeslider_inp,
                                           figure_JSON, rangeslider_state, ini_guess, lower_bound, upper_bound,
@@ -1299,7 +1325,7 @@ if __name__ == '__main__':
 
         figure_object = go.Figure(figure_JSON)
 
-        if 'fresnel-fit-options-rangeslider' == dash.ctx.triggered_id:
+        if 'fresnel-fit-option-rangeslider' == dash.ctx.triggered_id:
 
             # First check if model has been run previously, then include model data before adding angle range lines
             if figure_object.data.__len__() > 3:
