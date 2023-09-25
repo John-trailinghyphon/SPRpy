@@ -75,7 +75,6 @@ import re
 import pickle
 
 # Configuration parameters
-
 TIR_range_water_or_long_measurement = (60.8, 63)  # TIR range for water --> Automatically used for 50 or more scans per file
 TIR_range_air_or_few_scans = (40.9, 41.8)  # TIR range for dry scans --> Automatically used for less than 50 scans per file
 
@@ -135,6 +134,24 @@ class Session:
         for analysis_name in self.analysis_instances:
             with open(self.location + r'\\Analysis instances' + r'\\{name}.pickle'.format(name=analysis_name), 'wb') as file:
                 pickle.dump(self.analysis_instances[analysis_name], file)
+
+    def save_sensor(self, sensor_id):
+        """
+        Saves a single sensor object to the session.
+        :return: None
+        """
+
+        with open(self.location + r'\\Sensors' +r'\\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as file:
+            pickle.dump(self.sensor_instances[sensor_id], file)
+
+    def save_analysis(self, analysis_name):
+        """
+        Saves a single analysis object to the session.
+        :return: None
+        """
+
+        with open(self.location + r'\\Analysis instances' + r'\\{name}.pickle'.format(name=analysis_name), 'wb') as file:
+            pickle.dump(self.analysis_instances[analysis_name], file)
 
     def import_sensor(self):
         root = tkinter.Tk()
@@ -304,6 +321,8 @@ class ModelledReflectivityTrace:
 
     TODO: Each object should also have a .csv export function.
     TODO: IN dash app, add functionality to update current sensor object with the model object optical parameters
+    TODO: Add button and graph object to dashapp for the calculate_fresnel_trace method
+    TODO: Add attributes for storing calculated fresnel traces as part of results
     """
 
     def __init__(self, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_):
@@ -400,27 +419,19 @@ class ModelledReflectivityTrace:
 
         return self.fit_result, selection_xdata_, fresnel_coefficients
 
-    def export_results(self):
+    def export_fitted_results(self):
         """
         Exporting the result (including parameters) of a particular analysis as a .csv file
         :return:
         """
         pass
 
-
-class FittedReflectivityTrace(ModelledReflectivityTrace):
-
-    """
-
-    """
-
-    def __init__(self, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_, ydata_type='R'):
-        super().__init__(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_)  # Initializes the same way as parent objects, to shorten code
-        self.ydata_type = ydata_type
-
-    def calculate_fit(self):
+    def export_calculated_results(self):
+        """
+        Exporting the calculated fresnel traces (including parameters) of a particular analysis as a .csv file
+        :return:
+        """
         pass
-
 
 class NonInteractingProbe(ModelledReflectivityTrace):
 
@@ -428,8 +439,8 @@ class NonInteractingProbe(ModelledReflectivityTrace):
 
     """
 
-    def __init__(self, sensor_object, data_path_, object_id_, ydata_type='R'):
-        super().__init__(sensor_object, data_path_, sensor_object.object_id)  # Initializes the same way as parent objects, to shorten code
+    def __init__(self, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_, ydata_type='R'):
+        super().__init__(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_)  # Initializes the same way as parent objects, to shorten code
         self.object_id = object_id_
         self.ydata_type = ydata_type
 
@@ -465,32 +476,20 @@ def copy_sensor_backend(session_object, sensor_object):
 
 
 
-def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_):
+def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_):
     """
     Adds analysis objects to a session object.
     :return: an analysis object
     """
 
     id_ = next(session_object.analysis_ID)
-    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, id_)
+    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_)
     session_object.analysis_instances[id_] = analysis_object
 
     return analysis_object
 
 
-def add_fitted_reflectivity_trace(session_object, sensor_object, data_path_, ydata_type='R'):
-    """
-    Adds analysis objects to a session object.
-    :return: an analysis object
-    """
-
-    id_ = next(session_object.analysis_ID)
-    analysis_object = FittedReflectivityTrace(sensor_object, data_path_, id_, ydata_type=ydata_type)
-    session_object.analysis_instances[id_] = analysis_object
-
-    return analysis_object
-
-
+# TODO: It is easier to ask for this before running the dash app instead.
 def load_session(filename):
     """
     Loads a previous session.
@@ -499,23 +498,6 @@ def load_session(filename):
     # TODO: ADD DASH CALLBACK FUNCTIONALITY. It should load a session object and load its dictionaries containing
     #  measurement_instances and analysis_instances.
 
-    pass
-
-
-def save_to_session(session_handle, object_handle):
-    """
-    Save a session to a binary pickle file.
-    :return:
-    """
-    # TODO: Save a measurement or analysis object to a session
-    pass
-
-
-def import_to_session(past_session, current_session, sensor_import_id=None, analysis_import_id=None):
-    """
-
-    :return:
-    """
     pass
 
 
@@ -548,8 +530,8 @@ def load_csv_data(path=False):
             step_length_pattern = re.compile(r'=\d{1,2}')
             scanspeed = int(step_length_pattern.search(file.readline()).group().strip('='))
 
-    except:
-        scanspeed = 5
+    except AttributeError:  # I think .group().strip() should return attribute error if .search() returns None
+        scanspeed = 5  # Assuming medium scanspeed if old spr2_to_csv function was used.
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
@@ -606,20 +588,6 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
     sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles})
 
     return sensorgram_df
-
-# def save_new_measurement(self):
-#     """
-#     Saving a new measurement instance for the session.
-#     :return:
-#     """
-#     pass
-#
-# def overwrite_measurement(self):
-#     """
-#     Overwriting a measurement instance for the session (does not produce a new instance).
-#     :return:
-#     """
-#     pass
 
 
 if __name__ == '__main__':
