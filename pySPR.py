@@ -88,14 +88,14 @@ class Session:
 
     def __init__(self, name='Experiments', directory=os.getcwd()):
         self.name = datetime.datetime.now().__str__()[0:16] + ' ' + name
-        if not os.path.exists(directory + r'\\pySPR sessions'):
-            os.mkdir(directory + r'\\pySPR sessions')
-        self.location = directory + r'\\pySPR sessions' + r'\\' + self.name
+        if not os.path.exists(directory + r'\\Non-interacting probe method sessions'):
+            os.mkdir(directory + r'\\Non-interacting probe method sessions')
+        self.location = directory + r'\\Non-interacting probe method sessions' + r'\\' + self.name
         self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
         self.sensor_ID = generate_id()
         self.analysis_instances = {}
         self.analysis_ID = generate_id()
-        self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
+        self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to Non-interacting probe method!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can load a previous session or import previous results under "File and session controls".'
 
@@ -531,7 +531,7 @@ def load_csv_data(path=False):
             scanspeed = int(step_length_pattern.search(file.readline()).group().strip('='))
 
     except AttributeError:  # I think .group().strip() should return attribute error if .search() returns None
-        scanspeed = 5  # Assuming medium scanspeed if old spr2_to_csv function was used.
+        scanspeed = 5  # Assuming medium
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
@@ -667,7 +667,7 @@ if __name__ == '__main__':
                     ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
                 ),
                 dash.dcc.Markdown('''
-                # **#pySPR#**
+                # **#Non-interacting probe method#**
                 ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
                 dbc.Card(
                     [
