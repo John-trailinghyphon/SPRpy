@@ -72,6 +72,7 @@ import plotly.graph_objects as go
 import scipy
 import fresnel_transfer_matrix as ftm
 import re
+import pickle
 
 # Configuration parameters
 
@@ -117,10 +118,43 @@ class Session:
 
     def save_session(self):
         """
-
-        :return:
+        Saves all objects stored in the session, and the session file itself.
+        :return: None
         """
 
+        # Save session object
+        with open(self.location + r'\\Session_file.pickle', 'wb') as file:
+            pickle.dump(self, file)
+
+        # Save sensor instances
+        for sensor_id in self.sensor_instances:
+            with open(self.location + r'\\Sensors' +r'\\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as file:
+                pickle.dump(self.sensor_instances[sensor_id], file)
+
+        # Save analysis instances
+        for analysis_name in self.analysis_instances:
+            with open(self.location + r'\\Analysis instances' + r'\\{name}.pickle'.format(name=analysis_name), 'wb') as file:
+                pickle.dump(self.analysis_instances[analysis_name], file)
+
+    def import_sensor(self):
+        root = tkinter.Tk()
+        root.attributes("-topmost", 1)
+        root.withdraw()
+        file_path_ = askopenfilename(title='Select the sensor object', filetypes=[('Pickle files', '*.pickle')],
+                                     initialdir=self.location + r'\\Sensors')
+        id_ = next(self.sensor_ID)
+        with open(file_path_, 'rb') as file:
+            self.sensor_instances[id_] = pickle.load(file)
+
+    def import_analysis(self):
+        root = tkinter.Tk()
+        root.attributes("-topmost", 1)
+        root.withdraw()
+        file_path_ = askopenfilename(title='Select the analysis object', filetypes=[('Pickle files', '*.pickle')],
+                                     initialdir=self.location + r'\\Analysis instances')
+        id_ = next(self.analysis_ID)
+        with open(file_path_, 'rb') as file:
+            self.analysis_instances[id_] = pickle.load(file)
 
 
 class Sensor:
