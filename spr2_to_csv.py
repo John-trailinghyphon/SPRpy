@@ -64,7 +64,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
         try:
             spectra_array[row, :] = list(map(float, spectra.split(';')))
         except ValueError:
-            print('Row ', str(row), ': Mismatch in angle range compared to last measurement. This scan will be skipped.')
+            print('Row ', str(row), ': Mismatch in angle range compared to last scan. This scan will be skipped.')
             continue
 
     # Generation of angles and combining with spectra

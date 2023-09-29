@@ -77,7 +77,8 @@ import pickle
 # Configuration parameters
 TIR_range_water_or_long_measurement = (60.8, 63)  # TIR range for water --> Automatically used for 50 or more scans per file
 TIR_range_air_or_few_scans = (40.9, 41.8)  # TIR range for dry scans --> Automatically used for less than 50 scans per file
-
+ask_for_previous_session = True
+default_data_folder = r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR'
 
 class Session:
 
@@ -86,16 +87,17 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, name='Experiments', directory=os.getcwd()):
+    def __init__(self, name='Experiments', directory=os.getcwd(), current_data_path=None):
         self.name = datetime.datetime.now().__str__()[0:16] + ' ' + name
-        if not os.path.exists(directory + r'\\Non-interacting probe method sessions'):
-            os.mkdir(directory + r'\\Non-interacting probe method sessions')
-        self.location = directory + r'\\Non-interacting probe method sessions' + r'\\' + self.name
+        if not os.path.exists(directory + r'\\pySPR'):
+            os.mkdir(directory + r'\\pySPR sessions')
+        self.location = directory + r'\\pySPR sessions' + r'\\' + self.name
         self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
         self.sensor_ID = generate_id()
         self.analysis_instances = {}
+        self.current_data_path = current_data_path_
         self.analysis_ID = generate_id()
-        self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to Non-interacting probe method!' \
+        self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can load a previous session or import previous results under "File and session controls".'
 
@@ -154,22 +156,17 @@ class Session:
             pickle.dump(self.analysis_instances[analysis_name], file)
 
     def import_sensor(self):
-        root = tkinter.Tk()
-        root.attributes("-topmost", 1)
-        root.withdraw()
-        file_path_ = askopenfilename(title='Select the sensor object', filetypes=[('Pickle files', '*.pickle')],
-                                     initialdir=self.location + r'\\Sensors')
+
+        file_path_ = select_file(prompt='Select the sensor object', prompt_folder=self.location + r'\\Sensors')
         id_ = next(self.sensor_ID)
+
         with open(file_path_, 'rb') as file:
             self.sensor_instances[id_] = pickle.load(file)
 
     def import_analysis(self):
-        root = tkinter.Tk()
-        root.attributes("-topmost", 1)
-        root.withdraw()
-        file_path_ = askopenfilename(title='Select the analysis object', filetypes=[('Pickle files', '*.pickle')],
-                                     initialdir=self.location + r'\\Analysis instances')
+        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\\Analysis instances')
         id_ = next(self.analysis_ID)
+
         with open(file_path_, 'rb') as file:
             self.analysis_instances[id_] = pickle.load(file)
 
@@ -495,8 +492,6 @@ def load_session(filename):
     Loads a previous session.
     :return:
     """
-    # TODO: ADD DASH CALLBACK FUNCTIONALITY. It should load a session object and load its dictionaries containing
-    #  measurement_instances and analysis_instances.
 
     pass
 
@@ -511,16 +506,26 @@ def generate_id():
         yield new_id
         new_id += 1
 
+def select_folder(prompt, prompt_folder=None):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_folder = askdirectory(title=prompt, parent=root, initialdir=prompt_folder)
+    root.destroy()
+    return selected_folder
+
+def select_file(prompt, prompt_folder=default_data_folder, file_types=[('Pickle files', '*.pickle')]):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_file = askopenfilename(title=prompt, filetypes=file_types, initialdir=prompt_folder, parent=root)
+    root.destroy()
+    return selected_file
 
 def load_csv_data(path=False):
     if not path:
         print('Select the measurement data file (.csv)')
-        root = tkinter.Tk()
-        root.attributes("-topmost", 1)
-        root.withdraw()
-        data_path_ = askopenfilename(title='Select the measurement data file', filetypes=[('CSV files', '*.csv')],
-                                     initialdir=r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR')
-        root.destroy()
+        data_path_ = select_file(prompt='Select the measurement data file', file_types=[('CSV files', '*.csv')])
     else:
         data_path_ = path
 
@@ -590,29 +595,52 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
     return sensorgram_df
 
 
+
 if __name__ == '__main__':
 
-    # Create initial session
-    current_session = Session()
+    load_session_flag = False
+    if ask_for_previous_session is True:
 
-    # Prompt user for initial measurement data
-    current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
+        session_prompt = input(
+            r'Would you like to load a previous session? Type "y" for yes, or simply skip by pressing enter.')
 
-    # Calculate sensorgram from loaded data (assume air or liquid medium for TIR calculation based on number of scans)
-    if ydata_df.shape[0] > 50:
-        TIR_range = TIR_range_water_or_long_measurement
-    else:
-        TIR_range = TIR_range_air_or_few_scans
+        if session_prompt is ('y' or '"y"'):
 
-    sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+            load_session_flag = True
+            session_file = select_file(prompt=r'Choose a previous session file', prompt_folder=os.getcwd())
 
-    # Offset to start at 0 degrees at 0 minutes
-    sensorgram_df_selection = sensorgram_df
-    sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection['SPR angle'][0]
-    sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - sensorgram_df_selection['TIR angle'][0]
+            with open(session_file, 'wb') as file:
+                current_session = pickle.load(file)
 
-    # Add sensor object based on chosen measurement data
-    current_sensor = add_sensor_backend(current_session, current_data_path)
+
+
+
+    if (ask_for_previous_session or load_session_flag) is False:
+
+        # Prompt user for initial measurement data
+        current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
+
+        # Create initial session
+        current_session = Session(current_data_path=current_data_path)
+
+        # Calculate sensorgram from loaded data (assume air or liquid medium for TIR calculation based on number of scans)
+        if ydata_df.shape[0] > 50:
+            TIR_range = TIR_range_water_or_long_measurement
+        else:
+            TIR_range = TIR_range_air_or_few_scans
+
+        sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+
+        # Offset to start at 0 degrees at 0 minutes
+        sensorgram_df_selection = sensorgram_df
+        sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
+                                               sensorgram_df_selection['SPR angle'][0]
+        sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
+                                               sensorgram_df_selection['TIR angle'][0]
+
+        # Add sensor object based on chosen measurement data
+        current_sensor = add_sensor_backend(current_session, current_data_path)
+
 
     # Dash app
     app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
@@ -667,7 +695,7 @@ if __name__ == '__main__':
                     ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
                 ),
                 dash.dcc.Markdown('''
-                # **#Non-interacting probe method#**
+                # **#pySPR#**
                 ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
                 dbc.Card(
                     [
@@ -1183,7 +1211,6 @@ if __name__ == '__main__':
 
         # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
         elif 'quantification-reflectivity-add-trace' == dash.ctx.triggered_id:
-
             _, _, _, _, _, trace_reflectivity_df = load_csv_data()
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
                                                y=trace_reflectivity_df['ydata'],
@@ -1191,27 +1218,15 @@ if __name__ == '__main__':
                                                showlegend=False))
 
         elif 'quantification-reflectivity-save-html' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_html(figure_object, save_folder+r'\reflectivity_plot.html', include_mathjax='cdn')
 
         elif 'quantification-reflectivity-save-svg' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.svg', format='svg')
 
         elif 'quantification-reflectivity-save-png' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.png', format='png')
 
         return figure_object
@@ -1259,31 +1274,19 @@ if __name__ == '__main__':
             return new_sensorgram_fig
 
         elif 'quantification-sensorgram-save-html' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_html(figure_object, save_folder + r'\reflectivity_plot.html', include_mathjax='cdn')
 
             return figure_object
 
         elif 'quantification-sensorgram-save-svg' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.svg', format='svg')
 
             return figure_object
 
         elif 'quantification-sensorgram-save-png' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.png', format='png')
 
             return figure_object
@@ -1292,7 +1295,7 @@ if __name__ == '__main__':
     @dash.callback(
         dash.Output('fresnel-analysis-dropdown', 'children'),
         dash.Output('fresnel-analysis-option-collapse', 'is_open'),
-        dash.Input('frsenel-add-analysis-button', 'n_clicks'),
+        dash.Input('fresnel-add-analysis-button', 'n_clicks'),
         dash.State('fresnel-fit-option-rangeslider', 'value'),
         dash.State('fresnel-fit-option-iniguess', 'value'),
         dash.State('fresnel-fit-option-lowerbound', 'value'),
@@ -1387,27 +1390,15 @@ if __name__ == '__main__':
             return fresnel_figure
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_html(figure_object, save_folder + r'\fresnel_plot.html', include_mathjax='cdn')
 
         elif 'fresnel-reflectivity-save-svg' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.svg', format='svg')
 
         elif 'fresnel-reflectivity-save-png' == dash.ctx.triggered_id:
-            root = tkinter.Tk()
-            root.attributes("-topmost", 1)
-            root.withdraw()
-            save_folder = askdirectory(title='Choose folder', parent=root)
-            root.destroy()
+            save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.png', format='png')
 
         return figure_object
