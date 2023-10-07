@@ -58,7 +58,7 @@ class Session:
 
         # Save sensor instances
         for sensor_id in self.sensor_instances:
-            with open(self.location + r'\\Sensors' +r'\\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
+            with open(self.location + r'\\Sensors' + r'\\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
                 pickle.dump(self.sensor_instances[sensor_id], save_file)
 
         # Save analysis instances
