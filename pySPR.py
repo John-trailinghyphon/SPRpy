@@ -237,11 +237,6 @@ if __name__ == '__main__':
                            n_clicks=0,
                            color='primary',
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
-                dbc.Button('Load session',  # TODO: It is probably best to prompt for this outside the dash app, if at all.
-                           id='load-session',
-                           n_clicks=0,
-                           color='primary',
-                           title='Load a previous session in its entirety'),
                 dbc.Button('Import result',
                            id='import-from-session',
                            n_clicks=0,
