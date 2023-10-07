@@ -1,0 +1,161 @@
+import numpy as np
+import tkinter
+from tkinter.filedialog import askopenfilename, askdirectory
+import pandas as pd
+import copy
+import re
+from fresnel_transfer_matrix import TIR_determination
+from pySPR_classes import Sensor, ModelledReflectivityTrace
+
+
+def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
+
+    """
+    Adds sensor objects to a session object.
+    :return: a sensor object
+    """
+    id_ = next(session_object.sensor_ID)
+    sensor_object = Sensor(data_path_, id_, sensor_metal=sensor_metal, polarization=polarization)
+    session_object.sensor_instances[id_] = sensor_object
+
+    return sensor_object
+
+
+def copy_sensor_backend(session_object, sensor_object):
+
+    """
+    Copies sensor object to a session object.
+    :return: a sensor object
+    """
+    id_ = next(session_object.sensor_ID)
+    copied_sensor_object = copy.deepcopy(sensor_object)
+    copied_sensor_object.object_id = id_
+    session_object.sensor_instances[id_] = copied_sensor_object
+
+    return copied_sensor_object
+
+
+def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_):
+    """
+    Adds analysis objects to a session object.
+    :return: an analysis object
+    """
+
+    id_ = next(session_object.analysis_ID)
+    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_)
+    session_object.analysis_instances[id_] = analysis_object
+
+    return analysis_object
+
+
+# TODO: It is easier to ask for this before running the dash app instead.
+def load_session(filename):
+    """
+    Loads a previous session.
+    :return:
+    """
+
+    pass
+
+
+def generate_id():
+    """
+    Each time this function is called within an object it can return a new ID.
+    :yield:
+    """
+    new_id = 0
+    while True:
+        yield new_id
+        new_id += 1
+
+
+def select_folder(prompt, prompt_folder=None):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_folder = askdirectory(title=prompt, parent=root, initialdir=prompt_folder)
+    root.destroy()
+    return selected_folder
+
+
+def select_file(prompt, prompt_folder=None, file_types=[('Pickle files', '*.pickle')]):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_file = askopenfilename(title=prompt, filetypes=file_types, initialdir=prompt_folder, parent=root)
+    root.destroy()
+    return selected_file
+
+
+def load_csv_data(path=False):
+    if not path:
+        print('Select the measurement data file (.csv)')
+        data_path_ = select_file(prompt='Select the measurement data file', file_types=[('CSV files', '*.csv')])
+    else:
+        data_path_ = path
+
+    #  Determine the scanning speed/step length if present in the file
+    try:
+        with open(data_path_, 'r') as file:
+            step_length_pattern = re.compile(r'=\d{1,2}')
+            scanspeed = int(step_length_pattern.search(file.readline()).group().strip('='))
+
+    except AttributeError:  # I think .group().strip() should return attribute error if .search() returns None
+        scanspeed = 5  # Assuming medium
+
+    # Load in the measurement data from a .csv file
+    data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
+    time_df = data_frame_.iloc[1:, 0]
+    angles_df = data_frame_.iloc[0, 1:]
+    ydata_df = data_frame_.iloc[1:, 1:]
+
+    # Select last scan as default reflectivity plot
+    reflectivity_df_ = pd.DataFrame(data={'angles': angles_df, 'ydata': ydata_df.iloc[-1, :]})
+
+    return data_path_, scanspeed, time_df, angles_df, ydata_df, reflectivity_df_
+
+
+def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(70, 70)):
+
+    # Convert dataframes to numpy ndarrays
+    time = time.to_numpy()
+    angles = angles.to_numpy()
+    ydata = ydata.to_numpy()
+
+    # Calculating SPR and TIR angles
+    sensorgram_SPR_angles = np.empty(len(ydata)) * np.nan
+    sensorgram_TIR_angles = np.empty(len(ydata)) * np.nan
+    for ind, val in enumerate(time):
+        reflectivity_spectrum = ydata[ind-1, :]
+        min_index = np.argmin(reflectivity_spectrum)
+
+        # SPR angles
+        try:
+            y_selection = reflectivity_spectrum[min_index-SPR_points[0]:min_index+SPR_points[1]]
+
+            polynomial = np.polyfit(angles[min_index - SPR_points[0]:min_index + SPR_points[1]],
+                                    y_selection, 3)
+            x_selection = np.linspace(angles[min_index - SPR_points[0]],
+                                      angles[min_index + SPR_points[1]], 4000)
+            y_polyfit = np.polyval(polynomial, x_selection)
+            y_fit_min_ind = np.argmin(y_polyfit)
+
+            sensorgram_SPR_angles[ind-1] = x_selection[y_fit_min_ind]
+
+        except:
+            print('No SPR minimum found. Skipping measurement point...')
+            sensorgram_SPR_angles[ind-1] = np.NaN
+
+        # TIR angles
+        try:
+            TIR_theta, _, _ = TIR_determination(angles, reflectivity_spectrum, TIR_range, scanspeed)
+            sensorgram_TIR_angles[ind-1] = TIR_theta
+
+        except:
+            print('No TIR found. Skipping measurement point...')
+            sensorgram_TIR_angles[ind-1] = np.NaN
+
+    sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles})
+
+    return sensorgram_df
+
