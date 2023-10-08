@@ -62,14 +62,13 @@ import dash_bootstrap_components as dbc
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-from pySPR_functions import select_folder, calculate_sensorgram, add_sensor_backend, copy_sensor_backend
 from pySPR_classes import *
 
 # Configuration parameters
 TIR_range_water_or_long_measurement = (60.8, 63)  # TIR range for water --> Automatically used for 50 or more scans per file
 TIR_range_air_or_few_scans = (40.9, 41.8)  # TIR range for dry scans --> Automatically used for less than 50 scans per file
 ask_for_previous_session = True
-default_data_folder = r'C:\\Users\\anjohn\\OneDrive - Chalmers\\Dahlin group\\Data\\SPR'
+default_data_folder = r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR'
 dash_app_theme = dbc.themes.SPACELAB
 
 if __name__ == '__main__':
@@ -77,16 +76,23 @@ if __name__ == '__main__':
     load_session_flag = False
     if ask_for_previous_session is True:
 
-        session_prompt = input(
-            r'Would you like to load a previous session? Type "y" for yes, or simply skip by pressing enter.')
+        session_prompt = str(input(
+            r'Would you like to load a previous session? Type "y" for yes, or simply skip by pressing enter.'))
 
-        if session_prompt is ('y' or '"y"'):
+        if session_prompt == 'y' or session_prompt == '"y"' or session_prompt == '\'y\'':
 
             load_session_flag = True
             session_file = select_file(prompt=r'Choose a previous session file', prompt_folder=os.getcwd())
 
-            with open(session_file, 'wb') as file:
+            with open(session_file, 'rb') as file:
                 current_session = pickle.load(file)
+
+            # Make sure the location of the session file is updated
+            current_session.location = os.path.dirname(session_file)
+            if not os.path.exists(current_session.location + r'\Sensors'):
+                os.mkdir(current_session.location + r'\Sensors')
+            if not os.path.exists(current_session.location + r'\Analysis instances'):
+                os.mkdir(current_session.location + r'\Analysis instances')
 
             # Load measurement data
             current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(
@@ -106,8 +112,15 @@ if __name__ == '__main__':
                                                    sensorgram_df_selection['SPR angle'][0]
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
                                                    sensorgram_df_selection['TIR angle'][0]
+
+            # Set current sensor to be the latest one of the session
+            current_sensor = current_session.sensor_instances[current_session.sensor_ID_count]
+
+            # Add note to log
+            current_session.log = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Reopened session'
+
     # If no previous session data was loaded
-    if (ask_for_previous_session or load_session_flag) is False:
+    if (ask_for_previous_session is False) or (load_session_flag is False):
 
         # Prompt user for initial measurement data
         current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
@@ -120,6 +133,7 @@ if __name__ == '__main__':
             TIR_range = TIR_range_water_or_long_measurement
         else:
             TIR_range = TIR_range_air_or_few_scans
+
         sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
         # Offset to start at 0 degrees at 0 minutes
@@ -131,6 +145,8 @@ if __name__ == '__main__':
 
         # Add sensor object based on chosen measurement data
         current_sensor = add_sensor_backend(current_session, current_data_path)
+        current_session.save_session()
+        current_session.save_sensor(current_sensor.object_id)
 
     # Dash app
     app = dash.Dash(external_stylesheets=[dash_app_theme])
@@ -260,7 +276,7 @@ if __name__ == '__main__':
                     label='Sensors',
                     color='primary',
                     children=[
-                        dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor', 'index': sensor_id},
+                        dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor-list', 'index': sensor_id},
                                              n_clicks=0) for sensor_id in current_session.sensor_instances], style={'margin-left': '-5px'})
             ])
         ], style={'margin-bottom': '20px', 'display': 'flex', 'justify-content': 'center'}),
@@ -516,12 +532,16 @@ if __name__ == '__main__':
     @dash.callback(
         dash.Output('console', 'value'),
         dash.Input('submit-button', 'n_clicks'),
-        dash.State('console', 'value'),
-        dash.State('test-input', 'value')
-    )
-    def update_session_log(input1, state1, state2):
-        new_message = state1 + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state2
+        dash.State('test-input', 'value'),
+        prevent_initial_call=True)
+    def update_session_log(input1, state2):
+
+        global current_session
+
+        new_message = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state2
         current_session.log = new_message
+        current_session.save_session()
+
         return new_message
 
     # Adding new sensor
@@ -532,7 +552,7 @@ if __name__ == '__main__':
         dash.Input('new-sensor-palladium', 'n_clicks'),
         dash.Input('new-sensor-platinum', 'n_clicks'),
         dash.Input('copy-sensor', 'n_clicks'),
-    )
+        prevent_initial_call=True)
     def add_sensor_UI(input1, input2, input3, input4, copy):
         """
         Dictates what happens when creating a new sensor under the "Add new sensor" dropdown menu.
@@ -549,16 +569,25 @@ if __name__ == '__main__':
         global current_data_path
 
         if 'new-sensor-gold' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
-        elif 'new-sensor-glass' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
-        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
-        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-            add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
-        elif 'copy-sensor' == dash.ctx.triggered_id:
-            copy_sensor_backend(current_session, current_sensor)
+            new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
 
+        elif 'new-sensor-glass' == dash.ctx.triggered_id:
+            new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
+
+        elif 'new-sensor-palladium' == dash.ctx.triggered_id:
+            new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
+
+        elif 'new-sensor-platinum' == dash.ctx.triggered_id:
+            new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
+
+        elif 'copy-sensor' == dash.ctx.triggered_id:
+            new_sensor = copy_sensor_backend(current_session, current_sensor)
+
+        else:
+            new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
+
+        current_session.save_sensor(new_sensor.object_id)
+        current_session.save_session()
         sensor_options = [dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor-list', 'index': sensor_id},
                                                n_clicks=0) for sensor_id in current_session.sensor_instances]
 
@@ -592,15 +621,20 @@ if __name__ == '__main__':
         """
 
         global current_sensor
+        global current_session
 
         if 'table-update-values' == dash.ctx.triggered_id:
 
-            # Update background sensor object with new row
+            # Update background sensor object
             current_sensor.optical_parameters = pd.DataFrame.from_records(table_rows)
             current_sensor.layer_thicknesses = current_sensor.optical_parameters['d [nm]'].to_numpy()
             current_sensor.refractive_indices = current_sensor.optical_parameters['n'].to_numpy()
             current_sensor.extinction_coefficients = current_sensor.optical_parameters['k'].to_numpy()
             current_sensor.fitted_var = current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index]
+
+            # Save new sensor to session and Sensor folder
+            current_session.save_session()
+            current_session.save_sensor(current_sensor.object_id)
 
             return table_rows, dash.no_update
 
@@ -618,6 +652,10 @@ if __name__ == '__main__':
                 channel=current_sensor.channel,
                 fitted_layer=current_sensor.optical_parameters.iloc[active_cell['row'], 0],
                 fitted_param=current_sensor.optical_parameters.columns[active_cell['column']])
+
+            # Save new sensor to session and Sensor folder
+            current_session.save_session()
+            current_session.save_sensor(current_sensor.object_id)
 
             return dash.no_update, sensor_table_title
 
