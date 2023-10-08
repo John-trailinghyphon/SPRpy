@@ -283,6 +283,7 @@ class ModelledReflectivityTrace:
     TODO: IN dash app, add functionality to update current sensor object with the model object optical parameters
     TODO: Add button and graph object to dashapp for the calculate_fresnel_trace method
     TODO: Add attributes for storing calculated fresnel traces as part of results
+    TODO: how to handle analysis object names (I could make a modal with input for a name for the new analysis object?, Or just have some default unique name, but it can be renamed by the user)
     """
 
     def __init__(self, sensor_object_, data_path_, TIR_range_, angle_range_, scanspeed_, name_):
