@@ -2,71 +2,19 @@ import numpy as np
 import tkinter
 from tkinter.filedialog import askopenfilename, askdirectory
 import pandas as pd
-import copy
 import re
 from fresnel_transfer_matrix import TIR_determination
-from pySPR_classes import Sensor, ModelledReflectivityTrace
 
 
-def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
-
-    """
-    Adds sensor objects to a session object.
-    :return: a sensor object
-    """
-    id_ = next(session_object.sensor_ID)
-    sensor_object = Sensor(data_path_, id_, sensor_metal=sensor_metal, polarization=polarization)
-    session_object.sensor_instances[id_] = sensor_object
-
-    return sensor_object
-
-
-def copy_sensor_backend(session_object, sensor_object):
-
-    """
-    Copies sensor object to a session object.
-    :return: a sensor object
-    """
-    id_ = next(session_object.sensor_ID)
-    copied_sensor_object = copy.deepcopy(sensor_object)
-    copied_sensor_object.object_id = id_
-    session_object.sensor_instances[id_] = copied_sensor_object
-
-    return copied_sensor_object
-
-
-def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_):
-    """
-    Adds analysis objects to a session object.
-    :return: an analysis object
-    """
-
-    id_ = next(session_object.analysis_ID)
-    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_)
-    session_object.analysis_instances[id_] = analysis_object
-
-    return analysis_object
-
-
-# TODO: It is easier to ask for this before running the dash app instead.
-def load_session(filename):
-    """
-    Loads a previous session.
-    :return:
-    """
-
-    pass
-
-
-def generate_id():
-    """
-    Each time this function is called within an object it can return a new ID.
-    :yield:
-    """
-    new_id = 0
-    while True:
-        yield new_id
-        new_id += 1
+# def generate_id():
+#     """
+#     Each time this function is called within an object it can return a new ID.
+#     :yield:
+#     """
+#     new_id = 0
+#     while True:
+#         yield new_id
+#         new_id += 1
 
 
 def select_folder(prompt, prompt_folder=None):

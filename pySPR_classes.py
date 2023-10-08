@@ -1,12 +1,10 @@
-import numpy as np
 import datetime
 import os
-import pandas as pd
 import scipy
 import pickle
-from fresnel_transfer_matrix import fresnel_calculation, TIR_determination
-
-from pySPR_functions import generate_id, select_file, load_csv_data
+import copy
+from pySPR_functions import *
+from fresnel_transfer_matrix import fresnel_calculation
 
 
 class Session:
@@ -17,15 +15,21 @@ class Session:
     """
 
     def __init__(self, name='Experiments', directory=os.getcwd(), current_data_path=None):
-        self.name = datetime.datetime.now().__str__()[0:16] + ' ' + name
-        if not os.path.exists(directory + r'\\pySPR'):
-            os.mkdir(directory + r'\\pySPR sessions')
-        self.location = directory + r'\\pySPR sessions' + r'\\' + self.name
+        self.name = datetime.datetime.now().__str__()[0:16].replace(':', '_') + ' ' + name
+        if not os.path.exists(directory + r'\pySPR sessions'):
+            os.mkdir(directory + r'\pySPR sessions')
+        self.location = directory + r'\pySPR sessions' + r'\{name_}'.format(name_=self.name)
+        if not os.path.exists(self.location):
+            os.mkdir(self.location)
+        if not os.path.exists(self.location + r'\Sensors'):
+            os.mkdir(self.location + r'\Sensors')
+        if not os.path.exists(self.location + r'\Analysis instances'):
+            os.mkdir(self.location + r'\Analysis instances')
         self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
-        self.sensor_ID = generate_id()
+        self.sensor_ID_count = 0
         self.analysis_instances = {}
+        self.analysis_ID_count = 0
         self.current_data_path = current_data_path
-        self.analysis_ID = generate_id()
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can load a previous session or import previous results under "File and session controls".'
@@ -38,6 +42,8 @@ class Session:
         removed = self.sensor_instances.pop(sensor_object_id)
         print('Removed the following sensor object: ' + str(removed))
 
+        return
+
     def remove_analysis(self, analysis_object_id):
         """
         Remove an analysis object from the session.
@@ -46,25 +52,37 @@ class Session:
         removed = self.analysis_instances.pop(analysis_object_id)
         print('Removed the following analysis object: ' + str(removed))
 
-    def save_session(self):
+        return
+
+    def save_all(self):
         """
         Saves all objects stored in the session, and the session file itself.
         :return: None
         """
 
         # Save session object
-        with open(self.location + r'\\Session_file.pickle', 'wb') as save_file:
+        with open(self.location + r'\Session_file.pickle', 'wb') as save_file:
             pickle.dump(self, save_file)
 
         # Save sensor instances
         for sensor_id in self.sensor_instances:
-            with open(self.location + r'\\Sensors' + r'\\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
+            with open(self.location + r'\Sensors' + r'\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
                 pickle.dump(self.sensor_instances[sensor_id], save_file)
 
         # Save analysis instances
         for analysis_name in self.analysis_instances:
-            with open(self.location + r'\\Analysis instances' + r'\\{name}.pickle'.format(name=analysis_name), 'wb') as save_file:
+            with open(self.location + r'\Analysis instances' + r'\{name}.pickle'.format(name=analysis_name), 'wb') as save_file:
                 pickle.dump(self.analysis_instances[analysis_name], save_file)
+
+        return
+
+    def save_session(self):
+
+        # Save session object
+        with open(self.location + r'\Session_file.pickle', 'wb') as save_file:
+            pickle.dump(self, save_file)
+
+        return
 
     def save_sensor(self, sensor_id):
         """
@@ -72,8 +90,10 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\\Sensors' +r'\\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
+        with open(self.location + r'\Sensors' + r'\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
             pickle.dump(self.sensor_instances[sensor_id], save_file)
+
+        return
 
     def save_analysis(self, analysis_name):
         """
@@ -81,23 +101,35 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\\Analysis instances' + r'\\{name}.pickle'.format(name=analysis_name), 'wb') as save_file:
+        with open(self.location + r'\Analysis instances' + r'\{name}.pickle'.format(name=analysis_name), 'wb') as save_file:
             pickle.dump(self.analysis_instances[analysis_name], save_file)
+
+        return
 
     def import_sensor(self):
 
-        file_path_ = select_file(prompt='Select the sensor object', prompt_folder=self.location + r'\\Sensors')
-        id_ = next(self.sensor_ID)
+        file_path_ = select_file(prompt='Select the sensor object', prompt_folder=self.location + r'\Sensors')
+        self.sensor_ID_count += 1
 
         with open(file_path_, 'rb') as import_file:
-            self.sensor_instances[id_] = pickle.load(import_file)
+            sensor_object = pickle.load(import_file)
+
+        sensor_object.object_id = self.sensor_ID_count
+        self.sensor_instances[self.sensor_ID_count] = sensor_object
+
+        return
 
     def import_analysis(self):
-        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\\Analysis instances')
-        id_ = next(self.analysis_ID)
+        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\Analysis instances')
+        self.analysis_ID_count += 1
 
         with open(file_path_, 'rb') as import_file:
-            self.analysis_instances[id_] = pickle.load(import_file)
+            analysis_object = pickle.load(import_file)
+
+        analysis_object.object_id = self.analysis_ID_count
+        self.analysis_instances[analysis_object.object_id] = analysis_object
+
+        return
 
 
 class Sensor:
@@ -205,39 +237,41 @@ class Sensor:
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
                                                              'k': self.extinction_coefficients})
+        return
 
-    def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
-        """
-        Add additional layers on top of the sensor (before bulk medium). not used by dash app
-        :return:
-        """
-        # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
-        self.layer_thicknesses = np.insert(self.layer_thicknesses, layer_index_, thickness)
-        self.refractive_indices = np.insert(self.refractive_indices, layer_index_, n_re)
-        self.extinction_coefficients = np.insert(self.extinction_coefficients, layer_index_, n_im)
-        self.fitted_layer = 'h_surf'
-        print('Sensor thicknesses: ', self.layer_thicknesses)
-        print('Sensor refractive indices: ', self.refractive_indices)
-        print('Sensor extinction coefficients: ', self.extinction_coefficients)
-
-    def remove_material_layer(self, layer_index_):
-
-        """
-        Removes a layer from a sensor. (Not used by dash app UI.)
-
-        :param layer_index_: int, which layer to remove (starting from 1)
-        :return:
-        """
-
-        self.layer_thicknesses = np.delete(self.layer_thicknesses, layer_index_-1, axis=0)
-        if len(self.layer_thicknesses) == 4:
-            self.fitted_layer = 'n_im_metal'
-        self.refractive_indices = np.delete(self.refractive_indices, layer_index_-1, axis=0)
-        self.extinction_coefficients = np.delete(self.extinction_coefficients, layer_index_-1, axis=0)
-
-        print('Sensor thicknesses: ', self.layer_thicknesses)
-        print('Sensor refractive indices: ', self.refractive_indices)
-        print('Sensor extinction coefficients: ', self.extinction_coefficients)
+    # TODO: These functions are not necessary
+    # def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
+    #     """
+    #     Add additional layers on top of the sensor (before bulk medium). not used by dash app
+    #     :return:
+    #     """
+    #     # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
+    #     self.layer_thicknesses = np.insert(self.layer_thicknesses, layer_index_, thickness)
+    #     self.refractive_indices = np.insert(self.refractive_indices, layer_index_, n_re)
+    #     self.extinction_coefficients = np.insert(self.extinction_coefficients, layer_index_, n_im)
+    #     self.fitted_layer = 'h_surf'
+    #     print('Sensor thicknesses: ', self.layer_thicknesses)
+    #     print('Sensor refractive indices: ', self.refractive_indices)
+    #     print('Sensor extinction coefficients: ', self.extinction_coefficients)
+    #
+    # def remove_material_layer(self, layer_index_):
+    #
+    #     """
+    #     Removes a layer from a sensor. (Not used by dash app UI.)
+    #
+    #     :param layer_index_: int, which layer to remove (starting from 1)
+    #     :return:
+    #     """
+    #
+    #     self.layer_thicknesses = np.delete(self.layer_thicknesses, layer_index_-1, axis=0)
+    #     if len(self.layer_thicknesses) == 4:
+    #         self.fitted_layer = 'n_im_metal'
+    #     self.refractive_indices = np.delete(self.refractive_indices, layer_index_-1, axis=0)
+    #     self.extinction_coefficients = np.delete(self.extinction_coefficients, layer_index_-1, axis=0)
+    #
+    #     print('Sensor thicknesses: ', self.layer_thicknesses)
+    #     print('Sensor refractive indices: ', self.refractive_indices)
+    #     print('Sensor extinction coefficients: ', self.extinction_coefficients)
 
 
 class ModelledReflectivityTrace:
@@ -251,18 +285,9 @@ class ModelledReflectivityTrace:
     TODO: Add attributes for storing calculated fresnel traces as part of results
     """
 
-    def __init__(self, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_):
-        self.object_id = object_id_
-        self.sensor_id = sensor_object.object_id
-        self.polarization = sensor_object.polarization
-        self.data_type = sensor_object.data_type
-        self.wavelength = sensor_object.wavelength
-        self.layer_thicknesses = sensor_object.layer_thicknesses
-        self.fitted_var = sensor_object.fitted_var
-        self.fitted_layer_index = sensor_object.fitted_layer_index
-        self.refractive_indices = sensor_object.refractive_indices
-        self.optical_parameters = sensor_object.optical_parameters
-        self.extinction_coefficients = sensor_object.extinction_coefficients
+    def __init__(self, sensor_object_, data_path_, TIR_range_, angle_range_, scanspeed_, name_):
+        self.name = name_
+        self.sensor_object = sensor_object_  # TODO: Check if this updates the sensor object and if an output callback can update the sensor data table with the result
         self.data_path = data_path_
         self.fit_result = None
         self.y_offset = 0
@@ -274,17 +299,17 @@ class ModelledReflectivityTrace:
 
         fresnel_coefficients_ = fresnel_calculation(None,
                                                     angles=angles_,
-                                                    fitted_layer_index=self.fitted_layer_index,
-                                                    wavelength=self.wavelength,
-                                                    layer_thicknesses=self.layer_thicknesses,
-                                                    n_re=self.refractive_indices,
-                                                    n_im=self.extinction_coefficients,
+                                                    fitted_layer_index=self.sensor_object.fitted_layer_index,
+                                                    wavelength=self.sensor_object.wavelength,
+                                                    layer_thicknesses=self.sensor_object.layer_thicknesses,
+                                                    n_re=self.sensor_object.refractive_indices,
+                                                    n_im=self.sensor_object.extinction_coefficients,
                                                     ydata=None,
-                                                    ydata_type=self.data_type,
-                                                    polarization=self.polarization)
+                                                    ydata_type=self.sensor_object.data_type,
+                                                    polarization=self.sensor_object.polarization)
         return fresnel_coefficients_
 
-    def model_reflectivity_trace(self, ini_guess, bounds):
+    def model_reflectivity_trace(self, current_data_path, reflectivity_df, ini_guess, bounds):
         """
 
         :param ini_guess:
@@ -294,11 +319,8 @@ class ModelledReflectivityTrace:
         :return:
         """
 
-        global current_data_path
-
         # Check if current data path matches data_path when object was first initialized, otherwise load previous data
         if current_data_path == self.data_path:
-            global reflectivity_df
             xdata_ = reflectivity_df['angles']
             ydata_ = reflectivity_df['ydata']
 
@@ -309,7 +331,7 @@ class ModelledReflectivityTrace:
 
         # Calculate TIR angle and bulk refractive index
         TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(xdata_, ydata_, self.TIR_range, self.scanspeed)
-        self.refractive_indices[-1] = self.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)  # TODO: Currently, the sensor bulk RI in optical parameters do not update according to the TIR angle
+        self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)  # TODO: Currently, the sensor bulk RI in optical parameters do not update according to the TIR angle, or?
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
@@ -319,30 +341,29 @@ class ModelledReflectivityTrace:
         result = scipy.optimize.least_squares(fresnel_calculation,
                                               ini_guess,
                                               bounds=bounds,
-                                              kwargs={'fitted_layer_index': self.fitted_layer_index,
-                                                      'wavelength': self.wavelength,
-                                                      'layer_thicknesses': self.layer_thicknesses,
-                                                      'n_re': self.refractive_indices,
-                                                      'n_im': self.extinction_coefficients,
+                                              kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
+                                                      'wavelength': self.sensor_object.wavelength,
+                                                      'layer_thicknesses': self.sensor_object.layer_thicknesses,
+                                                      'n_re': self.sensor_object.refractive_indices,
+                                                      'n_im': self.sensor_object.extinction_coefficients,
                                                       'angles': selection_xdata_,
                                                       'ydata': selection_ydata_,
-                                                      'ydata_type': self.data_type,
-                                                      'polarization': self.polarization}
+                                                      'ydata_type': self.sensor_object.data_type,
+                                                      'polarization': self.sensor_object.polarization}
                                               )
         # Collect the results from least_squares object and calculate corresponding fresnel coefficients
         self.fit_result = result['x']
         fresnel_coefficients = fresnel_calculation(self.fit_result,
-                                                   fitted_layer_index=self.fitted_layer_index,
+                                                   fitted_layer_index=self.sensor_object.fitted_layer_index,
                                                    angles=selection_xdata_,
-                                                   wavelength=self.wavelength,
-                                                   layer_thicknesses=self.layer_thicknesses,
-                                                   n_re=self.refractive_indices,
-                                                   n_im=self.extinction_coefficients,
+                                                   wavelength=self.sensor_object.wavelength,
+                                                   layer_thicknesses=self.sensor_object.layer_thicknesses,
+                                                   n_re=self.sensor_object.refractive_indices,
+                                                   n_im=self.sensor_object.extinction_coefficients,
                                                    ydata=None,
                                                    ydata_type='R',
                                                    polarization=1
                                                    )
-
 
         return self.fit_result, selection_xdata_, fresnel_coefficients
 
@@ -372,5 +393,45 @@ class NonInteractingProbe(ModelledReflectivityTrace):
         self.object_id = object_id_
         self.ydata_type = ydata_type
 
+    # TODO: The methods running calculations here need to use background callbacks (https://dash.plotly.com/background-callbacks)
     def calculate_fit(self):
         pass
+
+
+def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
+
+    """
+    Adds sensor objects to a session object.
+    :return: a sensor object
+    """
+    session_object.sensor_ID_count += 1
+    sensor_object = Sensor(data_path_, session_object.sensor_ID_count, sensor_metal=sensor_metal, polarization=polarization)
+    session_object.sensor_instances[session_object.sensor_ID_count] = sensor_object
+
+    return sensor_object
+
+
+def copy_sensor_backend(session_object, sensor_object):
+
+    """
+    Copies sensor object to a session object.
+    :return: a sensor object
+    """
+    session_object.sensor_ID_count += 1
+    copied_sensor_object = copy.deepcopy(sensor_object)
+    copied_sensor_object.object_id = session_object.sensor_ID_count
+    session_object.sensor_instances[session_object.sensor_ID_count] = copied_sensor_object
+
+    return copied_sensor_object
+
+
+def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_name_):
+    """
+    Adds analysis objects to a session object.
+    :return: an analysis object
+    """
+
+    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_name_)
+    session_object.analysis_instances[object_name_] = analysis_object
+
+    return analysis_object
