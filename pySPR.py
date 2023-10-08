@@ -815,6 +815,7 @@ if __name__ == '__main__':
             return figure_object
 
     # Callback for adding new modelled reflectivity analysis object to the session
+    # TODO: How to add analysis name? As input in a modal popup, with a generated default name?
     @dash.callback(
         dash.Output('fresnel-analysis-dropdown', 'children'),
         dash.Output('fresnel-analysis-option-collapse', 'is_open'),
@@ -827,6 +828,8 @@ if __name__ == '__main__':
     )
     def add_modelled_reflectivity_object_ui(n_clicks, rangeslider_state, ini_guess, lower_bound, upper_bound,
                                           extinction_correction):
+
+        # TODO: Here goes code that will add the object in the backend and the default values for analysis options are used.
 
         analysis_options = ''
         return analysis_options, True
