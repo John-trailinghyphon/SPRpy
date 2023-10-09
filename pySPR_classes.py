@@ -66,13 +66,13 @@ class Session:
 
         # Save sensor instances
         for sensor_id in self.sensor_instances:
-            with open(self.location + r'\Sensors' + r'\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
+            with open(self.location + r'\Sensors' + r'\S{id}_{name}.pickle'.format(id=sensor_id, name=self.sensor_instances[sensor_id].name), 'wb') as save_file:
                 pickle.dump(self.sensor_instances[sensor_id], save_file)
 
         # Save analysis instances
-        for analysis_name in self.analysis_instances:
-            with open(self.location + r'\Analysis instances' + r'\{name}.pickle'.format(name=analysis_name), 'wb') as save_file:
-                pickle.dump(self.analysis_instances[analysis_name], save_file)
+        for analysis_id in self.analysis_instances:
+            with open(self.location + r'\Analysis instances' + r'\A{id}_{name}.pickle'.format(id=analysis_id, name=self.analysis_instances[analysis_id].name), 'wb') as save_file:
+                pickle.dump(self.analysis_instances[analysis_id], save_file)
 
         return
 
@@ -90,19 +90,20 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\Sensors' + r'\Sensor_{id}.pickle'.format(id=sensor_id), 'wb') as save_file:
+        with open(self.location + r'\Sensors' + r'\S{id}_{name}.pickle'.format(id=sensor_id, name=self.sensor_instances[
+            sensor_id].name), 'wb') as save_file:
             pickle.dump(self.sensor_instances[sensor_id], save_file)
 
         return
 
-    def save_analysis(self, analysis_name):
+    def save_analysis(self, analysis_id):
         """
         Saves a single analysis object to the session.
         :return: None
         """
 
-        with open(self.location + r'\Analysis instances' + r'\{name}.pickle'.format(name=analysis_name), 'wb') as save_file:
-            pickle.dump(self.analysis_instances[analysis_name], save_file)
+        with open(self.location + r'\Analysis instances' + r'\A{id}_{name}.pickle'.format(id=analysis_id, name=self.analysis_instances[analysis_id].name), 'wb') as save_file:
+            pickle.dump(self.analysis_instances[analysis_id], save_file)
 
         return
 
@@ -141,7 +142,7 @@ class Sensor:
     layers and their optical properties.
     """
 
-    def __init__(self, data_path_, object_id_, sensor_metal='Au', data_type='R', polarization=1):
+    def __init__(self, data_path_, object_id_, object_name_='Gold sensor', sensor_metal='Au', data_type='R', polarization=1):
         """
         :param data_path_: string
         :param sensor_metal: string, see options in method "set_default_optical_properties"
@@ -149,6 +150,7 @@ class Sensor:
         """
         # Load sensor's default optical properties
         self.object_id = object_id_
+        self.name = object_name_
         self.data_path = data_path_
         self.polarization = polarization
         self.data_type = data_type

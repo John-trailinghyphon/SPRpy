@@ -14,8 +14,6 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
-# TODO: add session saving and load functionality
-
 # TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
 #  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
 #  it is better to avoid saving the raw data, unless that is all that was used (simply quantification reflectivity trace for
@@ -32,13 +30,9 @@
 # Regarding the dash app below
 
 # TODO: "Main control DIV". Need buttons for controlling a lot of things:
-#  - Which measurement file to load data from (.csv)
 #  - Choosing analysis method (default should be fitting reflectivity traces, like background)
 #  - Session control (this should be done lasts, as it requires to figure out how to reinitiate the whole Dash interface with new values)
-#     * loading previous session ("Continue from previous session")
-#     * importing sensor and analysis objects from previous session (like background)
-#     * saving session automatically
-#     * removing sensor objects and analysis objects from the active session (this can be done by deleting their pickled files)
+#     * removing sensor objects and analysis objects from the active session
 #  - Adding new analysis object (starting an analysis DIV)
 #     * Selecting between different available types, which will change the analysis interface DIV and its options
 #     * run calculations, fitting, quantification, selecting values, etc.
@@ -276,7 +270,7 @@ if __name__ == '__main__':
                     label='Sensors',
                     color='primary',
                     children=[
-                        dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor-list', 'index': sensor_id},
+                        dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, id={'type': 'sensor-list', 'index': sensor_id},
                                              n_clicks=0) for sensor_id in current_session.sensor_instances], style={'margin-left': '-5px'})
             ])
         ], style={'margin-bottom': '20px', 'display': 'flex', 'justify-content': 'center'}),
@@ -284,8 +278,9 @@ if __name__ == '__main__':
         # Sensor datatable
         dash.html.Div([
             dash.html.Div([
-                dash.html.H4(['Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                dash.html.H4(['S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                     sensor_number=current_sensor.object_id,
+                    sensor_name=current_sensor.name,
                     channel=current_sensor.channel,
                     fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                     fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
@@ -322,6 +317,21 @@ if __name__ == '__main__':
                                color='success',
                                title='Click this button after selecting a different parameter to fit by clicking it such'
                                      ' that it is marked in red.'),
+                    dbc.Button('Rename sensor',
+                               id='rename-sensor-button',
+                               n_clicks=0,
+                               color='warning',
+                               title='Rename the current sensor'),
+                    dbc.Modal([
+                        dbc.ModalHeader(dbc.ModalTitle('Rename sensor')),
+                        dbc.ModalBody(dbc.Input(id='rename-sensor-input', value='New name', type='text')),
+                        dbc.ModalFooter(dbc.Button('Confirm', id='rename-sensor-confirm', color='success', n_clicks=0))
+                        ],
+                        id='rename-sensor-modal',
+                        size='sm',
+                        is_open=False,
+                        backdrop='static',
+                        keyboard=False),
                     dbc.Button(
                         "Show default values",
                         id="show-default-param-button",
@@ -435,7 +445,7 @@ if __name__ == '__main__':
                                                    color='primary',
                                                    title='Add a new analysis object for the current sensor.'),
                                         dbc.DropdownMenu(id='fresnel-analysis-dropdown',
-                                                         label='Chose analysis',
+                                                         label='Choose analysis',
                                                          color='primary',
                                                          children=[])
                                     ])
@@ -484,14 +494,16 @@ if __name__ == '__main__':
                                                     dbc.Row([
                                                         dbc.Label('Extinction correction', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.Slider(min=0, max=0.1,
+                                                            dash.dcc.Slider(min=0, max=0.15,
                                                                             step=0.005,
                                                                             marks={0: '0', 0.01: '0.01',
                                                                                    0.02: '0.02', 0.03: '0.03',
                                                                                    0.04: '0.04', 0.05: '0.05',
                                                                                    0.06: '0.06', 0.07: '0.07',
                                                                                    0.08: '0.08', 0.09: '0.09',
-                                                                                   0.1: '0.1'},
+                                                                                   0.1: '0.1', 0.11: '0.11',
+                                                                                   0.12: '0.12', 0.13: '0.13',
+                                                                                   0.14: '0.14', 0.15: '0.15'},
                                                                             tooltip={"placement": "top",
                                                                                      "always_visible": True},
                                                                             id='fresnel-fit-option-extinctionslider')
@@ -499,10 +511,8 @@ if __name__ == '__main__':
                                                     ], style={'margin-bottom': '10px'}),
                                                 ])
                                             )
-                                        ), id='fresnel-analysis-option-collapse', is_open=True)
+                                        ), id='fresnel-analysis-option-collapse', is_open=False)
                                 ])
-
-
                             ], id='fresnel-fit-options-form')
                         ], style={'margin-top': '1.9rem'})
                     ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
@@ -523,9 +533,7 @@ if __name__ == '__main__':
                         id='summary-tab-content')
                 ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
             ], id='analysis-tabs', active_tab='fresnel-tab'),
-
         ], style={'margin-left': '2%', 'margin-right': '2%'})
-
     ])
 
     # Adding note to session log
@@ -544,16 +552,21 @@ if __name__ == '__main__':
 
         return new_message
 
+
     # Adding new sensor
     @dash.callback(
         dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
+        dash.Output('rename-sensor-modal', 'is_open'),
         dash.Input('new-sensor-gold', 'n_clicks'),
         dash.Input('new-sensor-glass', 'n_clicks'),
         dash.Input('new-sensor-palladium', 'n_clicks'),
         dash.Input('new-sensor-platinum', 'n_clicks'),
+        dash.Input('rename-sensor-button', 'n_clicks'),
+        dash.Input('rename-sensor-confirm', 'n_clicks'),
         dash.Input('copy-sensor', 'n_clicks'),
+        dash.State('rename-sensor-input', 'value'),
         prevent_initial_call=True)
-    def add_sensor_UI(input1, input2, input3, input4, copy):
+    def add_sensor_UI(input1, input2, input3, input4, rename_button, rename_confirm, copy, sensor_name):
         """
         Dictates what happens when creating a new sensor under the "Add new sensor" dropdown menu.
 
@@ -570,28 +583,52 @@ if __name__ == '__main__':
 
         if 'new-sensor-gold' == dash.ctx.triggered_id:
             new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
+            new_sensor.name = 'Gold sensor'
+            current_session.save_sensor(new_sensor.object_id)
+            current_session.save_session()
 
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
             new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
+            new_sensor.name = 'Glass sensor'
+            current_session.save_sensor(new_sensor.object_id)
+            current_session.save_session()
 
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
             new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
+            new_sensor.name = 'Palladium sensor'
+            current_session.save_sensor(new_sensor.object_id)
+            current_session.save_session()
 
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
             new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
+            new_sensor.name = 'Platinum sensor'
+            current_session.save_sensor(new_sensor.object_id)
+            current_session.save_session()
 
         elif 'copy-sensor' == dash.ctx.triggered_id:
             new_sensor = copy_sensor_backend(current_session, current_sensor)
+            new_sensor.name = current_sensor.name + ' copy'
+            current_session.save_sensor(new_sensor.object_id)
+            current_session.save_session()
+
+        elif 'rename-sensor-button' == dash.ctx.triggered_id:
+            return dash.no_update, True
+
+        elif 'rename-sensor-confirm' == dash.ctx.triggered_id:
+            current_sensor.name = sensor_name
+            current_session.save_sensor(current_sensor.object_id)
+            current_session.save_session()
 
         else:
             new_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
+            new_sensor.name = 'Gold sensor'
+            current_session.save_sensor(new_sensor.object_id)
+            current_session.save_session()
 
-        current_session.save_sensor(new_sensor.object_id)
-        current_session.save_session()
-        sensor_options = [dbc.DropdownMenuItem('Sensor ' + str(sensor_id), id={'type': 'sensor-list', 'index': sensor_id},
+        sensor_options = [dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, id={'type': 'sensor-list', 'index': sensor_id},
                                                n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-        return sensor_options
+        return sensor_options, False
 
     # Updating the sensor table with new values and properties
     @dash.callback(
@@ -601,11 +638,13 @@ if __name__ == '__main__':
         dash.Input('add-table-layer', 'n_clicks'),
         dash.Input('table-update-values', 'n_clicks'),
         dash.Input('table-select-fitted', 'n_clicks'),
+        dash.Input('rename-sensor-confirm', 'n_clicks'),
         dash.State('sensor-table', 'data'),
         dash.State('sensor-table', 'columns'),
         dash.State('sensor-table', 'active_cell'),
+        dash.State('rename-sensor-input', 'value'),
         prevent_initial_call=True)
-    def update_sensor_table(n_clicks_sensor_list, n_clicks_add_row, n_clicks_update, n_clicks_fitted, table_rows, table_columns, active_cell):
+    def update_sensor_table(n_clicks_sensor_list, n_clicks_add_row, n_clicks_update, n_clicks_fitted, sensor_rename, table_rows, table_columns, active_cell, sensor_name):
         """
         This callback function controls all updates to the sensor table.
 
@@ -647,8 +686,23 @@ if __name__ == '__main__':
 
             current_sensor.fitted_layer_index = (active_cell['row'], active_cell['column'])
             current_sensor.fitted_var = current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index]
-            sensor_table_title = 'Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
+                sensor_name=current_sensor.name,
+                channel=current_sensor.channel,
+                fitted_layer=current_sensor.optical_parameters.iloc[active_cell['row'], 0],
+                fitted_param=current_sensor.optical_parameters.columns[active_cell['column']])
+
+            # Save new sensor to session and Sensor folder
+            current_session.save_session()
+            current_session.save_sensor(current_sensor.object_id)
+
+            return dash.no_update, sensor_table_title
+
+        elif 'confirm-sensor-rename' == dash.ctx.triggered_id:
+            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                sensor_number=current_sensor.object_id,
+                sensor_name=sensor_name,
                 channel=current_sensor.channel,
                 fitted_layer=current_sensor.optical_parameters.iloc[active_cell['row'], 0],
                 fitted_param=current_sensor.optical_parameters.columns[active_cell['column']])
@@ -663,8 +717,9 @@ if __name__ == '__main__':
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'Sensor {sensor_number} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
+                sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
                 fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                 fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
