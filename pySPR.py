@@ -708,6 +708,7 @@ if __name__ == '__main__':
                 fitted_param=current_sensor.optical_parameters.columns[active_cell['column']])
 
             # Save new sensor to session and Sensor folder
+            # TODO: Delete old name sensor.pickle object and replace it (is it updated in session or not?)
             current_session.save_session()
             current_session.save_sensor(current_sensor.object_id)
 
