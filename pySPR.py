@@ -142,6 +142,9 @@ if __name__ == '__main__':
         current_session.save_session()
         current_session.save_sensor(current_sensor.object_id)
 
+    # Add empty analysis object
+    current_fresnel_analysis = None
+
     # Dash app
     app = dash.Dash(external_stylesheets=[dash_app_theme])
 
@@ -269,6 +272,7 @@ if __name__ == '__main__':
                     id='chosen-sensor-dropdown',
                     label='Sensors',
                     color='primary',
+                    title='Select (and update) a sensor',
                     children=[
                         dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, id={'type': 'sensor-list', 'index': sensor_id},
                                              n_clicks=0) for sensor_id in current_session.sensor_instances], style={'margin-left': '-5px'})
@@ -306,11 +310,11 @@ if __name__ == '__main__':
                                n_clicks=0,
                                color='primary',
                                title='Add a new layer on the sensor surface'),
-                    dbc.Button('Update table',
+                    dbc.Button('Save edited values',
                                id='table-update-values',
                                n_clicks=0,
                                color='danger',
-                               title='Refresh the table after editing its values'),
+                               title='Save the displayed values to sensor after editing'),
                     dbc.Button('Select fitted variable',
                                id='table-select-fitted',
                                n_clicks=0,
@@ -439,11 +443,24 @@ if __name__ == '__main__':
                             dbc.Form([
                                 dash.html.Div([
                                     dbc.ButtonGroup([
-                                        dbc.Button('Add new analysis',
-                                                   id='fresnel-add-analysis-button',
+                                        dbc.Button('Add new fresnel analysis',
+                                                   id='add-fresnel-analysis-button',
                                                    n_clicks=0,
                                                    color='primary',
-                                                   title='Add a new analysis object for the current sensor.'),
+                                                   title='Add a new fresnel analysis object for the current sensor.'),
+                                        dbc.Modal([
+                                            dbc.ModalHeader(dbc.ModalTitle('New fresnel analysis object')),
+                                            dbc.ModalBody(
+                                                dbc.Input(id='name-analysis-input', placeholder='Give a name...', type='text')),
+                                            dbc.ModalFooter(
+                                                dbc.Button('Confirm', id='add-fresnel-analysis-confirm', color='success',
+                                                           n_clicks=0))
+                                        ],
+                                            id='add-fresnel-analysis-modal',
+                                            size='sm',
+                                            is_open=False,
+                                            backdrop='static',
+                                            keyboard=False),
                                         dbc.DropdownMenu(id='fresnel-analysis-dropdown',
                                                          label='Choose analysis',
                                                          color='primary',
@@ -615,6 +632,13 @@ if __name__ == '__main__':
             return dash.no_update, True
 
         elif 'rename-sensor-confirm' == dash.ctx.triggered_id:
+
+            # First remove previous sensor pickle object file
+            old_path = current_session.location + r'\Sensors\S{id}_{name}.pickle'.format(id=current_sensor.object_id,
+                                                                                         name=current_sensor.name)
+            os.remove(old_path)
+
+            # Change sensor name and save new sensor pickle file and session
             current_sensor.name = sensor_name
             current_session.save_sensor(current_sensor.object_id)
             current_session.save_session()
@@ -700,17 +724,13 @@ if __name__ == '__main__':
             return dash.no_update, sensor_table_title
 
         elif 'confirm-sensor-rename' == dash.ctx.triggered_id:
+
             sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=sensor_name,
                 channel=current_sensor.channel,
                 fitted_layer=current_sensor.optical_parameters.iloc[active_cell['row'], 0],
                 fitted_param=current_sensor.optical_parameters.columns[active_cell['column']])
-
-            # Save new sensor to session and Sensor folder
-            # TODO: Delete old name sensor.pickle object and replace it (is it updated in session or not?)
-            current_session.save_session()
-            current_session.save_sensor(current_sensor.object_id)
 
             return dash.no_update, sensor_table_title
 
@@ -871,24 +891,56 @@ if __name__ == '__main__':
             return figure_object
 
     # Callback for adding new modelled reflectivity analysis object to the session
-    # TODO: How to add analysis name? As input in a modal popup, with a generated default name?
     @dash.callback(
         dash.Output('fresnel-analysis-dropdown', 'children'),
         dash.Output('fresnel-analysis-option-collapse', 'is_open'),
-        dash.Input('fresnel-add-analysis-button', 'n_clicks'),
-        dash.State('fresnel-fit-option-rangeslider', 'value'),
-        dash.State('fresnel-fit-option-iniguess', 'value'),
-        dash.State('fresnel-fit-option-lowerbound', 'value'),
-        dash.State('fresnel-fit-option-upperbound', 'value'),
-        dash.State('fresnel-fit-option-extinctionslider', 'value'),
-    )
-    def add_modelled_reflectivity_object_ui(n_clicks, rangeslider_state, ini_guess, lower_bound, upper_bound,
-                                          extinction_correction):
+        dash.Output('add-fresnel-analysis-modal', 'is_open'),
+        dash.Input('add-fresnel-analysis-button', 'n_clicks'),
+        dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
+        dash.State('fresnel-analysis-name-input', 'value'),
+        prevent_initial_call=True)
+    def add_modelled_reflectivity_object_ui(add_button, confirm_button, analysis_name):
 
-        # TODO: Here goes code that will add the object in the backend and the default values for analysis options are used.
+        global current_session
+        global current_sensor
+        global current_fresnel_analysis
+        global TIR_range
+        global scanspeed
+        global current_data_path
 
-        analysis_options = ''
-        return analysis_options, True
+        if 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
+            return dash.no_update, True, True
+
+        elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
+
+            current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, TIR_range, scanspeed, analysis_name)
+            current_session.save_session()
+            current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+
+            analysis_options = [
+                dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                     id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
+
+            return analysis_options, dash.no_update, False
+
+    # Update the current fresnel analysis object and fresnel fitting options accordingly
+    @dash.callback(
+        dash.Output('fresnel-fit-option-rangeslider', 'value'),
+        dash.Output('fresnel-fit-option-iniguess', 'value'),
+        dash.Output('fresnel-fit-option-lowerbound', 'value'),
+        dash.Output('fresnel-fit-option-upperbound', 'value'),
+        dash.Output('fresnel-fit-option-extinctionslider', 'value'),
+        dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
+        prevent_initial_call=True)
+    def update_current_fresnel_analysis(input1):
+
+        global current_fresnel_analysis
+
+        current_fresnel_analysis = current_session.fresnel_analysis_instances[dash.callback_context.triggered_id.index]
+
+        return current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction
+
 
 
     # Update the reflectivity plot in the Fresnel fitting tab
@@ -909,6 +961,8 @@ if __name__ == '__main__':
     def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, rangeslider_inp,
                                           figure_JSON, rangeslider_state, ini_guess, lower_bound, upper_bound,
                                           extinction_correction):
+
+        global current_fresnel_analysis
 
         figure_object = go.Figure(figure_JSON)
 
@@ -968,6 +1022,17 @@ if __name__ == '__main__':
 
         # TODO: Incorporate fresnel fitting backend functionality into the "Run modelling" button
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
+
+            # Set analysis options from dash app
+            current_fresnel_analysis.angle_range = rangeslider_state
+            current_fresnel_analysis.ini_guess = ini_guess
+            current_fresnel_analysis.bounds[0] = lower_bound
+            current_fresnel_analysis.bounds[1] = upper_bound
+            current_fresnel_analysis.extinction_correction = extinction_correction
+
+            # Run calculations
+            # TODO: Figure out how to do this, but first how to get y_offset
+
             fresnel_figure = None
             return fresnel_figure
 
