@@ -27,8 +27,8 @@ class Session:
             os.mkdir(self.location + r'\Analysis instances')
         self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
         self.sensor_ID_count = 0
-        self.analysis_instances = {}
-        self.analysis_ID_count = 0
+        self.fresnel_analysis_instances = {}
+        self.fresnel_analysis_ID_count = 0
         self.current_data_path = current_data_path
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
@@ -49,7 +49,7 @@ class Session:
         Remove an analysis object from the session.
         :return:
         """
-        removed = self.analysis_instances.pop(analysis_object_id)
+        removed = self.fresnel_analysis_instances.pop(analysis_object_id)
         print('Removed the following analysis object: ' + str(removed))
 
         return
@@ -70,9 +70,9 @@ class Session:
                 pickle.dump(self.sensor_instances[sensor_id], save_file)
 
         # Save analysis instances
-        for analysis_id in self.analysis_instances:
-            with open(self.location + r'\Analysis instances' + r'\A{id}_{name}.pickle'.format(id=analysis_id, name=self.analysis_instances[analysis_id].name), 'wb') as save_file:
-                pickle.dump(self.analysis_instances[analysis_id], save_file)
+        for analysis_id in self.fresnel_analysis_instances:
+            with open(self.location + r'\Analysis instances' + r'\A{id}_{name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
+                pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
 
         return
 
@@ -96,14 +96,14 @@ class Session:
 
         return
 
-    def save_analysis(self, analysis_id):
+    def save_fresnel_analysis(self, analysis_id):
         """
-        Saves a single analysis object to the session.
+        Saves a single fresnel analysis object to the session.
         :return: None
         """
 
-        with open(self.location + r'\Analysis instances' + r'\A{id}_{name}.pickle'.format(id=analysis_id, name=self.analysis_instances[analysis_id].name), 'wb') as save_file:
-            pickle.dump(self.analysis_instances[analysis_id], save_file)
+        with open(self.location + r'\Analysis instances' + r'\FM{id}_{name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
+            pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
 
         return
 
@@ -122,13 +122,13 @@ class Session:
 
     def import_analysis(self):
         file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\Analysis instances')
-        self.analysis_ID_count += 1
+        self.fresnel_analysis_ID_count += 1
 
         with open(file_path_, 'rb') as import_file:
             analysis_object = pickle.load(import_file)
 
-        analysis_object.object_id = self.analysis_ID_count
-        self.analysis_instances[analysis_object.object_id] = analysis_object
+        analysis_object.object_id = self.fresnel_analysis_ID_count
+        self.fresnel_analysis_instances[analysis_object.object_id] = analysis_object
 
         return
 
@@ -276,7 +276,7 @@ class Sensor:
     #     print('Sensor extinction coefficients: ', self.extinction_coefficients)
 
 
-class ModelledReflectivityTrace:
+class FresnelModel:
     """
     This class defines how a modelled reflectivity trace behaves. Note that a different sensor object should be used for
     each layer added to the sensor!
@@ -285,23 +285,27 @@ class ModelledReflectivityTrace:
     TODO: IN dash app, add functionality to update current sensor object with the model object optical parameters
     TODO: Add button and graph object to dashapp for the calculate_fresnel_trace method
     TODO: Add attributes for storing calculated fresnel traces as part of results
-    TODO: how to handle analysis object names (I could make a modal with input for a name for the new analysis object?, Or just have some default unique name, but it can be renamed by the user)
+
     """
 
-    def __init__(self, sensor_object_, data_path_, TIR_range_, angle_range_, scanspeed_, name_):
-        self.name = name_
-        self.sensor_object = sensor_object_  # TODO: Check if this updates the sensor object and if an output callback can update the sensor data table with the result
-        self.data_path = data_path_
-        self.fit_result = None
-        self.y_offset = 0
+    def __init__(self, sensor_object_, data_path_, TIR_range_, scanspeed_, object_id_, object_name_):
+        self.name = object_name_
+        self.object_id = object_id_
+        self.sensor_object = sensor_object_
+        self.initial_data_path = data_path_
         self.TIR_range = TIR_range_  # Default for air. For water: (60.8, 63)
-        self.angle_range = angle_range_
         self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
+        self.angle_range = [40, 80]
+        self.ini_guess = 4
+        self.bounds = (0, 50)
+        self.extinction_correction = 0
+        self.y_offset = 0
+        self.fit_result = None
 
-    def calculate_fresnel_trace(self, angles_=np.linspace(39, 50, 1567)):
+    def calculate_fresnel_trace(self):
 
         fresnel_coefficients_ = fresnel_calculation(None,
-                                                    angles=angles_,
+                                                    angles=self.angle_range,
                                                     fitted_layer_index=self.sensor_object.fitted_layer_index,
                                                     wavelength=self.sensor_object.wavelength,
                                                     layer_thicknesses=self.sensor_object.layer_thicknesses,
@@ -312,7 +316,14 @@ class ModelledReflectivityTrace:
                                                     polarization=self.sensor_object.polarization)
         return fresnel_coefficients_
 
-    def model_reflectivity_trace(self, current_data_path, reflectivity_df, ini_guess, bounds):
+    # TODO: Write a method for determining y_offset. Add a button to iterate this value in the dash app?
+    def determine_y_offset(self):
+        """
+        Determine the self.y_offset based on minimum value of the measured data and initial fresnel model
+        """
+        pass
+
+    def model_reflectivity_trace(self, current_data_path, reflectivity_df):
         """
 
         :param ini_guess:
@@ -323,12 +334,12 @@ class ModelledReflectivityTrace:
         """
 
         # Check if current data path matches data_path when object was first initialized, otherwise load previous data
-        if current_data_path == self.data_path:
+        if current_data_path == self.initial_data_path:
             xdata_ = reflectivity_df['angles']
             ydata_ = reflectivity_df['ydata']
 
         else:
-            _, _, _, _, _, reflectivity_df_ = load_csv_data(path=self.data_path)
+            _, _, _, _, _, reflectivity_df_ = load_csv_data(path=self.initial_data_path)
             xdata_ = reflectivity_df_['angles']
             ydata_ = reflectivity_df_['ydata']
 
@@ -339,11 +350,12 @@ class ModelledReflectivityTrace:
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
         selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] - self.y_offset
+        # TODO: Handle y_offset properly, it has to be calculated in a first iteration.
 
         # Perform the fitting
         result = scipy.optimize.least_squares(fresnel_calculation,
-                                              ini_guess,
-                                              bounds=bounds,
+                                              self.ini_guess,
+                                              bounds=self.bounds,
                                               kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
                                                       'wavelength': self.sensor_object.wavelength,
                                                       'layer_thicknesses': self.sensor_object.layer_thicknesses,
@@ -368,7 +380,7 @@ class ModelledReflectivityTrace:
                                                    polarization=1
                                                    )
 
-        return self.fit_result, selection_xdata_, fresnel_coefficients
+        return self.fit_result, selection_xdata_, fresnel_coefficients + self.y_offset
 
     def export_fitted_results(self):
         """
@@ -385,7 +397,7 @@ class ModelledReflectivityTrace:
         pass
 
 
-class NonInteractingProbe(ModelledReflectivityTrace):
+class NonInteractingProbe(FresnelModel):
 
     """
 
@@ -428,13 +440,13 @@ def copy_sensor_backend(session_object, sensor_object):
     return copied_sensor_object
 
 
-def add_modelled_reflectivity_trace(session_object, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_name_):
+def add_fresnel_model_object(session_object, sensor_object, data_path_, TIR_range_, scanspeed_, object_name_):
     """
     Adds analysis objects to a session object.
     :return: an analysis object
     """
-
-    analysis_object = ModelledReflectivityTrace(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_name_)
-    session_object.analysis_instances[object_name_] = analysis_object
+    session_object.fresnel_analysis_ID_count += 1
+    analysis_object = FresnelModel(sensor_object, data_path_, TIR_range_, scanspeed_, session_object.fresnel_analysis_ID_count, object_name_)
+    session_object.fresnel_analysis_instances[session_object.fresnel_analysis_ID_count] = analysis_object
 
     return analysis_object
