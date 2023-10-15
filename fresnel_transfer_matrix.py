@@ -92,20 +92,20 @@ def fresnel_calculation(fitted_var,
         transfer_matrix = np.array([[1, 0], [0, 1]], dtype=np.complex128)
         for a in range(len(n) - 2):
             transfer_matrix = np.dot(transfer_matrix, 1 / fresnel_transmission[a] * np.array([[1, fresnel_reflection[a]], [fresnel_reflection[a], 1]]) * np.array([[np.exp(-1j * delta[a]), 0], [0, np.exp(1j * delta[a])]]))
-        transfer_matrix = np.dot(transfer_matrix, 1 / fresnel_transmission[len(n) - 1] * np.array([[1, fresnel_reflection[len(n) - 1]], [fresnel_reflection[len(n) - 1], 1]]))
+        transfer_matrix = np.dot(transfer_matrix, 1 / fresnel_transmission[len(n) - 2] * np.array([[1, fresnel_reflection[len(n) - 2]], [fresnel_reflection[len(n) - 2], 1]]))
 
         # Total fresnel coefficients:
-        fr_tot = transfer_matrix[2, 1] / transfer_matrix[1, 1]
-        ft_tot = 1 / transfer_matrix[1, 1]
+        fr_tot = transfer_matrix[1, 0] / transfer_matrix[0, 0]
+        ft_tot = 1 / transfer_matrix[0, 0]
 
         # Special case of single interface:
         if len(n) == 2:
-            fr_tot = fresnel_reflection[1]
-            ft_tot = fresnel_transmission[1]
+            fr_tot = fresnel_reflection[0]
+            ft_tot = fresnel_transmission[0]
 
         # Total fresnel coefficients in intensity:
-        fresnel_coefficients_reflection[angle_ind] = (abs(fr_tot)) ^ 2
-        fresnel_coefficients_transmission[angle_ind] = (abs(ft_tot)) ^ 2 * np.real(n[len(n)] * np.cos(theta[len(n)])) / np.real(n[1] * np.cos(theta[1]))
+        fresnel_coefficients_reflection[angle_ind] = np.absolute(fr_tot)**2
+        fresnel_coefficients_transmission[angle_ind] = np.absolute(ft_tot)**2 * np.real(n[-1] * np.cos(theta[-1])) / np.real(n[0] * np.cos(theta[0]))
         fresnel_coefficients_absorption[angle_ind] = 1 - fresnel_coefficients_reflection[angle_ind] - fresnel_coefficients_transmission[angle_ind]
 
     # Return fresnel coefficients or residuals depending on if fitting is performed against ydata
