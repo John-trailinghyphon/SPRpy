@@ -722,7 +722,7 @@ if __name__ == '__main__':
             return table_rows, sensor_table_title
 
         elif 'confirm-sensor-rename' == dash.ctx.triggered_id:
-
+            # TODO: Investigate the error thrown when renaming sensors
             sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=sensor_name,
