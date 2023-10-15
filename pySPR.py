@@ -272,7 +272,6 @@ if __name__ == '__main__':
                     id='chosen-sensor-dropdown',
                     label='Sensors',
                     color='primary',
-                    title='Select (and update) a sensor',
                     children=[
                         dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, id={'type': 'sensor-list', 'index': sensor_id},
                                              n_clicks=0) for sensor_id in current_session.sensor_instances], style={'margin-left': '-5px'})
@@ -451,7 +450,7 @@ if __name__ == '__main__':
                                         dbc.Modal([
                                             dbc.ModalHeader(dbc.ModalTitle('New fresnel analysis object')),
                                             dbc.ModalBody(
-                                                dbc.Input(id='name-analysis-input', placeholder='Give a name...', type='text')),
+                                                dbc.Input(id='fresnel-analysis-name-input', placeholder='Give a name...', type='text')),
                                             dbc.ModalFooter(
                                                 dbc.Button('Confirm', id='add-fresnel-analysis-confirm', color='success',
                                                            n_clicks=0))
@@ -495,13 +494,9 @@ if __name__ == '__main__':
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.RangeSlider(40, 80,
-                                                                                 marks={'40': '40', '45': '45',
-                                                                                        '50': '50', '55': '55',
-                                                                                        '60': '60', '65': '65',
-                                                                                        '70': '70', '75': '75',
-                                                                                        '80': '80'},
-                                                                                 step=0.1,
+                                                            dash.dcc.RangeSlider(reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1],
+                                                                                 marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
+                                                                                 step=0.05,
                                                                                  allowCross=False,
                                                                                  tooltip={"placement": "top",
                                                                                           "always_visible": True},
@@ -526,6 +521,9 @@ if __name__ == '__main__':
                                                                             id='fresnel-fit-option-extinctionslider')
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
+                                                    dbc.Row([
+                                                        dbc.Label('Fit result: ', id='fresnel-fit-result')
+                                                    ], style={'margin-bottom': '10px'})
                                                 ])
                                             )
                                         ), id='fresnel-analysis-option-collapse', is_open=False)
@@ -721,7 +719,7 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_sensor(current_sensor.object_id)
 
-            return dash.no_update, sensor_table_title
+            return table_rows, sensor_table_title
 
         elif 'confirm-sensor-rename' == dash.ctx.triggered_id:
 
@@ -729,10 +727,10 @@ if __name__ == '__main__':
                 sensor_number=current_sensor.object_id,
                 sensor_name=sensor_name,
                 channel=current_sensor.channel,
-                fitted_layer=current_sensor.optical_parameters.iloc[active_cell['row'], 0],
-                fitted_param=current_sensor.optical_parameters.columns[active_cell['column']])
+                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-            return dash.no_update, sensor_table_title
+            return table_rows, sensor_table_title
 
         else:
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
@@ -914,6 +912,9 @@ if __name__ == '__main__':
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
 
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, TIR_range, scanspeed, analysis_name)
+            current_fresnel_analysis.ini_guess = current_sensor.fitted_var
+            current_fresnel_analysis.bounds = [current_sensor.fitted_var / 2, current_sensor.fitted_var + current_sensor.fitted_var / 2]
+            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
@@ -941,11 +942,10 @@ if __name__ == '__main__':
 
         return current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction
 
-
-
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),
+        dash.Output('fresnel-fit-result', 'children'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
@@ -957,12 +957,15 @@ if __name__ == '__main__':
         dash.State('fresnel-fit-option-lowerbound', 'value'),
         dash.State('fresnel-fit-option-upperbound', 'value'),
         dash.State('fresnel-fit-option-extinctionslider', 'value'),
-        )
+        prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, save_png, save_svg, save_html, rangeslider_inp,
                                           figure_JSON, rangeslider_state, ini_guess, lower_bound, upper_bound,
                                           extinction_correction):
 
         global current_fresnel_analysis
+        global current_data_path
+        global current_session
+        global reflectivity_df
 
         figure_object = go.Figure(figure_JSON)
 
@@ -1018,9 +1021,12 @@ if __name__ == '__main__':
                                     showline=True)
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
-            return new_figure
 
-        # TODO: Incorporate fresnel fitting backend functionality into the "Run modelling" button
+            # Fit result text
+            result = 'Fit result: {res}'.format(res=current_fresnel_analysis.fit_result)
+
+            return new_figure, result
+
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
             # Set analysis options from dash app
@@ -1031,10 +1037,58 @@ if __name__ == '__main__':
             current_fresnel_analysis.extinction_correction = extinction_correction
 
             # Run calculations
-            # TODO: Figure out how to do this, but first how to get y_offset
+            selected_angles, fresnel_coefficients = current_fresnel_analysis.model_reflectivity_trace(current_data_path, reflectivity_df)
 
-            fresnel_figure = None
-            return fresnel_figure
+            # Plot fitted trace
+            new_figure = go.Figure(go.Scatter(x=figure_object.data[0]['x'],
+                                              y=figure_object.data[0]['y'],
+                                              mode='lines',
+                                              showlegend=False,
+                                              line_color='#636efa'
+                                              ))
+            new_figure.add_trace(go.Scatter(x=selected_angles,
+                                            y=fresnel_coefficients,
+                                            mode='lines',
+                                            showlegend=False,
+                                            line_color='#ef553b'
+                                            ))
+            new_figure.add_trace(go.Scatter(x=[rangeslider_state[0], rangeslider_state[0]],
+                                            y=[min(figure_object.data[0]['y']), max(figure_object.data[0]['y'])],
+                                            mode='lines',
+                                            showlegend=False,
+                                            line_color='black',
+                                            line_dash='dash'
+                                            ))
+            new_figure.add_trace(go.Scatter(x=[rangeslider_state[1], rangeslider_state[1]],
+                                            y=[min(figure_object.data[0]['y']), max(figure_object.data[0]['y'])],
+                                            mode='lines',
+                                            showlegend=False,
+                                            line_color='black',
+                                            line_dash='dash'
+                                            ))
+            # Updating layout
+            new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                     yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                     font_family='Balto',
+                                     font_size=19,
+                                     margin_r=25,
+                                     margin_l=60,
+                                     margin_t=40,
+                                     template='simple_white',
+                                     uirevision=True)
+            new_figure.update_xaxes(mirror=True,
+                                    showline=True)
+            new_figure.update_yaxes(mirror=True,
+                                    showline=True)
+
+            # Save session and analysis object
+            current_session.save_session()
+            current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+
+            # Fit result text
+            result = 'Fit result: {res}'.format(res=current_fresnel_analysis.fit_result)
+
+            return new_figure, result
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -1048,7 +1102,7 @@ if __name__ == '__main__':
             save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.png', format='png')
 
-        return figure_object
+        return figure_object, dash.no_update
 
 
     app.run_server(debug=True, use_reloader=False)

@@ -297,7 +297,7 @@ class FresnelModel:
         self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
         self.angle_range = [40, 80]
         self.ini_guess = 4
-        self.bounds = (0, 50)
+        self.bounds = [0, 50]
         self.extinction_correction = 0
         self.y_offset = 0
         self.fit_result = None
@@ -315,13 +315,6 @@ class FresnelModel:
                                                     ydata_type=self.sensor_object.data_type,
                                                     polarization=self.sensor_object.polarization)
         return fresnel_coefficients_
-
-    # TODO: Write a method for determining y_offset. Add a button to iterate this value in the dash app?
-    def determine_y_offset(self):
-        """
-        Determine the self.y_offset based on minimum value of the measured data and initial fresnel model
-        """
-        pass
 
     def model_reflectivity_trace(self, current_data_path, reflectivity_df):
         """
@@ -345,42 +338,46 @@ class FresnelModel:
 
         # Calculate TIR angle and bulk refractive index
         TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(xdata_, ydata_, self.TIR_range, self.scanspeed)
-        self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)  # TODO: Currently, the sensor bulk RI in optical parameters do not update according to the TIR angle, or?
+        self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
-        # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity
+        # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
-        selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] - self.y_offset
-        # TODO: Handle y_offset properly, it has to be calculated in a first iteration.
 
-        # Perform the fitting
-        result = scipy.optimize.least_squares(fresnel_calculation,
-                                              self.ini_guess,
-                                              bounds=self.bounds,
-                                              kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
-                                                      'wavelength': self.sensor_object.wavelength,
-                                                      'layer_thicknesses': self.sensor_object.layer_thicknesses,
-                                                      'n_re': self.sensor_object.refractive_indices,
-                                                      'n_im': self.sensor_object.extinction_coefficients,
-                                                      'angles': selection_xdata_,
-                                                      'ydata': selection_ydata_,
-                                                      'ydata_type': self.sensor_object.data_type,
-                                                      'polarization': self.sensor_object.polarization}
-                                              )
-        # Collect the results from least_squares object and calculate corresponding fresnel coefficients
-        self.fit_result = result['x']
-        fresnel_coefficients = fresnel_calculation(self.fit_result,
-                                                   fitted_layer_index=self.sensor_object.fitted_layer_index,
-                                                   angles=selection_xdata_,
-                                                   wavelength=self.sensor_object.wavelength,
-                                                   layer_thicknesses=self.sensor_object.layer_thicknesses,
-                                                   n_re=self.sensor_object.refractive_indices,
-                                                   n_im=self.sensor_object.extinction_coefficients,
-                                                   ydata=None,
-                                                   ydata_type='R',
-                                                   polarization=1
-                                                   )
+        for offset_ind in range(3):
+            selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] - self.y_offset
 
-        return self.fit_result, selection_xdata_, fresnel_coefficients + self.y_offset
+            # Perform the fitting
+            result = scipy.optimize.least_squares(fresnel_calculation,
+                                                  self.ini_guess,
+                                                  bounds=self.bounds,
+                                                  kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
+                                                          'wavelength': self.sensor_object.wavelength,
+                                                          'layer_thicknesses': self.sensor_object.layer_thicknesses,
+                                                          'n_re': self.sensor_object.refractive_indices,
+                                                          'n_im': self.sensor_object.extinction_coefficients,
+                                                          'angles': selection_xdata_,
+                                                          'ydata': selection_ydata_,
+                                                          'ydata_type': self.sensor_object.data_type,
+                                                          'polarization': self.sensor_object.polarization}
+                                                  )
+            # Collect the results from least_squares object and calculate corresponding fresnel coefficients
+            self.fit_result = result['x']
+            fresnel_coefficients = fresnel_calculation(self.fit_result,
+                                                       fitted_layer_index=self.sensor_object.fitted_layer_index,
+                                                       angles=selection_xdata_,
+                                                       wavelength=self.sensor_object.wavelength,
+                                                       layer_thicknesses=self.sensor_object.layer_thicknesses,
+                                                       n_re=self.sensor_object.refractive_indices,
+                                                       n_im=self.sensor_object.extinction_coefficients,
+                                                       ydata=None,
+                                                       ydata_type='R',
+                                                       polarization=1
+                                                       )
+            if offset_ind < 2:
+                # Calculate new y_offset
+                self.y_offset = self.y_offset + np.min(selection_ydata_) - np.min(fresnel_coefficients)
+
+        return selection_xdata_, fresnel_coefficients + self.y_offset
 
     def export_fitted_results(self):
         """
