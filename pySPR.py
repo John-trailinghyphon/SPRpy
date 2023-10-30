@@ -340,7 +340,7 @@ if __name__ == '__main__':
                         id="show-default-param-button",
                         color="secondary",
                         n_clicks=0,
-                        title='CTRL+Z not supported, check default values here.'
+                        title='CTRL+Z not supported for table. Check default values here if needed.'
                     ),
                 ], style={'width': '672px', 'margin-left': '4px', 'margin-top': '5px', 'margin-bottom': '20px'}),
             ], style={'width': '675px'}),
@@ -379,11 +379,16 @@ if __name__ == '__main__':
                                            figure=reflectivity_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
-                                dbc.Button('Add trace',
-                                           id='quantification-reflectivity-add-trace',
+                                dbc.Button('Add data trace',
+                                           id='quantification-reflectivity-add-data-trace',
                                            n_clicks=0,
                                            color='warning',
-                                           title='Add a trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
+                                           title='Add a measurement trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
+                                dbc.Button('Add fresnel trace',
+                                           id='quantification-reflectivity-add-fresnel-trace',
+                                           n_clicks=0,
+                                           color='warning',
+                                           title='Add a fresnel calculation trace to the figure based on current sensor values.'),
                                 dbc.DropdownMenu(
                                     id='reflectivity-save-dropdown',
                                     label='Save as...',
@@ -761,14 +766,15 @@ if __name__ == '__main__':
     # Update the reflectivity plot in the Response quantification tab
     @dash.callback(
         dash.Output('quantification-reflectivity-graph', 'figure'),
-        dash.Input('quantification-reflectivity-add-trace', 'n_clicks'),
+        dash.Input('quantification-reflectivity-add-data-trace', 'n_clicks'),
+        dash.Input('quantification-reflectivity-add-fresnel-trace', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-png', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-svg', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-html', 'n_clicks'),
         dash.Input('quantification-sensorgram-graph', 'hoverData'),
         dash.State('quantification-reflectivity-graph', 'figure'),
     )
-    def update_reflectivity_quantification_graph(add_trace, save_png, save_svg, save_html, hoverData, figure_JSON):
+    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, save_png, save_svg, save_html, hoverData, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
 
@@ -807,10 +813,30 @@ if __name__ == '__main__':
                 return dash.no_update
 
         # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
-        elif 'quantification-reflectivity-add-trace' == dash.ctx.triggered_id:
+        elif 'quantification-reflectivity-add-data-trace' == dash.ctx.triggered_id:
             _, _, _, _, _, trace_reflectivity_df = load_csv_data()
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
                                                y=trace_reflectivity_df['ydata'],
+                                               mode='lines',
+                                               showlegend=False))
+
+        # This adds a fresnel calculation trace to the reflectivity plot
+        elif 'quantification-reflectivity-add-fresnel-trace' == dash.ctx.triggered_id:
+            global current_sensor
+            global reflectivity_df
+
+            fresnel_coefficients = fresnel_calculation(None,
+                                                       angles=reflectivity_df['angles'],
+                                                       fitted_layer_index=current_sensor.fitted_layer_index,
+                                                       wavelength=current_sensor.wavelength,
+                                                       layer_thicknesses=current_sensor.layer_thicknesses,
+                                                       n_re=current_sensor.refractive_indices,
+                                                       n_im=current_sensor.extinction_coefficients,
+                                                       ydata=None,
+                                                       ydata_type=current_sensor.data_type,
+                                                       polarization=current_sensor.polarization)
+            figure_object.add_trace(go.Scatter(x=reflectivity_df['angles'],
+                                               y=fresnel_coefficients,
                                                mode='lines',
                                                showlegend=False))
 
@@ -925,6 +951,8 @@ if __name__ == '__main__':
 
             return analysis_options, dash.no_update, False
 
+
+    # TODO: Update the plot with previously fitted traces if selecting a different analysis
     # Update the current fresnel analysis object and fresnel fitting options accordingly
     @dash.callback(
         dash.Output('fresnel-fit-option-rangeslider', 'value'),
@@ -942,6 +970,11 @@ if __name__ == '__main__':
 
         return current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction
 
+
+    # TODO: Update the plot with previously fitted traces if selecting a different analysis
+    # TODO: Run modelling should apply the fitted value result to the current sensor object and update the sensor table.
+    #  Note that the sensor table is what is needed to import later to continue modelling, but importing the result can
+    #  also be useful for plotting it perhaps.
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),

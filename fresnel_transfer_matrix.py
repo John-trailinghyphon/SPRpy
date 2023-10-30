@@ -4,7 +4,7 @@ import numpy as np
 import bottleneck
 
 
-def fresnel_calculation(fitted_var,
+def fresnel_calculation(fitted_var=None,
                         fitted_layer_index=(2, 3),
                         angles=np.linspace(39, 50, 1567),
                         wavelength=670,
@@ -48,12 +48,6 @@ def fresnel_calculation(fitted_var,
             case 3:
                 n_im[fitted_layer_index[0]] = fitted_var
 
-
-    # # Create complex refractive index (this is unnecessary)
-    # n = np.array([0] * len(n_re))
-    # for value in range(len(n_re)):
-    #     n[value] = complex(n_re[value], n_im[value])
-
     # Merge real and imaginary refractive indices
     n = n_re + 1j * n_im
 
@@ -91,8 +85,8 @@ def fresnel_calculation(fitted_var,
         # Build up transfer matrix:
         transfer_matrix = np.array([[1, 0], [0, 1]], dtype=np.complex128)
         for a in range(len(n) - 2):
-            transfer_matrix = np.dot(transfer_matrix, 1 / fresnel_transmission[a] * np.array([[1, fresnel_reflection[a]], [fresnel_reflection[a], 1]]) * np.array([[np.exp(-1j * delta[a]), 0], [0, np.exp(1j * delta[a])]]))
-        transfer_matrix = np.dot(transfer_matrix, 1 / fresnel_transmission[len(n) - 2] * np.array([[1, fresnel_reflection[len(n) - 2]], [fresnel_reflection[len(n) - 2], 1]]))
+            transfer_matrix = np.dot(transfer_matrix, np.dot(1 / fresnel_transmission[a], np.dot(np.array([[1, fresnel_reflection[a]], [fresnel_reflection[a], 1]]), np.array([[np.exp(-1j * delta[a]), 0], [0, np.exp(1j * delta[a])]]))))
+        transfer_matrix = np.dot(transfer_matrix, np.dot(1 / fresnel_transmission[len(n) - 2], np.array([[1, fresnel_reflection[len(n) - 2]], [fresnel_reflection[len(n) - 2], 1]])))
 
         # Total fresnel coefficients:
         fr_tot = transfer_matrix[1, 0] / transfer_matrix[0, 0]
