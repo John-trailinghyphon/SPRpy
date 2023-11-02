@@ -336,6 +336,7 @@ if __name__ == '__main__':
                         is_open=False,
                         backdrop='static',
                         keyboard=False),
+                    dash.dcc.Store(id='rename-sensor-signal', storage_type='session'),
                     dbc.Button(
                         "Show default values",
                         id="show-default-param-button",
@@ -614,6 +615,13 @@ if __name__ == '__main__':
 
         return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
 
+    @dash.callback(
+        dash.Output('rename-sensor-signal', 'data'),
+        dash.Input('rename-sensor-confirm', 'n_clicks'),
+        prevent_initial_call=True)
+    def send_signal_rename_sensor(confirm_rename):
+        return 'signal'
+
     # Adding new sensor
     @dash.callback(
         dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
@@ -706,7 +714,7 @@ if __name__ == '__main__':
         dash.Input('add-table-layer', 'n_clicks'),
         dash.Input('table-update-values', 'n_clicks'),
         dash.Input('table-select-fitted', 'n_clicks'),
-        dash.Input('rename-sensor-confirm', 'n_clicks'),
+        dash.Input('rename-sensor-signal', 'data'),
         dash.Input('fresnel-reflectivity-run-finished', 'data'),
         dash.State('sensor-table', 'data'),
         dash.State('sensor-table', 'columns'),
@@ -768,11 +776,11 @@ if __name__ == '__main__':
 
             return table_rows, sensor_table_title
 
-        elif 'confirm-sensor-rename' == dash.ctx.triggered_id:
+        elif 'rename-sensor-signal' == dash.ctx.triggered_id:
             # TODO: Investigate the error thrown when renaming sensors
             sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
-                sensor_name=sensor_name,
+                sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
                 fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                 fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
@@ -1022,8 +1030,8 @@ if __name__ == '__main__':
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
 
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, TIR_range, scanspeed, analysis_name)
-            current_fresnel_analysis.ini_guess = current_sensor.fitted_var
-            current_fresnel_analysis.bounds = [current_sensor.fitted_var / 2, current_sensor.fitted_var + current_sensor.fitted_var / 2]
+            current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
+            current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 2, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
             current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
