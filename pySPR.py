@@ -146,7 +146,7 @@ if __name__ == '__main__':
     current_fresnel_analysis = None
 
     # Dash app
-    app = dash.Dash(external_stylesheets=[dash_app_theme], suppress_callback_exceptions=True)
+    app = dash.Dash(external_stylesheets=[dash_app_theme])
 
     # Dash figures
     reflectivity_fig = px.line(reflectivity_df, x='angles', y='ydata')
@@ -328,7 +328,7 @@ if __name__ == '__main__':
                                title='Rename the current sensor'),
                     dbc.Modal([
                         dbc.ModalHeader(dbc.ModalTitle('Rename sensor')),
-                        dbc.ModalBody(dbc.Input(id='rename-sensor-input', value='New name', type='text')),
+                        dbc.ModalBody(dbc.Input(id='rename-sensor-input', placeholder='Give a name...', type='text')),
                         dbc.ModalFooter(dbc.Button('Confirm', id='rename-sensor-confirm', color='success', n_clicks=0))
                         ],
                         id='rename-sensor-modal',
@@ -1052,12 +1052,18 @@ if __name__ == '__main__':
         dash.Output('fresnel-analysis-dropdown', 'children'),
         dash.Output('fresnel-analysis-option-collapse', 'is_open'),
         dash.Output('add-fresnel-analysis-modal', 'is_open'),
-        dash.Output('add-fresnel-analysis-signal', 'data'),
+        dash.Output('fresnel-fit-option-rangeslider', 'value'),
+        dash.Output('fresnel-fit-option-iniguess', 'value'),
+        dash.Output('fresnel-fit-option-lowerbound', 'value'),
+        dash.Output('fresnel-fit-option-upperbound', 'value'),
+        dash.Output('fresnel-fit-option-extinctionslider', 'value'),
+        dash.Output('fresnel-fit-result', 'children', allow_duplicate=True),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
+        dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
         dash.State('fresnel-analysis-name-input', 'value'),
         prevent_initial_call=True)
-    def add_modelled_reflectivity_object_ui(add_button, confirm_button, analysis_name):
+    def update_reflectivity_object_ui(add_button, confirm_button, selected_analysis, analysis_name):
 
         global current_session
         global current_sensor
@@ -1067,7 +1073,7 @@ if __name__ == '__main__':
         global current_data_path
 
         if 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, True, True, dash.no_update
+            return dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -1083,26 +1089,37 @@ if __name__ == '__main__':
                                      id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                                      n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
-            return analysis_options, dash.no_update, False, 'signal'
+            return analysis_options, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
+            current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
+                1], current_fresnel_analysis.extinction_correction, 'Fit result: None'
+
+        else:
+            current_fresnel_analysis = current_session.fresnel_analysis_instances[
+                dash.callback_context.triggered_id.index]
+            result = 'Fit result: {res}'.format(res=current_fresnel_analysis.fit_result)
+
+            return dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
+            current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
+                1], current_fresnel_analysis.extinction_correction, result
 
 
-    # TODO: Update the plot with previously fitted traces if selecting a different analysis
-    # Update the current fresnel analysis object and fresnel fitting options accordingly
-    @dash.callback(
-        dash.Output('fresnel-fit-option-rangeslider', 'value'),
-        dash.Output('fresnel-fit-option-iniguess', 'value'),
-        dash.Output('fresnel-fit-option-lowerbound', 'value'),
-        dash.Output('fresnel-fit-option-upperbound', 'value'),
-        dash.Output('fresnel-fit-option-extinctionslider', 'value'),
-        dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
-        prevent_initial_call=True)
-    def update_current_fresnel_analysis(input1):
-
-        global current_fresnel_analysis
-
-        current_fresnel_analysis = current_session.fresnel_analysis_instances[dash.callback_context.triggered_id.index]
-
-        return current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction
+    # # TODO: Update the plot with previously fitted traces if selecting a different analysis
+    # # Update the current fresnel analysis object and fresnel fitting options accordingly
+    # @dash.callback(
+    #     dash.Output('fresnel-fit-option-rangeslider', 'value'),
+    #     dash.Output('fresnel-fit-option-iniguess', 'value'),
+    #     dash.Output('fresnel-fit-option-lowerbound', 'value'),
+    #     dash.Output('fresnel-fit-option-upperbound', 'value'),
+    #     dash.Output('fresnel-fit-option-extinctionslider', 'value'),
+    #     dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
+    #     prevent_initial_call=True)
+    # def update_current_fresnel_analysis(input1):
+    #
+    #     global current_fresnel_analysis
+    #
+    #     current_fresnel_analysis = current_session.fresnel_analysis_instances[dash.callback_context.triggered_id.index]
+    #
+    #     return current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction
 
 
     # TODO: Update the plot with previously fitted traces if selecting a different analysis
@@ -1110,7 +1127,7 @@ if __name__ == '__main__':
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),
-        dash.Output('fresnel-fit-result', 'children'),
+        dash.Output('fresnel-fit-result', 'children'),  # This has a duplicate callback output above
         dash.Output('fresnel-reflectivity-run-finished', 'data'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
