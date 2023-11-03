@@ -290,10 +290,11 @@ if __name__ == '__main__':
                     fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
                               ], id='sensor-table-title', style={'text-align': 'center'}),
                 dash.html.Div([
-                    dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'), # TODO: Fix column types, also in callback for adding new layers
+                    dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
                                               columns=[{'name': 'Layers', 'id': 'Layers', 'type': 'text'},
-                                                       {'name': 'Layers', 'id': 'Layers', 'type': 'text'}
-                                                       ],
+                                                       {'name': 'd [nm]', 'id': 'd [nm]', 'type': 'numeric'},
+                                                       {'name': 'n', 'id': 'n', 'type': 'numeric'},
+                                                       {'name': 'k', 'id': 'k', 'type': 'numeric'}],
                                               editable=True,
                                               row_deletable=True,
                                               cell_selectable=True,
@@ -352,14 +353,14 @@ if __name__ == '__main__':
                         dbc.CardBody(
                             dbc.Table.from_dataframe(pd.DataFrame(
                                 {
-                                    "Layer": ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt'],
-                                    "d[nm]": ['', '2', '50', '14', '20', '20'],
-                                    "n (670)": ['1.5202', '3.3105', '0.2238', '1.4628', '2.2500', '2.4687'],
-                                    "n (785)": ['1.5162', '3.3225', '0.2580', '1.4610', '2.5467', '?'],
-                                    "n (980)": ['1.5130', '3.4052', '0.2800', '1.4592', '3.0331', '?'],
-                                    "k (670)": ['0', '3.4556', '3.9259', '0', '4.6000', '5.2774'],
-                                    "k (785)": ['0', '3.6148', '4.8800', '0', '5.1250', '?'],
-                                    "k (980)": ['0', '3.5678', '6.7406', '0', '6.7406', '?'],
+                                    "Layer": ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt', 'PEG', 'Protein', 'DNA'],
+                                    "d[nm]": ['', '2', '50', '14', '20', '20', '2 / 8-9 (2 / 20 kDa)', '4', '?'],
+                                    "n (670)": ['1.5202', '3.3105', '0.2238', '1.4628', '2.2500', '2.4687', '1.456', '1.53', '1.58'],
+                                    "n (785)": ['1.5162', '3.3225', '0.2580', '1.4610', '2.5467', '?', '1.456', '1.53', '1.58'],
+                                    "n (980)": ['1.5130', '3.4052', '0.2800', '1.4592', '3.0331', '?', '1.456', '1.53', '1.58'],
+                                    "k (670)": ['0', '3.4556', '3.9259', '0', '4.6000', '5.2774', '0', '0', '0'],
+                                    "k (785)": ['0', '3.6148', '4.8800', '0', '5.1250', '?', '0', '0', '0'],
+                                    "k (980)": ['0', '3.5678', '6.7406', '0', '6.7406', '?', '0', '0', '0'],
                                 }
                             ), size='sm', striped=True, bordered=True, hover=True)
                         ), style={'width': '650px'}),
@@ -472,7 +473,10 @@ if __name__ == '__main__':
                                         dbc.DropdownMenu(id='fresnel-analysis-dropdown',
                                                          label='Choose analysis',
                                                          color='primary',
-                                                         children=[])  #TODO: Include previous analysis if loading from a previous session
+                                                         children=[
+                dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                     id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances])  #TODO: Include previous analysis if loading from a previous session
                                     ])
                                 ]),
                                 dash.html.Div([
@@ -480,8 +484,18 @@ if __name__ == '__main__':
                                         dbc.Card(
                                             dbc.CardBody(
                                                 dbc.Form([
-                                                    #  TIR_range, scanspeed (for TIR)
-                                                    #  polarization, angle_range, ini_guess, upper_lowerbound, offset, weight_factor
+                                                    dbc.Row([
+                                                        dbc.Label(
+                                                            'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                                                                sensor_number=current_sensor.object_id,
+                                                                sensor_name=current_sensor.name,
+                                                                channel=current_sensor.channel,
+                                                                fitted_layer=current_sensor.optical_parameters.iloc[
+                                                                    current_sensor.fitted_layer_index[0], 0],
+                                                                fitted_param=current_sensor.optical_parameters.columns[
+                                                                    current_sensor.fitted_layer_index[1]]),
+                                                            id='fresnel-fit-sensor')
+                                                    ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
                                                         dbc.Label('Initial guess', width='auto'),
                                                         dbc.Col([
@@ -515,16 +529,14 @@ if __name__ == '__main__':
                                                     dbc.Row([
                                                         dbc.Label('Extinction correction', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.Slider(min=0, max=0.15,
+                                                            dash.dcc.Slider(min=-0.1, max=0.1,
                                                                             step=0.005,
-                                                                            marks={0: '0', 0.01: '0.01',
-                                                                                   0.02: '0.02', 0.03: '0.03',
-                                                                                   0.04: '0.04', 0.05: '0.05',
-                                                                                   0.06: '0.06', 0.07: '0.07',
-                                                                                   0.08: '0.08', 0.09: '0.09',
-                                                                                   0.1: '0.1', 0.11: '0.11',
-                                                                                   0.12: '0.12', 0.13: '0.13',
-                                                                                   0.14: '0.14', 0.15: '0.15'},
+                                                                            marks={-0.1: '-0.1', -0.08: '-0.08',
+                                                                                   -0.06: '-0.06', -0.04: '-0.04',
+                                                                                   -0.02: '-0.02', 0.0: '0.0',
+                                                                                   0.02: '0.02', 0.04: '0.04',
+                                                                                   0.06: '0.06', 0.08: '0.08',
+                                                                                   0.1: '0.1'},
                                                                             tooltip={"placement": "top",
                                                                                      "always_visible": True},
                                                                             id='fresnel-fit-option-extinctionslider')
@@ -789,7 +801,12 @@ if __name__ == '__main__':
                 fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                 fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-            return data_rows, sensor_table_title, dash.no_update, False
+            sensor_options = [
+                dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
+                                     id={'type': 'sensor-list', 'index': sensor_id},
+                                     n_clicks=0) for sensor_id in current_session.sensor_instances]
+
+            return data_rows, sensor_table_title, sensor_options, False
 
         elif 'table-update-values' == dash.ctx.triggered_id:
 
@@ -1053,6 +1070,7 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-option-upperbound', 'value'),
         dash.Output('fresnel-fit-option-extinctionslider', 'value'),
         dash.Output('fresnel-fit-result', 'children', allow_duplicate=True),
+        dash.Output('fresnel-fit-sensor', 'children'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
         dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
@@ -1068,7 +1086,7 @@ if __name__ == '__main__':
         global current_data_path
 
         if 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -1084,18 +1102,25 @@ if __name__ == '__main__':
                                      id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                                      n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
+            current_fresnel_analysis.sensor_object_label = 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                sensor_number=current_sensor.object_id,
+                sensor_name=current_sensor.name,
+                channel=current_sensor.channel,
+                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+
             return analysis_options, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None'
+                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label
 
         else:
             current_fresnel_analysis = current_session.fresnel_analysis_instances[
                 dash.callback_context.triggered_id.index]
             result = 'Fit result: {res}'.format(res=current_fresnel_analysis.fit_result)
 
-            return dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
+            return dash.no_update, True, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, result
+                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
 
 
     # # TODO: Update the plot with previously fitted traces if selecting a different analysis

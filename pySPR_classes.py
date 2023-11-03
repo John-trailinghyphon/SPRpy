@@ -292,6 +292,7 @@ class FresnelModel:
         self.name = object_name_
         self.object_id = object_id_
         self.sensor_object = sensor_object_
+        self.sensor_object_label = ''
         self.initial_data_path = data_path_
         self.TIR_range = TIR_range_  # Default for air. For water: (60.8, 63)
         self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
@@ -340,6 +341,10 @@ class FresnelModel:
         TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(xdata_, ydata_, self.TIR_range, self.scanspeed)
         self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
+        # Add extinction correction to fitted surface layer extinction value
+        extinction_corrected = self.sensor_object.extinction_coefficients
+        extinction_corrected[self.sensor_object.fitted_layer_index[0]] += self.extinction_correction
+
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
 
@@ -354,7 +359,7 @@ class FresnelModel:
                                                           'wavelength': self.sensor_object.wavelength,
                                                           'layer_thicknesses': self.sensor_object.layer_thicknesses,
                                                           'n_re': self.sensor_object.refractive_indices,
-                                                          'n_im': self.sensor_object.extinction_coefficients,
+                                                          'n_im': extinction_corrected,
                                                           'angles': selection_xdata_,
                                                           'ydata': selection_ydata_,
                                                           'ydata_type': self.sensor_object.data_type,
@@ -368,7 +373,7 @@ class FresnelModel:
                                                        wavelength=self.sensor_object.wavelength,
                                                        layer_thicknesses=self.sensor_object.layer_thicknesses,
                                                        n_re=self.sensor_object.refractive_indices,
-                                                       n_im=self.sensor_object.extinction_coefficients,
+                                                       n_im=extinction_corrected,
                                                        ydata=None,
                                                        ydata_type='R',
                                                        polarization=1
