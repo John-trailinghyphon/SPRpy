@@ -290,9 +290,10 @@ if __name__ == '__main__':
                     fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
                               ], id='sensor-table-title', style={'text-align': 'center'}),
                 dash.html.Div([
-                    dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
-                                              columns=[{'name': col, 'id': col} for col in
-                                                       current_sensor.optical_parameters.columns],
+                    dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'), # TODO: Fix column types, also in callback for adding new layers
+                                              columns=[{'name': 'Layers', 'id': 'Layers', 'type': 'text'},
+                                                       {'name': 'Layers', 'id': 'Layers', 'type': 'text'}
+                                                       ],
                                               editable=True,
                                               row_deletable=True,
                                               cell_selectable=True,
@@ -830,12 +831,6 @@ if __name__ == '__main__':
         elif 'fresnel-reflectivity-run-finished' == dash.ctx.triggered_id:
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                sensor_number=current_sensor.object_id,
-                sensor_name=current_sensor.name,
-                channel=current_sensor.channel,
-                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
             return data_rows, dash.no_update, dash.no_update, dash.no_update
 
