@@ -1212,7 +1212,7 @@ if __name__ == '__main__':
             return new_figure, result, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
-            # TODO: The PEG layer is not fitted or at least not displayed correctly, it could be that the added fresnel analysis object was chosen too soon?
+            # TODO: The PEG layer is not fitted or at least not displayed correctly. Problem with n = n_re + 1j * n_im, for some reason the 1j doesn't work after adding PEG... Is the dtype of the added values correct?
             # Set analysis options from dash app
             current_fresnel_analysis.angle_range = rangeslider_state
             current_fresnel_analysis.ini_guess = ini_guess
