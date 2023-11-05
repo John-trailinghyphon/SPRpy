@@ -61,17 +61,17 @@ class Session:
         """
 
         # Save session object
-        with open(self.location + r'\Session_file.pickle', 'wb') as save_file:
+        with open(self.location + r'\Session file.pickle', 'wb') as save_file:
             pickle.dump(self, save_file)
 
         # Save sensor instances
         for sensor_id in self.sensor_instances:
-            with open(self.location + r'\Sensors' + r'\S{id}_{name}.pickle'.format(id=sensor_id, name=self.sensor_instances[sensor_id].name), 'wb') as save_file:
+            with open(self.location + r'\Sensors' + r'\S{id} {name}.pickle'.format(id=sensor_id, name=self.sensor_instances[sensor_id].name), 'wb') as save_file:
                 pickle.dump(self.sensor_instances[sensor_id], save_file)
 
         # Save analysis instances
         for analysis_id in self.fresnel_analysis_instances:
-            with open(self.location + r'\Analysis instances' + r'\A{id}_{name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
+            with open(self.location + r'\Analysis instances' + r'\A{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
                 pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
 
         return
@@ -79,7 +79,7 @@ class Session:
     def save_session(self):
 
         # Save session object
-        with open(self.location + r'\Session_file.pickle', 'wb') as save_file:
+        with open(self.location + r'\Session file.pickle', 'wb') as save_file:
             pickle.dump(self, save_file)
 
         return
@@ -90,7 +90,7 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\Sensors' + r'\S{id}_{name}.pickle'.format(id=sensor_id, name=self.sensor_instances[
+        with open(self.location + r'\Sensors' + r'\S{id} {name}.pickle'.format(id=sensor_id, name=self.sensor_instances[
             sensor_id].name), 'wb') as save_file:
             pickle.dump(self.sensor_instances[sensor_id], save_file)
 
@@ -102,7 +102,7 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\Analysis instances' + r'\FM{id}_{name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
+        with open(self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
             pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
 
         return

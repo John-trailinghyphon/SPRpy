@@ -14,11 +14,6 @@
 #  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
 #  It should save a path to the datafile that was used for the analysis so that it has access to the data.
 
-# TODO: Next, it is time to populate the Modelled/FittedReflectivityTrace classes with methods and attributes for
-#  performing the fresnel_calculation() function. Note that the calculation results should be saved in the object, but
-#  it is better to avoid saving the raw data, unless that is all that was used (simply quantification reflectivity trace for
-#  instance).
-
 # TODO: For the non-interacting probe method where a previously calculated background is used in the calculations, there
 #  is a need of some way to select a previous analysis. The easiest way is probably to make sure that each analysis is
 #  named something? I imagine that the user selects from a list of names of each analysis (and there should be a default
@@ -63,7 +58,8 @@ TIR_range_water_or_long_measurement = (60.8, 63)  # TIR range for water --> Auto
 TIR_range_air_or_few_scans = (40.9, 41.8)  # TIR range for dry scans --> Automatically used for less than 50 scans per file
 ask_for_previous_session = True
 default_data_folder = r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR'
-dash_app_theme = dbc.themes.SPACELAB
+dash_app_theme = dbc.themes.SPACELAB  # Options: CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX,
+# MATERIA, MINTY, MORPH, PULSE, QUARTZ, SANDSTONE, SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, VAPOR, YETI, ZEPHYR.
 
 if __name__ == '__main__':
 
@@ -146,7 +142,7 @@ if __name__ == '__main__':
     current_fresnel_analysis = None
 
     # Dash app
-    app = dash.Dash(external_stylesheets=[dash_app_theme])
+    app = dash.Dash(name='pySPR', external_stylesheets=[dash_app_theme])
 
     # Dash figures
     reflectivity_fig = px.line(reflectivity_df, x='angles', y='ydata')
@@ -354,7 +350,7 @@ if __name__ == '__main__':
                             dbc.Table.from_dataframe(pd.DataFrame(
                                 {
                                     "Layer": ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt', 'PEG', 'Protein', 'DNA'],
-                                    "d[nm]": ['', '2', '50', '14', '20', '20', '2 / 8-9 (2 / 20 kDa)', '4', '?'],
+                                    "d[nm]": ['', '2', '50', '14', '20', '20', '~2 or ~8.5 (2 or 20 kDa)', '4', '?'],
                                     "n (670)": ['1.5202', '3.3105', '0.2238', '1.4628', '2.2500', '2.4687', '1.456', '1.53', '1.58'],
                                     "n (785)": ['1.5162', '3.3225', '0.2580', '1.4610', '2.5467', '?', '1.456', '1.53', '1.58'],
                                     "n (980)": ['1.5130', '3.4052', '0.2800', '1.4592', '3.0331', '?', '1.456', '1.53', '1.58'],
@@ -1089,7 +1085,7 @@ if __name__ == '__main__':
             return dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
-
+            # TODO: Add measurement data into analysis object, and also an attribute for fitted data
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, TIR_range, scanspeed, analysis_name)
             current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
             current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 2, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
@@ -1114,6 +1110,7 @@ if __name__ == '__main__':
                 1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label
 
         else:
+            # TODO: This part should load in the measurement data and previously fitted stuff when selecting analysis object
             current_fresnel_analysis = current_session.fresnel_analysis_instances[
                 dash.callback_context.triggered_id.index]
             result = 'Fit result: {res}'.format(res=current_fresnel_analysis.fit_result)
@@ -1122,28 +1119,7 @@ if __name__ == '__main__':
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
                 1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
 
-
-    # # TODO: Update the plot with previously fitted traces if selecting a different analysis
-    # # Update the current fresnel analysis object and fresnel fitting options accordingly
-    # @dash.callback(
-    #     dash.Output('fresnel-fit-option-rangeslider', 'value'),
-    #     dash.Output('fresnel-fit-option-iniguess', 'value'),
-    #     dash.Output('fresnel-fit-option-lowerbound', 'value'),
-    #     dash.Output('fresnel-fit-option-upperbound', 'value'),
-    #     dash.Output('fresnel-fit-option-extinctionslider', 'value'),
-    #     dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
-    #     prevent_initial_call=True)
-    # def update_current_fresnel_analysis(input1):
-    #
-    #     global current_fresnel_analysis
-    #
-    #     current_fresnel_analysis = current_session.fresnel_analysis_instances[dash.callback_context.triggered_id.index]
-    #
-    #     return current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction
-
-
     # TODO: Update the plot with previously fitted traces if selecting a different analysis
-
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),
@@ -1298,6 +1274,7 @@ if __name__ == '__main__':
             return new_figure, result, 'finished'
 
         elif 'loaded-new-measurement' == dash.ctx.triggered_id:
+            # TODO: Should this still stay after adding measurement data at analysis object creation? Maybe not?
             new_figure = px.line(reflectivity_df, x='angles', y='ydata')
             new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
                                            yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
