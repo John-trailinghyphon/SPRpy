@@ -288,12 +288,13 @@ class FresnelModel:
 
     """
 
-    def __init__(self, sensor_object_, data_path_, TIR_range_, scanspeed_, object_id_, object_name_):
+    def __init__(self, sensor_object_, data_path_, reflectivity_df_, TIR_range_, scanspeed_, object_id_, object_name_):
         self.name = object_name_
         self.object_id = object_id_
         self.sensor_object = sensor_object_
         self.sensor_object_label = ''
         self.initial_data_path = data_path_
+        self.measurement_data = reflectivity_df_
         self.TIR_range = TIR_range_  # Default for air. For water: (60.8, 63)
         self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
         self.angle_range = [40, 80]
@@ -301,7 +302,8 @@ class FresnelModel:
         self.bounds = [0, 50]
         self.extinction_correction = 0
         self.y_offset = 0
-        self.fit_result = None
+        self.fitted_data = None
+        self.fitted_result = None
 
     def calculate_fresnel_trace(self):
 
@@ -317,7 +319,7 @@ class FresnelModel:
                                                     polarization=self.sensor_object.polarization)
         return fresnel_coefficients_
 
-    def model_reflectivity_trace(self, current_data_path, reflectivity_df):
+    def model_reflectivity_trace(self):
         """
 
         :param ini_guess:
@@ -327,15 +329,8 @@ class FresnelModel:
         :return:
         """
 
-        # Check if current data path matches data_path when object was first initialized, otherwise load previous data
-        if current_data_path == self.initial_data_path:
-            xdata_ = reflectivity_df['angles']
-            ydata_ = reflectivity_df['ydata']
-
-        else:
-            _, _, _, _, _, reflectivity_df_ = load_csv_data(path=self.initial_data_path)
-            xdata_ = reflectivity_df_['angles']
-            ydata_ = reflectivity_df_['ydata']
+        xdata_ = self.measurement_data['angles']
+        ydata_ = self.measurement_data['ydata']
 
         # Calculate TIR angle and bulk refractive index
         TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(xdata_, ydata_, self.TIR_range, self.scanspeed)
@@ -366,8 +361,8 @@ class FresnelModel:
                                                           'polarization': self.sensor_object.polarization}
                                                   )
             # Collect the results from least_squares object and calculate corresponding fresnel coefficients
-            self.fit_result = result['x'][0]
-            fresnel_coefficients = fresnel_calculation(self.fit_result,
+            self.fitted_result = result['x'][0]
+            fresnel_coefficients = fresnel_calculation(self.fitted_result,
                                                        fitted_layer_index=self.sensor_object.fitted_layer_index,
                                                        angles=selection_xdata_,
                                                        wavelength=self.sensor_object.wavelength,
@@ -382,7 +377,13 @@ class FresnelModel:
                 # Calculate new y_offset
                 self.y_offset = self.y_offset + np.min(selection_ydata_) - np.min(fresnel_coefficients)
 
-        return selection_xdata_, fresnel_coefficients + self.y_offset
+        # Shift fresnel coefficients back to measurement data  level
+        fresnel_ydata = fresnel_coefficients + self.y_offset
+
+        # Compile into fresnel_coefficients data frame
+        self.fitted_data = pd.DataFrame(data={'angles': selection_xdata_, 'ydata': fresnel_ydata})
+
+        return self.fitted_data
 
     def export_fitted_results(self):
         """
@@ -442,13 +443,13 @@ def copy_sensor_backend(session_object, sensor_object):
     return copied_sensor_object
 
 
-def add_fresnel_model_object(session_object, sensor_object, data_path_, TIR_range_, scanspeed_, object_name_):
+def add_fresnel_model_object(session_object, sensor_object, data_path_, reflectivity_df_, TIR_range_, scanspeed_, object_name_):
     """
     Adds analysis objects to a session object.
     :return: an analysis object
     """
     session_object.fresnel_analysis_ID_count += 1
-    analysis_object = FresnelModel(sensor_object, data_path_, TIR_range_, scanspeed_, session_object.fresnel_analysis_ID_count, object_name_)
+    analysis_object = FresnelModel(sensor_object, data_path_, reflectivity_df_, TIR_range_, scanspeed_, session_object.fresnel_analysis_ID_count, object_name_)
     session_object.fresnel_analysis_instances[session_object.fresnel_analysis_ID_count] = analysis_object
 
     return analysis_object

@@ -48,8 +48,8 @@ def load_csv_data(path=False):
             step_length_pattern = re.compile(r'=\d{1,2}')
             scanspeed = int(step_length_pattern.search(file.readline()).group().strip('='))
 
-    except AttributeError:  # I think .group().strip() should return attribute error if .search() returns None
-        scanspeed = 5  # Assuming medium
+    except AttributeError:  # I think .group().strip() should return AttributeError if .search() returns None
+        scanspeed = 5  # Assuming medium scanspeed if legacy spr2 to csv converter was used
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
