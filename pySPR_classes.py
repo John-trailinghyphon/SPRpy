@@ -32,7 +32,7 @@ class Session:
         self.current_data_path = current_data_path
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
-            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can load a previous session or import previous results under "File and session controls".'
+            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can import previous results under "File and session controls".'
 
     def remove_sensor(self, sensor_object_id):
         """
