@@ -40,17 +40,21 @@ class Session:
         :return:
         """
         removed = self.sensor_instances.pop(sensor_object_id)
-        print('Removed the following sensor object: ' + str(removed))
+        removed_file_path = self.location + r'\Sensors' + r'\S{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
+        os.remove(removed_file_path)
+        print('Removed the following sensor object: S{id} {name}'.format(id=removed.object_id, name=removed.name))
 
         return
 
-    def remove_analysis(self, analysis_object_id):
+    def remove_fresnel_analysis(self, analysis_object_id):
         """
         Remove an analysis object from the session.
         :return:
         """
         removed = self.fresnel_analysis_instances.pop(analysis_object_id)
-        print('Removed the following analysis object: ' + str(removed))
+        removed_file_path = self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
+        os.remove(removed_file_path)
+        print('Removed the following analysis object: FM{id} {name}'.format(id=removed.object_id, name=removed.name))
 
         return
 
@@ -120,7 +124,7 @@ class Session:
 
         return
 
-    def import_analysis(self):
+    def import_fresnel_analysis(self):
         file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\Analysis instances')
         self.fresnel_analysis_ID_count += 1
 
