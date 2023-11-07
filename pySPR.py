@@ -242,7 +242,7 @@ if __name__ == '__main__':
                       style={'margin-right': '10px', 'textAlign': 'center'}),
         dbc.Container([
             dbc.ButtonGroup([
-                dbc.Button('Load data',
+                dbc.Button('Load new data',
                            id='load-data',
                            n_clicks=0,
                            color='primary',
@@ -382,13 +382,18 @@ if __name__ == '__main__':
                                 dbc.Button('Add data trace',
                                            id='quantification-reflectivity-add-data-trace',
                                            n_clicks=0,
-                                           color='warning',
+                                           color='danger',
                                            title='Add a measurement trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
                                 dbc.Button('Add fresnel trace',
                                            id='quantification-reflectivity-add-fresnel-trace',
                                            n_clicks=0,
-                                           color='warning',
+                                           color='success',
                                            title='Add a fresnel calculation trace to the figure based on current sensor values.'),
+                                dbc.Button('Clear traces',
+                                           id='quantification-reflectivity-clear-traces',
+                                           n_clicks=0,
+                                           color='warning',
+                                           title='Clear added traces (required to regain sensorgram hover data selection).'),
                                 dbc.DropdownMenu(
                                     id='reflectivity-save-dropdown',
                                     label='Save as...',
@@ -397,14 +402,18 @@ if __name__ == '__main__':
                                         dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
                                         dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
                                         dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0)],
-                                    style={'margin-left': '-5px'})
-                            ], style={'margin-left': '30%'}),
+                                    )
+                            ], style={'margin-left': '13%'}),
                         ], style={'width': '35%'}),
                         dash.html.Div([
                             dash.dcc.Graph(id='quantification-sensorgram-graph',
                                            figure=sensorgram_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
+                                dbc.Switch(
+                                    id='hover-selection-switch',
+                                    label='Hover selection',
+                                    value=True),
                                 dbc.DropdownMenu(
                                     id='sensorgram-save-dropdown',
                                     label='Save as...',
@@ -412,8 +421,8 @@ if __name__ == '__main__':
                                     children=[dbc.DropdownMenuItem('.PNG', id='quantification-sensorgram-save-png', n_clicks=0),
                                               dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
                                               dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0)],
-                                    style={'margin-left': '-5px'}),
-                                ], style={'margin-left': '40%'}),
+                                    style={'margin-left': '100%'}),
+                                ], style={'margin-left': '27.5%'}),
                         ], style={'width': '60%'})
                     ], id='quantification-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
@@ -470,10 +479,9 @@ if __name__ == '__main__':
                                         dbc.DropdownMenu(id='fresnel-analysis-dropdown',
                                                          label='Choose analysis',
                                                          color='primary',
-                                                         children=[
-                dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
-                                     id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
-                                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances])  #TODO: Include previous analysis if loading from a previous session
+                                                         children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                                                   id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                                                   n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances])
                                     ])
                                 ]),
                                 dash.html.Div([
@@ -557,7 +565,7 @@ if __name__ == '__main__':
                     dash.html.Div(
                         ['Non-interacting height probe'],
                         id='probe-tab-content')
-                ], label='Exclusion height probing', tab_id='probe-tab', style={'margin-top': '10px'}),
+                ], label='Exclusion height determination', tab_id='probe-tab', style={'margin-top': '10px'}),
 
                 # Result summary tab
                 dbc.Tab([
@@ -628,6 +636,7 @@ if __name__ == '__main__':
 
         return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
 
+    # TODO: Add button and functionality for removing sensor objects (use modal with confirm action)
     # Updating the sensor table with new values and properties
     @dash.callback(
         dash.Output('sensor-table', 'data'),  # Update sensor table data
@@ -671,10 +680,22 @@ if __name__ == '__main__':
         global current_sensor
         global current_session
         global current_data_path
+        global reflectivity_df
+        global scanspeed
+        global TIR_range
 
         if 'new-sensor-gold' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
             current_sensor.name = 'Gold sensor'
+
+            # Calculate TIR angle and bulk refractive index from measured data
+            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
+                                                scanspeed)
+            current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
+                np.pi / 180 * TIR_angle)
+            current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
+
+            # Save sensor and session
             current_session.save_sensor(current_sensor.object_id)
             current_session.save_session()
 
@@ -696,6 +717,15 @@ if __name__ == '__main__':
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
             current_sensor.name = 'Glass sensor'
+
+            # Calculate TIR angle and bulk refractive index from measured data
+            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
+                                                scanspeed)
+            current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
+                np.pi / 180 * TIR_angle)
+            current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
+
+            # Save sensor and session
             current_session.save_sensor(current_sensor.object_id)
             current_session.save_session()
 
@@ -717,6 +747,15 @@ if __name__ == '__main__':
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
             current_sensor.name = 'Palladium sensor'
+
+            # Calculate TIR angle and bulk refractive index from measured data
+            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
+                                                scanspeed)
+            current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
+                np.pi / 180 * TIR_angle)
+            current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
+
+            # Save sensor and session
             current_session.save_sensor(current_sensor.object_id)
             current_session.save_session()
 
@@ -738,6 +777,13 @@ if __name__ == '__main__':
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
             current_sensor.name = 'Platinum sensor'
+
+            # Calculate TIR angle and bulk refractive index from measured data
+            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
+            current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
+            current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
+
+            # Save sensor and session
             current_session.save_sensor(current_sensor.object_id)
             current_session.save_session()
 
@@ -883,16 +929,20 @@ if __name__ == '__main__':
         dash.Output('quantification-reflectivity-graph', 'figure'),
         dash.Input('quantification-reflectivity-add-data-trace', 'n_clicks'),
         dash.Input('quantification-reflectivity-add-fresnel-trace', 'n_clicks'),
+        dash.Input('quantification-reflectivity-clear-traces', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-png', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-svg', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-html', 'n_clicks'),
         dash.Input('quantification-sensorgram-graph', 'hoverData'),
         dash.State('quantification-reflectivity-graph', 'figure'),
+        dash.State('hover-selection-switch', 'value')
     )
-    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, save_png, save_svg, save_html, hoverData, figure_JSON):
+    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, clear_traces, save_png, save_svg, save_html, hoverData, figure_JSON, hover_active):
 
         global ydata_df
         global angles_df
+        global current_sensor
+        global reflectivity_df
 
         figure_object = go.Figure(figure_JSON)
 
@@ -902,31 +952,35 @@ if __name__ == '__main__':
             # First make sure no other traces has been added and the very first value is ignored
             if figure_object.data.__len__() == 1:
 
-                time_index = hoverData['points'][0]['pointIndex']
+                # Then also make sure hover switch is set to active
+                if hover_active is True:
+                    time_index = hoverData['points'][0]['pointIndex']
 
-                new_trace_data = ydata_df.loc[time_index+1]
+                    reflectivity_df['ydata'] = ydata_df.loc[time_index+1]
 
-                new_figure = go.Figure(go.Scatter(x=angles_df,
-                                                  y=new_trace_data,
-                                                  mode='lines',
-                                                  showlegend=False,
-                                                  line_color='#636efa'))
-                new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
-                                         yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
-                                         font_family='Balto',
-                                         font_size=19,
-                                         margin_r=25,
-                                         margin_l=60,
-                                         margin_t=40,
-                                         template='simple_white',
-                                         uirevision=True)
-                new_figure.update_xaxes(mirror=True,
-                                        showline=True)
-                new_figure.update_yaxes(mirror=True,
-                                        showline=True)
+                    new_figure = go.Figure(go.Scatter(x=reflectivity_df['angles'],
+                                                      y=reflectivity_df['ydata'],
+                                                      mode='lines',
+                                                      showlegend=False,
+                                                      line_color='#636efa'))
+                    new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                             yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                             font_family='Balto',
+                                             font_size=19,
+                                             margin_r=25,
+                                             margin_l=60,
+                                             margin_t=40,
+                                             template='simple_white',
+                                             uirevision=True)
+                    new_figure.update_xaxes(mirror=True,
+                                            showline=True)
+                    new_figure.update_yaxes(mirror=True,
+                                            showline=True)
 
-                return new_figure
+                    return new_figure
 
+                else:
+                    return dash.no_update
             else:
                 return dash.no_update
 
@@ -940,9 +994,6 @@ if __name__ == '__main__':
 
         # This adds a fresnel calculation trace to the reflectivity plot
         elif 'quantification-reflectivity-add-fresnel-trace' == dash.ctx.triggered_id:
-            global current_sensor
-            global reflectivity_df
-
             fresnel_coefficients = fresnel_calculation(None,
                                                        angles=reflectivity_df['angles'],
                                                        fitted_layer_index=current_sensor.fitted_layer_index,
@@ -957,6 +1008,29 @@ if __name__ == '__main__':
                                                y=fresnel_coefficients,
                                                mode='lines',
                                                showlegend=False))
+
+        # Clear added traces from the reflectivity plot
+        elif 'quantification-reflectivity-clear-traces' == dash.ctx.triggered_id:
+            new_figure = go.Figure(go.Scatter(x=reflectivity_df['angles'],
+                                              y=reflectivity_df['ydata'],
+                                              mode='lines',
+                                              showlegend=False,
+                                              line_color='#636efa'))
+            new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                     yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                     font_family='Balto',
+                                     font_size=19,
+                                     margin_r=25,
+                                     margin_l=60,
+                                     margin_t=40,
+                                     template='simple_white',
+                                     uirevision=True)
+            new_figure.update_xaxes(mirror=True,
+                                    showline=True)
+            new_figure.update_yaxes(mirror=True,
+                                    showline=True)
+
+            return new_figure
 
         elif 'quantification-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -1059,71 +1133,8 @@ if __name__ == '__main__':
 
             return figure_object
 
-    # # Callback for adding new modelled reflectivity analysis object to the session
-    # @dash.callback(
-    #     dash.Output('fresnel-analysis-dropdown', 'children'),
-    #     dash.Output('fresnel-analysis-option-collapse', 'is_open'),
-    #     dash.Output('add-fresnel-analysis-modal', 'is_open'),
-    #     dash.Output('fresnel-fit-option-rangeslider', 'value'),
-    #     dash.Output('fresnel-fit-option-iniguess', 'value'),
-    #     dash.Output('fresnel-fit-option-lowerbound', 'value'),
-    #     dash.Output('fresnel-fit-option-upperbound', 'value'),
-    #     dash.Output('fresnel-fit-option-extinctionslider', 'value'),
-    #     dash.Output('fresnel-fit-result', 'children', allow_duplicate=True),
-    #     dash.Output('fresnel-fit-sensor', 'children'),
-    #     dash.Input('add-fresnel-analysis-button', 'n_clicks'),
-    #     dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
-    #     dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
-    #     dash.State('fresnel-analysis-name-input', 'value'),
-    #     prevent_initial_call=True)
-    # def update_reflectivity_object_ui(add_button, confirm_button, selected_analysis, analysis_name):
-    #
-    #     global current_session
-    #     global current_sensor
-    #     global current_fresnel_analysis
-    #     global TIR_range
-    #     global scanspeed
-    #     global current_data_path
-    #     global reflectivity_df
-    #
-    #     if 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-    #         return dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
-    #
-    #     elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
-    #         # TODO: Add measurement data into analysis object, and also an attribute for fitted data
-    #         current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
-    #         current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
-    #         current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 2, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
-    #         current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
-    #         current_session.save_session()
-    #         current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
-    #
-    #         analysis_options = [
-    #             dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
-    #                                  id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
-    #                                  n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
-    #
-    #         current_fresnel_analysis.sensor_object_label = 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-    #             sensor_number=current_sensor.object_id,
-    #             sensor_name=current_sensor.name,
-    #             channel=current_sensor.channel,
-    #             fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-    #             fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
-    #
-    #         return analysis_options, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-    #         current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-    #             1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label
-    #
-    #     else:
-    #         current_fresnel_analysis = current_session.fresnel_analysis_instances[
-    #             dash.callback_context.triggered_id.index]
-    #         result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
-    #
-    #         return dash.no_update, True, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-    #         current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-    #             1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
 
-    # TODO: error for round() on fitted_value when it is none, make exception for this case
+    # TODO: Add button and functionality for removing analysis objects (use modal with confirm action)
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),
@@ -1293,7 +1304,6 @@ if __name__ == '__main__':
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-        # TODO: Update fresnel graph to display only measurement in graph
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
             current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
@@ -1314,7 +1324,50 @@ if __name__ == '__main__':
                 fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                 fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-            return dash.no_update, dash.no_update, analysis_options, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
+            # Update fresnel plot with current measurement data
+            new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
+                                              y=current_fresnel_analysis.measurement_data['ydata'],
+                                              mode='lines',
+                                              showlegend=False,
+                                              line_color='#636efa'
+                                              ))
+            # Add lines for angle range
+            new_figure.add_trace(
+                go.Scatter(x=[current_fresnel_analysis.angle_range[0], current_fresnel_analysis.angle_range[0]],
+                           y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                              max(current_fresnel_analysis.measurement_data['ydata'])],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='black',
+                           line_dash='dash'
+                           ))
+
+            new_figure.add_trace(
+                go.Scatter(x=[current_fresnel_analysis.angle_range[1], current_fresnel_analysis.angle_range[1]],
+                           y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                              max(current_fresnel_analysis.measurement_data['ydata'])],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='black',
+                           line_dash='dash'
+                           ))
+
+            # Updating layout
+            new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                     yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                     font_family='Balto',
+                                     font_size=19,
+                                     margin_r=25,
+                                     margin_l=60,
+                                     margin_t=40,
+                                     template='simple_white',
+                                     uirevision=True)
+            new_figure.update_xaxes(mirror=True,
+                                    showline=True)
+            new_figure.update_yaxes(mirror=True,
+                                    showline=True)
+
+            return new_figure, dash.no_update, analysis_options, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
                 1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label
 
@@ -1337,7 +1390,11 @@ if __name__ == '__main__':
         else:
             current_fresnel_analysis = current_session.fresnel_analysis_instances[
                 dash.callback_context.triggered_id.index]
-            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+
+            if current_fresnel_analysis.fitted_result is not None:
+                result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+            else:
+                result = 'Fit result: None'
 
             # If the current loaded measurement data is not the same as the analysis object, use a different color
             if current_data_path != current_fresnel_analysis.initial_data_path:

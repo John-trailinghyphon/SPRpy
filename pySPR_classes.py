@@ -14,7 +14,7 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, name='Experiments', directory=os.getcwd(), current_data_path=None):
+    def __init__(self, name='Session', directory=os.getcwd(), current_data_path=None):
         self.name = datetime.datetime.now().__str__()[0:16].replace(':', '_') + ' ' + name
         if not os.path.exists(directory + r'\pySPR sessions'):
             os.mkdir(directory + r'\pySPR sessions')
@@ -71,7 +71,7 @@ class Session:
 
         # Save analysis instances
         for analysis_id in self.fresnel_analysis_instances:
-            with open(self.location + r'\Analysis instances' + r'\A{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
+            with open(self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
                 pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
 
         return
@@ -241,40 +241,6 @@ class Sensor:
                                                              'k': self.extinction_coefficients})
         return
 
-    # TODO: These functions are not necessary
-    # def add_material_layer(self, thickness, n_re, n_im, layer_index_=-1):
-    #     """
-    #     Add additional layers on top of the sensor (before bulk medium). not used by dash app
-    #     :return:
-    #     """
-    #     # Use negative indexing for this, so it always add the layer on the top no matter what was there previously
-    #     self.layer_thicknesses = np.insert(self.layer_thicknesses, layer_index_, thickness)
-    #     self.refractive_indices = np.insert(self.refractive_indices, layer_index_, n_re)
-    #     self.extinction_coefficients = np.insert(self.extinction_coefficients, layer_index_, n_im)
-    #     self.fitted_layer = 'h_surf'
-    #     print('Sensor thicknesses: ', self.layer_thicknesses)
-    #     print('Sensor refractive indices: ', self.refractive_indices)
-    #     print('Sensor extinction coefficients: ', self.extinction_coefficients)
-    #
-    # def remove_material_layer(self, layer_index_):
-    #
-    #     """
-    #     Removes a layer from a sensor. (Not used by dash app UI.)
-    #
-    #     :param layer_index_: int, which layer to remove (starting from 1)
-    #     :return:
-    #     """
-    #
-    #     self.layer_thicknesses = np.delete(self.layer_thicknesses, layer_index_-1, axis=0)
-    #     if len(self.layer_thicknesses) == 4:
-    #         self.fitted_layer = 'n_im_metal'
-    #     self.refractive_indices = np.delete(self.refractive_indices, layer_index_-1, axis=0)
-    #     self.extinction_coefficients = np.delete(self.extinction_coefficients, layer_index_-1, axis=0)
-    #
-    #     print('Sensor thicknesses: ', self.layer_thicknesses)
-    #     print('Sensor refractive indices: ', self.refractive_indices)
-    #     print('Sensor extinction coefficients: ', self.extinction_coefficients)
-
 
 class FresnelModel:
     """
@@ -282,9 +248,6 @@ class FresnelModel:
     each layer added to the sensor!
 
     TODO: Each object should also have a .csv export function.
-    TODO: IN dash app, add functionality to update current sensor object with the model object optical parameters
-    TODO: Add button and graph object to dashapp for the calculate_fresnel_trace method
-    TODO: Add attributes for storing calculated fresnel traces as part of results
 
     """
 
