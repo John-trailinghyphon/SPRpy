@@ -212,6 +212,7 @@ if __name__ == '__main__':
             ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
         ),
 
+        # TODO: Add an Interval component that updates the session log once per minute (when starting to add log messages)
         # Session log div
         dash.html.Div([
             dash.html.H3("Session log", className='dash-bootstrap'),
@@ -607,13 +608,62 @@ if __name__ == '__main__':
                     ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
-                # Non-interacting height probe tab
+                # Exclusion height determination tab
                 # TODO: Make sure the quality of fit for each d,n pair can be viewed in the hover mode.
                 dbc.Tab([
-                    dash.html.Div(
-                        ['Non-interacting height probe'],
-                        id='probe-tab-content')
-                ], label='Exclusion height determination', tab_id='probe-tab', style={'margin-top': '10px'}),
+                    dash.html.Div([
+                        dash.html.Div([
+                            dash.dcc.Graph(id='exclusion-height-reflectivity-graph',
+                                           figure=reflectivity_fig,
+                                           mathjax=True),
+                            dbc.ButtonGroup([
+                                dbc.DropdownMenu(
+                                    id='exclusion-height-reflectivity-save-dropdown',
+                                    label='Save as...',
+                                    color='info',
+                                    children=[
+                                        dbc.DropdownMenuItem('.PNG', id='exclusion-height-reflectivity-save-png',
+                                                             n_clicks=0),
+                                        dbc.DropdownMenuItem('.SVG', id='exclusion-height-reflectivity-save-svg',
+                                                             n_clicks=0),
+                                        dbc.DropdownMenuItem('.HTML', id='exclusion-height-reflectivity-save-html',
+                                                             n_clicks=0)],
+                                )
+                            ], style={'margin-left': '13%'}),
+                        ], style={'width': '35%'}),
+                        dash.html.Div([
+                            dash.dcc.Graph(id='exclusion-height-sensorgram-graph',
+                                           figure=sensorgram_fig,
+                                           mathjax=True),
+                            dash.html.Div([
+                                dbc.Label('Click-action selector', style={'margin-left': '5%', 'margin-top': '35px'}),
+                                dbc.RadioItems(
+                                    options=[
+                                        {"label": "Offset data", "value": 1},
+                                        {"label": "Choose injection points", "value": 2},
+                                        {"label": "Choose buffer points", "value": 3},
+                                        {"label": "Choose probe points", "value": 4}],
+                                    value=1,
+                                    id='exclusion-height-click-action-selector',
+                                    style={'margin-left': '20px'}),
+                                dbc.Button('Submit selected points', id='exclusion-height-click-action-submit',
+                                           color='success',
+                                           n_clicks=0,
+                                           style={'margin-left': '20px', 'margin-top': '35px', 'margin-bot': '35px', 'margin-right': '18%', 'line-height': '1.5'}),
+                                dbc.DropdownMenu(
+                                    id='exclusion-height-sensorgram-save-dropdown',
+                                    label='Save as...',
+                                    color='info',
+                                    children=[dbc.DropdownMenuItem('.PNG', id='exclusion-height-sensorgram-save-png',
+                                                                   n_clicks=0),
+                                              dbc.DropdownMenuItem('.SVG', id='exclusion-height-sensorgram-save-svg',
+                                                                   n_clicks=0),
+                                              dbc.DropdownMenuItem('.HTML', id='exclusion-height-sensorgram-save-html',
+                                                                   n_clicks=0)])
+                            ], style={'display': 'flex', 'justify-content': 'left'}),
+                        ], style={'width': '60%'})
+                    ], id='exclusion-height-tab-content', style={'display': 'flex', 'justify-content': 'center'})
+                ], label='Exclusion height determination', tab_id='exclusion-height-tab', style={'margin-top': '10px'}),
 
                 # Result summary tab
                 dbc.Tab([
@@ -621,7 +671,7 @@ if __name__ == '__main__':
                         ['Summary'],
                         id='summary-tab-content')
                 ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
-            ], id='analysis-tabs', active_tab='fresnel-tab'),
+            ], id='analysis-tabs', active_tab='exclusion-height-tab'),
         ], style={'margin-left': '2%', 'margin-right': '2%'})
     ])
 
