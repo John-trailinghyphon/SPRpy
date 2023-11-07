@@ -103,8 +103,8 @@ if __name__ == '__main__':
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
                                                    sensorgram_df_selection['TIR angle'][0]
 
-            # Set current sensor to be the latest one of the session
-            current_sensor = current_session.sensor_instances[current_session.sensor_ID_count]
+            # Set current sensor to be the latest one of the session (highest index value)
+            current_sensor = current_session.sensor_instances[max(current_session.sensor_instances.keys())]
 
             # Add note to log
             current_session.log = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Reopened session'
@@ -266,6 +266,30 @@ if __name__ == '__main__':
                            n_clicks=0,
                            color='primary',
                            title='Use this to copy a sensor table\'s values into a new sensor'),
+                dbc.Button('Remove current sensor',
+                           id='remove-sensor-button',
+                           n_clicks=0,
+                           color='primary',
+                           title='Removes the currently selected sensor from the session.'),
+                dbc.Modal([
+                    dbc.ModalHeader(dbc.ModalTitle('Removing sensor object')),
+                    dbc.ModalBody('Are you sure you want to delete the currently selected sensor?\n(at least one remaining required)'),
+                    dbc.ModalFooter(
+                        dbc.ButtonGroup([
+                            dbc.Button('Confirm', id='remove-sensor-confirm',
+                                       color='success',
+                                       n_clicks=0),
+                            dbc.Button('Cancel', id='remove-sensor-cancel',
+                                       color='danger',
+                                       n_clicks=0)
+                        ])
+                    )
+                ],
+                    id='remove-sensor-modal',
+                    size='sm',
+                    is_open=False,
+                    backdrop='static',
+                    keyboard=False),
                 dbc.DropdownMenu(
                     id='chosen-sensor-dropdown',
                     label='Sensors',
@@ -481,7 +505,31 @@ if __name__ == '__main__':
                                                          color='primary',
                                                          children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
                                                                    id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
-                                                                   n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances])
+                                                                   n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
+                                        dbc.Button('Remove analysis',
+                                                   id='remove-fresnel-analysis-button',
+                                                   n_clicks=0,
+                                                   color='primary',
+                                                   title='Remove the currently selected analysis.'),
+                                        dbc.Modal([
+                                            dbc.ModalHeader(dbc.ModalTitle('Removing fresnel analysis object')),
+                                            dbc.ModalBody('Are you sure you want to delete the currently selected analysis?'),
+                                            dbc.ModalFooter(
+                                                dbc.ButtonGroup([
+                                                    dbc.Button('Confirm', id='remove-fresnel-analysis-confirm',
+                                                               color='success',
+                                                               n_clicks=0),
+                                                    dbc.Button('Cancel', id='remove-fresnel-analysis-cancel',
+                                                               color='danger',
+                                                               n_clicks=0)
+                                                ])
+                                            )
+                                        ],
+                                            id='remove-fresnel-analysis-modal',
+                                            size='sm',
+                                            is_open=False,
+                                            backdrop='static',
+                                            keyboard=False),
                                     ])
                                 ]),
                                 dash.html.Div([
@@ -643,6 +691,7 @@ if __name__ == '__main__':
         dash.Output('sensor-table-title', 'children'),  # Update sensor table title
         dash.Output('chosen-sensor-dropdown', 'children'),  # Update chosen sensor dropdown
         dash.Output('rename-sensor-modal', 'is_open'),
+        dash.Output('remove-sensor-modal', 'is_open'),
         dash.Input({'type': 'sensor-list', 'index': dash.ALL}, 'n_clicks'),
         dash.Input('new-sensor-gold', 'n_clicks'),
         dash.Input('new-sensor-glass', 'n_clicks'),
@@ -650,6 +699,8 @@ if __name__ == '__main__':
         dash.Input('new-sensor-platinum', 'n_clicks'),
         dash.Input('rename-sensor-button', 'n_clicks'),
         dash.Input('rename-sensor-confirm', 'n_clicks'),
+        dash.Input('remove-sensor-button', 'n_clicks'),
+        dash.Input('remove-sensor-confirm', 'n_clicks'),
         dash.Input('copy-sensor', 'n_clicks'),
         dash.Input('add-table-layer', 'n_clicks'),
         dash.Input('table-update-values', 'n_clicks'),
@@ -661,7 +712,8 @@ if __name__ == '__main__':
         dash.State('rename-sensor-input', 'value'),
         prevent_initial_call=True)
     def update_sensor_table(n_clicks_sensor_list, add_gold, add_sio2, add_palladium, add_platinum, rename_button,
-                            rename_confirm, click_copy, n_clicks_add_row, n_clicks_update, n_clicks_fitted,
+                            rename_confirm, remove_button,
+                            remove_confirm, click_copy, n_clicks_add_row, n_clicks_update, n_clicks_fitted,
                             fitted_result_update, table_rows, table_columns, active_cell, sensor_name_):
         """
         This callback function controls all updates to the sensor table.
@@ -712,7 +764,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False
+            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
@@ -742,7 +794,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False
+            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
@@ -772,7 +824,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False
+            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
@@ -800,7 +852,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False
+            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'copy-sensor' == dash.ctx.triggered_id:
             new_sensor = copy_sensor_backend(current_session, current_sensor)
@@ -822,10 +874,10 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False
+            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'rename-sensor-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True
+            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update
 
         elif 'rename-sensor-confirm' == dash.ctx.triggered_id:
 
@@ -852,7 +904,41 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False
+            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+
+        elif 'remove-sensor-button' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
+
+        elif 'remove-sensor-confirm' == dash.ctx.triggered_id:
+
+            # Only allow removing sensors if there are at least 1 sensor in the list, otherwise do nothing
+            if len(current_session.sensor_instances) > 1:
+
+                removed = current_sensor
+                current_sensor = current_session.sensor_instances[1]
+                current_session.remove_sensor(removed.object_id)
+                current_session.save_session()
+
+                sensor_options = [
+                    dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
+                                         id={'type': 'sensor-list', 'index': sensor_id},
+                                         n_clicks=0) for sensor_id in current_session.sensor_instances]
+
+                data_rows = current_sensor.optical_parameters.to_dict('records')
+                sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                    sensor_number=current_sensor.object_id,
+                    sensor_name=current_sensor.name,
+                    channel=current_sensor.channel,
+                    fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                    fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+
+                return data_rows, sensor_table_title, sensor_options, dash.no_update, False
+
+            else:
+                raise dash.exceptions.PreventUpdate
+
+        elif 'remove-sensor-cancel' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, False
 
         elif 'table-update-values' == dash.ctx.triggered_id:
 
@@ -867,12 +953,12 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_sensor(current_sensor.object_id)
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-table-layer' == dash.ctx.triggered_id:
             table_rows.insert(-1, {c['id']: '' for c in table_columns})
 
-            return table_rows, dash.no_update, dash.no_update, dash.no_update
+            return table_rows, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'table-select-fitted' == dash.ctx.triggered_id:
 
@@ -889,13 +975,13 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_sensor(current_sensor.object_id)
 
-            return table_rows, sensor_table_title, dash.no_update, dash.no_update
+            return table_rows, sensor_table_title, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-finished' == dash.ctx.triggered_id:
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
 
-            return data_rows, dash.no_update, dash.no_update, dash.no_update
+            return data_rows, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         else:
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
@@ -908,7 +994,7 @@ if __name__ == '__main__':
                 fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                 fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-            return data_rows, sensor_table_title, dash.no_update, dash.no_update
+            return data_rows, sensor_table_title, dash.no_update, dash.no_update, dash.no_update
 
 
     # Toggle view of default optical parameters for different materials
@@ -1142,6 +1228,7 @@ if __name__ == '__main__':
         dash.Output('fresnel-analysis-dropdown', 'children'),
         dash.Output('fresnel-analysis-option-collapse', 'is_open'),
         dash.Output('add-fresnel-analysis-modal', 'is_open'),
+        dash.Output('remove-fresnel-analysis-modal', 'is_open'),
         dash.Output('fresnel-fit-option-rangeslider', 'value'),
         dash.Output('fresnel-fit-option-iniguess', 'value'),
         dash.Output('fresnel-fit-option-lowerbound', 'value'),
@@ -1152,6 +1239,9 @@ if __name__ == '__main__':
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
+        dash.Input('remove-fresnel-analysis-button', 'n_clicks'),
+        dash.Input('remove-fresnel-analysis-confirm', 'n_clicks'),
+        dash.Input('remove-fresnel-analysis-cancel', 'n_clicks'),
         dash.Input('fresnel-fit-option-rangeslider', 'value'),
         dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
@@ -1165,7 +1255,7 @@ if __name__ == '__main__':
         dash.State('fresnel-fit-option-upperbound', 'value'),
         dash.State('fresnel-fit-option-extinctionslider', 'value'),
         prevent_initial_call=True)
-    def update_reflectivity_fresnel_graph(run_model, add_button, confirm_button, rangeslider_inp,
+    def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
                                           extinction_correction):
@@ -1233,7 +1323,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
@@ -1299,10 +1389,10 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
@@ -1367,9 +1457,99 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, analysis_options, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
+            return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
                 1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label
+
+        elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'remove-fresnel-analysis-confirm' == dash.ctx.triggered_id:
+            if len(current_session.fresnel_analysis_instances) > 1:
+
+                # Pop out the current fresnel analysis object from the session, delete its .pickle file and make the first instance the current one
+                removed = current_fresnel_analysis
+                current_fresnel_analysis = current_session.fresnel_analysis_instances[1]
+                current_session.remove_fresnel_analysis(removed.object_id)
+                current_session.save_session()
+
+                # Update all analysis options accordingly
+                analysis_options = [
+                    dbc.DropdownMenuItem(
+                        'FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                        id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                        n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
+
+                if current_fresnel_analysis.fitted_result is not None:
+                    result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+                else:
+                    result = 'Fit result: None'
+
+                # If the current loaded measurement data is not the same as the analysis object, use a different color
+                if current_data_path != current_fresnel_analysis.initial_data_path:
+                    line_color_value = '#00CC96'
+                else:
+                    line_color_value = '#636EFA'
+
+                # Plot figures
+                new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
+                                                  y=current_fresnel_analysis.measurement_data['ydata'],
+                                                  mode='lines',
+                                                  showlegend=False,
+                                                  line_color=line_color_value
+                                                  ))
+                if current_fresnel_analysis.fitted_data is not None:
+                    new_figure.add_trace(go.Scatter(x=current_fresnel_analysis.fitted_data['angles'],
+                                                    y=current_fresnel_analysis.fitted_data['ydata'],
+                                                    mode='lines',
+                                                    showlegend=False,
+                                                    line_color='#ef553b'
+                                                    ))
+                new_figure.add_trace(
+                    go.Scatter(x=[current_fresnel_analysis.angle_range[0], current_fresnel_analysis.angle_range[0]],
+                               y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                                  max(current_fresnel_analysis.measurement_data['ydata'])],
+                               mode='lines',
+                               showlegend=False,
+                               line_color='black',
+                               line_dash='dash'
+                               ))
+                new_figure.add_trace(
+                    go.Scatter(x=[current_fresnel_analysis.angle_range[1], current_fresnel_analysis.angle_range[1]],
+                               y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                                  max(current_fresnel_analysis.measurement_data['ydata'])],
+                               mode='lines',
+                               showlegend=False,
+                               line_color='black',
+                               line_dash='dash'
+                               ))
+
+                # Updating layout
+                new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                         yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                         font_family='Balto',
+                                         font_size=19,
+                                         margin_r=25,
+                                         margin_l=60,
+                                         margin_t=40,
+                                         template='simple_white',
+                                         uirevision=True)
+                new_figure.update_xaxes(mirror=True,
+                                        showline=True)
+                new_figure.update_yaxes(mirror=True,
+                                        showline=True)
+
+                return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
+                    current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
+                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
+
+            # If deleting the last fresnel analysis object
+            else:
+                current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
+                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -1445,7 +1625,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, True, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
+            return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                 current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
                 1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
 
