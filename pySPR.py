@@ -437,8 +437,8 @@ if __name__ == '__main__':
                             dbc.ButtonGroup([
                                 dbc.Switch(
                                     id='hover-selection-switch',
-                                    label='Hover selection',
-                                    value=True),
+                                    label='Lock hover selection',
+                                    value=False),
                                 dbc.DropdownMenu(
                                     id='sensorgram-save-dropdown',
                                     label='Save as...',
@@ -540,7 +540,7 @@ if __name__ == '__main__':
                                                 dbc.Form([
                                                     dbc.Row([
                                                         dbc.Label(
-                                                            'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                                                            'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                                                                 sensor_number=current_sensor.object_id,
                                                                 sensor_name=current_sensor.name,
                                                                 channel=current_sensor.channel,
@@ -609,7 +609,15 @@ if __name__ == '__main__':
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
                 # Exclusion height determination tab
-                # TODO: Make sure the quality of fit for each d,n pair can be viewed in the hover mode.
+                # TODO: Make sure the quality of fit for each d,n pair can be viewed with a slider passing over each injection.
+                #  Should probably do a list or dictionary backend-wise containing each injection.
+                # TODO: Add exclusion height analysis object and list controls, opening a collapse menu with the rest inside.
+                # TODO: Backend-wise, do stepping in height and perform fitting of the refractive index (opposite to matlab script).
+                #  It means user enters a plausible range for the heights instead, which is easier to relate to and weird
+                #  bulk effects are automatically detected (like PEG+MCH demonstrated).
+                # TODO: Pull most data from current sensor object and current fresnel analysis object (which should have
+                #  been performed on an angular trace containing buffer+layer, the resulting height corresponds to a 0 %
+                #  swollen version of the layer), but needs input for a range of plausible heights. This range can be calculated based on
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
@@ -646,8 +654,8 @@ if __name__ == '__main__':
                                     value=1,
                                     id='exclusion-height-click-action-selector',
                                     style={'margin-left': '20px'}),
-                                dbc.Button('Submit selected points', id='exclusion-height-click-action-submit',
-                                           color='success',
+                                dbc.Button('Clear selected points', id='exclusion-height-click-action-clear',
+                                           color='warning',
                                            n_clicks=0,
                                            style={'margin-left': '20px', 'margin-top': '35px', 'margin-bot': '35px', 'margin-right': '18%', 'line-height': '1.5'}),
                                 dbc.DropdownMenu(
@@ -734,7 +742,6 @@ if __name__ == '__main__':
 
         return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
 
-    # TODO: Add button and functionality for removing sensor objects (use modal with confirm action)
     # Updating the sensor table with new values and properties
     @dash.callback(
         dash.Output('sensor-table', 'data'),  # Update sensor table data
@@ -1073,7 +1080,7 @@ if __name__ == '__main__':
         dash.State('quantification-reflectivity-graph', 'figure'),
         dash.State('hover-selection-switch', 'value')
     )
-    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, clear_traces, save_png, save_svg, save_html, hoverData, figure_JSON, hover_active):
+    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, clear_traces, save_png, save_svg, save_html, hoverData, figure_JSON, lock_hover):
 
         global ydata_df
         global angles_df
@@ -1088,8 +1095,8 @@ if __name__ == '__main__':
             # First make sure no other traces has been added and the very first value is ignored
             if figure_object.data.__len__() == 1:
 
-                # Then also make sure hover switch is set to active
-                if hover_active is True:
+                # Then also make sure lock hover switch is set to inactive
+                if lock_hover is False:
                     time_index = hoverData['points'][0]['pointIndex']
 
                     reflectivity_df['ydata'] = ydata_df.loc[time_index+1]
@@ -1269,8 +1276,6 @@ if __name__ == '__main__':
 
             return figure_object
 
-
-    # TODO: Add button and functionality for removing analysis objects (use modal with confirm action)
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),
