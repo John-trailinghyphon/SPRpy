@@ -29,6 +29,8 @@ class Session:
         self.sensor_ID_count = 0
         self.fresnel_analysis_instances = {}
         self.fresnel_analysis_ID_count = 0
+        self.exclusion_height_analysis_instances = {}
+        self.exclusion_height_analysis_ID_count = 0
         self.current_data_path = current_data_path
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
@@ -58,6 +60,18 @@ class Session:
 
         return
 
+    def remove_exclusion_height_analysis(self, analysis_object_id):
+        """
+        Remove an analysis object from the session.
+        :return:
+        """
+        removed = self.exclusion_height_analysis_instances.pop(analysis_object_id)
+        removed_file_path = self.location + r'\Analysis instances' + r'\EH{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
+        os.remove(removed_file_path)
+        print('Removed the following analysis object: FM{id} {name}'.format(id=removed.object_id, name=removed.name))
+
+        return
+
     def save_all(self):
         """
         Saves all objects stored in the session, and the session file itself.
@@ -73,10 +87,15 @@ class Session:
             with open(self.location + r'\Sensors' + r'\S{id} {name}.pickle'.format(id=sensor_id, name=self.sensor_instances[sensor_id].name), 'wb') as save_file:
                 pickle.dump(self.sensor_instances[sensor_id], save_file)
 
-        # Save analysis instances
+        # Save fresnel analysis instances
         for analysis_id in self.fresnel_analysis_instances:
             with open(self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
                 pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
+
+        # Save exclusion height analysis instances
+        for analysis_id in self.exclusion_height_analysis_instances:
+            with open(self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
+                pickle.dump(self.exclusion_height_analysis_instances[analysis_id], save_file)
 
         return
 
@@ -111,6 +130,17 @@ class Session:
 
         return
 
+    def save_exclusion_height_analysis(self, analysis_id):
+        """
+        Saves a single fresnel analysis object to the session.
+        :return: None
+        """
+
+        with open(self.location + r'\Analysis instances' + r'\EH{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
+            pickle.dump(self.exclusion_height_analysis_instances[analysis_id], save_file)
+
+        return
+
     def import_sensor(self):
 
         file_path_ = select_file(prompt='Select the sensor object', prompt_folder=self.location + r'\Sensors')
@@ -133,6 +163,18 @@ class Session:
 
         analysis_object.object_id = self.fresnel_analysis_ID_count
         self.fresnel_analysis_instances[analysis_object.object_id] = analysis_object
+
+        return
+
+    def import_exclusion_height_analysis(self):
+        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\Analysis instances')
+        self.exclusion_height_analysis_ID_count += 1
+
+        with open(file_path_, 'rb') as import_file:
+            analysis_object = pickle.load(import_file)
+
+        analysis_object.object_id = self.exclusion_height_analysis_ID_count
+        self.exclusion_height_analysis_instances[analysis_object.object_id] = analysis_object
 
         return
 
@@ -367,19 +409,22 @@ class FresnelModel:
         pass
 
 
-class NonInteractingProbe(FresnelModel):
+class ExclusionHeight:
 
     """
 
     """
 
-    def __init__(self, sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_, ydata_type='R'):
-        super().__init__(sensor_object, data_path_, TIR_range_, angle_range_, scanspeed_, object_id_)  # Initializes the same way as parent objects, to shorten code
+    def __init__(self, sensor_object_, fresnel_object_, data_path_,  object_id_, object_name_):
+        self.object_name = object_name_
         self.object_id = object_id_
-        self.ydata_type = ydata_type
+        self.sensor_object = sensor_object_
+        self.fresnel_object = fresnel_object_
+        self.initial_data_path = data_path_
+
 
     # TODO: The methods running calculations here need to use background callbacks (https://dash.plotly.com/background-callbacks)
-    def calculate_fit(self):
+    def calculate_exclusion_height(self):
         pass
 
 
@@ -418,5 +463,16 @@ def add_fresnel_model_object(session_object, sensor_object, data_path_, reflecti
     session_object.fresnel_analysis_ID_count += 1
     analysis_object = FresnelModel(sensor_object, data_path_, reflectivity_df_, TIR_range_, scanspeed_, session_object.fresnel_analysis_ID_count, object_name_)
     session_object.fresnel_analysis_instances[session_object.fresnel_analysis_ID_count] = analysis_object
+
+    return analysis_object
+
+def add_exclusion_height_object(session_object, sensor_object, fresnel_object, data_path_, object_name_):
+    """
+    Adds analysis objects to a session object.
+    :return: an analysis object
+    """
+    session_object.exclusion_height_analysis_ID_count += 1
+    analysis_object = ExclusionHeight(sensor_object, fresnel_object, data_path_, session_object.exclusion_height_analysis_ID_count, object_name_)
+    session_object.exclusion_height_analysis_instances[session_object.exclusion_height_analysis_ID_count] = analysis_object
 
     return analysis_object
