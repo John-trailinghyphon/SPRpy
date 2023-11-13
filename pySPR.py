@@ -618,6 +618,9 @@ if __name__ == '__main__':
                 # TODO: Pull most data from current sensor object and current fresnel analysis object (which should have
                 #  been performed on an angular trace containing buffer+layer, the resulting height corresponds to a 0 %
                 #  swollen version of the layer), but needs input for a range of plausible heights. This range can be calculated based on
+                # TODO: Make it so the progress bar updates with each finished injection, and that the results page is
+                #  updated with each injection so it can be aborted if necessary
+                # TODO: Add an abort calculation button
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
@@ -704,7 +707,14 @@ if __name__ == '__main__':
                                                                 id='exclusion-height-sensor')
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
-                                                            dbc.Label('Height bounds', width='auto'),
+                                                            dbc.Label(
+                                                                'Fresnel analysis: FM{analysis_number} {analysis_name}'.format(
+                                                                    analysis_number=1,
+                                                                    analysis_name='Placeholder',
+                                                                id='exclusion-height-fresnel-analysis'))
+                                                        ], style={'margin-bottom': '10px'}),
+                                                        dbc.Row([
+                                                            dbc.Label('Height bounds (min, max)', width='auto'),
                                                             dbc.Col([
                                                                 dbc.InputGroup([
                                                                     dbc.Input(id='exclusion-height-option-lowerbound',
@@ -718,17 +728,21 @@ if __name__ == '__main__':
                                                                                   current_sensor.fitted_var) / 2,
                                                                               type='number')
                                                                 ])
-                                                            ], width=4)
-                                                        ], style={'margin-bottom': '10px'}),
-                                                        dbc.Row([
-                                                            dbc.Label('Fit result: ', id='exclusion-height-fit-result')
+                                                            ], width=6)
                                                         ], style={'margin-bottom': '10px'})
                                                     ])
                                                 )
                                             ), id='exclusion-height-analysis-option-collapse', is_open=True)
                                     ])
-                                ], id='exclusion-height-fit-options-form')
-                            ]),
+                                ], id='exclusion-height-fit-options-form'),
+                                dash.html.Div([
+                                    dbc.Progress(value=0, color='primary', animated=True, striped=True, style={'height': '35px'}),
+                                    dbc.Button('Run calculation!', id='exclusion-height-run-button',
+                                               color='success',
+                                               n_clicks=0,
+                                               size='lg')
+                                ], style={'margin-top': '120px'})
+                            ], style={'margin-top': '80px'}),
                             dash.html.Div([
                                 dash.dcc.Graph(id='exclusion-height-sensorgram-graph',
                                                figure=sensorgram_fig,
@@ -761,25 +775,99 @@ if __name__ == '__main__':
                                 ], style={'display': 'flex', 'justify-content': 'left'}),
                             ], style={'width': '60%', 'margin-left': '3%'})
                         ], style={'display': 'flex', 'justify-content': 'center'}),
-                        dash.html.Div([
-                            dash.dcc.Graph(id='exclusion-height-reflectivity-graph',
-                                           figure=reflectivity_fig,
-                                           mathjax=True),
-                            dbc.ButtonGroup([
-                                dbc.DropdownMenu(
-                                    id='exclusion-height-reflectivity-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[
-                                        dbc.DropdownMenuItem('.PNG', id='exclusion-height-reflectivity-save-png',
-                                                             n_clicks=0),
-                                        dbc.DropdownMenuItem('.SVG', id='exclusion-height-reflectivity-save-svg',
-                                                             n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='exclusion-height-reflectivity-save-html',
-                                                             n_clicks=0)],
-                                )
-                            ], style={'margin-left': '13%'}),
-                        ], style={'width': '35%'}),
+
+                        # Results
+                        dbc.Collapse([
+                            dash.html.Div([
+                                dash.html.H3(['Exclusion height results'], style={'display': 'flex', 'justify-content': 'center'}),
+                                dash.html.Div([
+                                    dbc.Form([
+                                        dash.html.Div([
+                                            dbc.Row([
+                                                dbc.Label('Mean exclusion height: None',
+                                                          id='exclusion-height-result-mean')
+                                            ], style={'margin-bottom': '10px'}),
+                                            dbc.Row([
+                                                dbc.Label('All exclusion heights: None',
+                                                          id='exclusion-height-result-all')
+                                            ], style={'margin-bottom': '10px'}),
+                                            dbc.Label('Injection step', id='exclusion-height-result-pagination-label',
+                                                      style={'display': 'flex', 'justify-content': 'center'}),
+                                            dbc.Row([
+                                                dbc.Col([
+                                                    dbc.Pagination(max_value=12, id='exclusion-height-result-pagination')
+                                                ]),
+                                            ]),
+                                        ])
+                                    ], id='exclusion-height-results-form')
+                                ], style={'margin-top': '30px', 'display': 'flex', 'justify-content': 'center'}),
+                                dash.html.Div([
+                                    dash.html.Div([
+                                        dash.dcc.Graph(id='exclusion-height-SPRvsTIR-graph',
+                                                       figure=reflectivity_fig,
+                                                       mathjax=True),
+                                        dbc.ButtonGroup([
+                                            dbc.DropdownMenu(
+                                                id='exclusion-height-SPRvsTIR-save-dropdown',
+                                                label='Save as...',
+                                                color='info',
+                                                children=[
+                                                    dbc.DropdownMenuItem('.PNG',
+                                                                         id='exclusion-height-SPRvsTIR-save-png',
+                                                                         n_clicks=0),
+                                                    dbc.DropdownMenuItem('.SVG',
+                                                                         id='exclusion-height-SPRvsTIR-save-svg',
+                                                                         n_clicks=0),
+                                                    dbc.DropdownMenuItem('.HTML',
+                                                                         id='exclusion-height-SPRvsTIR-save-html',
+                                                                         n_clicks=0)],
+                                            )
+                                        ], style={'margin-left': '13%'}),
+                                    ], style={'width': '33%'}),
+                                    dash.html.Div([
+                                        dash.dcc.Graph(id='exclusion-height-reflectivity-graph',
+                                                       figure=reflectivity_fig,
+                                                       mathjax=True),
+                                        dbc.ButtonGroup([
+                                            dbc.DropdownMenu(
+                                                id='exclusion-height-reflectivity-save-dropdown',
+                                                label='Save as...',
+                                                color='info',
+                                                children=[
+                                                    dbc.DropdownMenuItem('.PNG', id='exclusion-height-reflectivity-save-png',
+                                                                         n_clicks=0),
+                                                    dbc.DropdownMenuItem('.SVG', id='exclusion-height-reflectivity-save-svg',
+                                                                         n_clicks=0),
+                                                    dbc.DropdownMenuItem('.HTML', id='exclusion-height-reflectivity-save-html',
+                                                                         n_clicks=0)],
+                                            )
+                                        ], style={'margin-left': '13%'}),
+                                    ], style={'width': '33%'}),
+                                    dash.html.Div([
+                                        dash.dcc.Graph(id='exclusion-height-d-n-pair-graph',
+                                                       figure=reflectivity_fig,
+                                                       mathjax=True),
+                                        dbc.ButtonGroup([
+                                            dbc.DropdownMenu(
+                                                id='exclusion-height-d-n-pair-save-dropdown',
+                                                label='Save as...',
+                                                color='info',
+                                                children=[
+                                                    dbc.DropdownMenuItem('.PNG',
+                                                                         id='exclusion-height-d-n-pair-save-png',
+                                                                         n_clicks=0),
+                                                    dbc.DropdownMenuItem('.SVG',
+                                                                         id='exclusion-height-d-n-pair-save-svg',
+                                                                         n_clicks=0),
+                                                    dbc.DropdownMenuItem('.HTML',
+                                                                         id='exclusion-height-d-n-pair-save-html',
+                                                                         n_clicks=0)],
+                                            )
+                                        ], style={'margin-left': '13%'}),
+                                    ], style={'width': '33%'})
+                                ], style={'display': 'flex', 'justify-content': 'center'})
+                            ], style={'margin-top': '40px'}),
+                        ], id='exclusion-height-result-collapse', is_open=True)
                     ], id='exclusion-height-tab-content')
                 ], label='Exclusion height determination', tab_id='exclusion-height-tab', style={'margin-top': '10px'}),
 
