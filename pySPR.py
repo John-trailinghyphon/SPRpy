@@ -779,28 +779,21 @@ if __name__ == '__main__':
                         # Results
                         dbc.Collapse([
                             dash.html.Div([
-                                dash.html.H3(['Exclusion height results'], style={'display': 'flex', 'justify-content': 'center'}),
+                                dash.html.H3(['Exclusion height results'], style={'display': 'flex', 'justify-content': 'left'}),
                                 dash.html.Div([
-                                    dbc.Form([
-                                        dash.html.Div([
-                                            dbc.Row([
-                                                dbc.Label('Mean exclusion height: None',
-                                                          id='exclusion-height-result-mean')
-                                            ], style={'margin-bottom': '10px'}),
-                                            dbc.Row([
-                                                dbc.Label('All exclusion heights: None',
-                                                          id='exclusion-height-result-all')
-                                            ], style={'margin-bottom': '10px'}),
-                                            dbc.Label('Injection step', id='exclusion-height-result-pagination-label',
-                                                      style={'display': 'flex', 'justify-content': 'center'}),
-                                            dbc.Row([
-                                                dbc.Col([
-                                                    dbc.Pagination(max_value=12, id='exclusion-height-result-pagination')
-                                                ]),
-                                            ]),
-                                        ])
-                                    ], id='exclusion-height-results-form')
-                                ], style={'margin-top': '30px', 'display': 'flex', 'justify-content': 'center'}),
+                                    dbc.Label('Mean exclusion height: None',
+                                              id='exclusion-height-result-mean')
+                                ], style={'margin-top': '30px', 'display': 'flex', 'justify-content': 'left'}),
+                                dash.html.Div([
+                                    dbc.Label('All exclusion heights: None',
+                                              id='exclusion-height-result-all',
+                                              style={'margin-bot': '10px'})
+                                ], style={'margin-top': '30px', 'display': 'flex', 'justify-content': 'left'}),
+                                dbc.Label('Injection step', id='exclusion-height-result-pagination-label',
+                                          style={'display': 'flex', 'justify-content': 'center'}),
+                                dash.html.Div([
+                                            dbc.Pagination(max_value=12, previous_next=True, id='exclusion-height-result-pagination')
+                                ], style={'display': 'flex', 'justify-content': 'center'}),
                                 dash.html.Div([
                                     dash.html.Div([
                                         dash.dcc.Graph(id='exclusion-height-SPRvsTIR-graph',
