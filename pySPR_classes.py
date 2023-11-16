@@ -423,7 +423,11 @@ class ExclusionHeight:
         self.fresnel_object = fresnel_object_
         self.initial_data_path = data_path_
         self.height_bounds = [0, 200]
-        self.
+        self.injection_points = []
+        self.buffer_points = []
+        self.probe_points = []
+        self.buffer_data = None
+        self.probe_data = None
 
     # TODO: The methods running calculations here need to use mutliprocessing and whould be run inside background callbacks in the dash app to prevent timeout after 30s of calculations.
     # TODO: Make sure the quality of fit for each d,n pair can be viewed with a pagination passing over each injection.

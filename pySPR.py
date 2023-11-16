@@ -750,7 +750,8 @@ if __name__ == '__main__':
                                                    color='danger',
                                                    n_clicks=0,
                                                    size='lg',
-                                                   disabled=True),
+                                                   disabled=True,
+                                                   title='Cancelling a running calculation. NOTE THAT PREVIOUS PROGRESS IS STILL OVERWRITTEN.'),
                                     ]),
                                     dash.dcc.Store(id='exclusion-run-finished', storage_type='session')
                                 ], style={'margin-top': '120px'})
@@ -1887,10 +1888,79 @@ if __name__ == '__main__':
                 current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
                 1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
 
-    # TODO: This callback may need to handle many duplicate outputs that are also changed upon changing the current
-    #  analysis object or adding a new object. This will be tricky...
     @dash.callback(
-        dash.Output('', ''),
+        dash.Output('exclusion-height-SPRvsTIR-graph', 'figure', allow_duplicate=True),
+        dash.Output('exclusion-height-reflectivity-graph', 'figure', allow_duplicate=True),
+        dash.Output('exclusion-height-d-n-pair-graph', 'figure', allow_duplicate=True),
+        # I think only these inputs should be allowed for this callback
+        dash.Input('exclusion-height-SPRvsTIR-save-png', 'n_clicks'),
+        dash.Input('exclusion-height-SPRvsTIR-save-svg', 'n_clicks'),
+        dash.Input('exclusion-height-SPRvsTIR-save-html', 'n_clicks'),
+        dash.Input('exclusion-height-reflectivity-save-png', 'n_clicks'),
+        dash.Input('exclusion-height-reflectivity-save-svg', 'n_clicks'),
+        dash.Input('exclusion-height-reflectivity-save-html', 'n_clicks'),
+        dash.Input('exclusion-height-d-n-pair-save-png', 'n_clicks'),
+        dash.Input('exclusion-height-d-n-pair-save-svg', 'n_clicks'),
+        dash.Input('exclusion-height-d-n-pair-save-html', 'n_clicks'),
+        prevent_initial_call=True)
+    def run_exclusion_height_calculations(SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html, reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html, dnpair_save_png, dnpair_save_svg, dnpair_save_html):
+        """
+        TODO: This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
+        """
+        global current_session
+
+        if '' == dash.ctx.triggered_id:
+
+
+            return
+
+        elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-SPRvsTIR-save-svg' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-SPRvsTIR-save-html' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-reflectivity-save-png' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-reflectivity-save-svg' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-reflectivity-save-html' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-d-n-pair-save-png' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-d-n-pair-save-svg' == dash.ctx.triggered_id:
+
+            return
+
+        elif 'exclusion-height-d-n-pair-save-html' == dash.ctx.triggered_id:
+
+            return
+
+
+    # TODO: This callback may need to handle many duplicate outputs that are also changed upon changing the current
+    #  analysis object or adding a new object. For fresnel fitting I fixed issues related to this by combining the
+    #  callbacks, so this will be tricky... It may work as long as there are only duplicate outputs, and not shared inputs...
+    @dash.callback(
+        dash.Output('exclusion-height-SPRvsTIR-graph', 'figure'),
+        dash.Output('exclusion-height-reflectivity-graph', 'figure'),
+        dash.Output('exclusion-height-d-n-pair-graph', 'figure'),
+        # I think only these inputs should be allowed for this callback
+        dash.Input('exclusion-height-run-button', 'n_clicks'),
+        dash.Input('exclusion-height-check-button', 'n_clicks'),
         prevent_initial_call=True,
         background=True,
         running=[
@@ -1901,11 +1971,20 @@ if __name__ == '__main__':
         cancel=[dash.Input('exclusion-height-abort-button', 'n_clicks')],
         progress=[dash.Output('exclusion-height-progressbar', 'value'), dash.Output('exclusion-height-progressbar', 'max')]
     )
-    def run_exclusion_height_calculations():
+    def run_exclusion_height_calculations(run_button, check_button, abort_button):
         """
         TODO: This callback handles what happens when running, checking or aborting the exclusion height calculations. Make a
          separate callback for loading settings and updating the sensorgram plot with selected probe points etc.
         """
-        pass
+        global current_session
+
+        if 'exclusion-height-run-button' == dash.ctx.triggered_id:
+            # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
+
+            return
+
+        elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
+            # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
+            return
 
     app.run_server(debug=True, use_reloader=False)
