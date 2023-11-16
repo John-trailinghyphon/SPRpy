@@ -412,7 +412,8 @@ class FresnelModel:
 class ExclusionHeight:
 
     """
-
+        This class defines an analysis object for determining the exclusion height from measurement data with probe
+        injections. The underlying method is described as the "non-interacting probe method" in the literature.
     """
 
     def __init__(self, sensor_object_, fresnel_object_, data_path_,  object_id_, object_name_):
@@ -421,10 +422,32 @@ class ExclusionHeight:
         self.sensor_object = sensor_object_
         self.fresnel_object = fresnel_object_
         self.initial_data_path = data_path_
+        self.height_bounds = [0, 200]
+        self.
 
+    # TODO: The methods running calculations here need to use mutliprocessing and whould be run inside background callbacks in the dash app to prevent timeout after 30s of calculations.
+    # TODO: Make sure the quality of fit for each d,n pair can be viewed with a pagination passing over each injection.
+    #  Should probably do a list or dictionary backend-wise containing each injection.
+    # TODO: Backend-wise, do stepping in height and perform fitting of the refractive index (opposite to matlab script).
+    #  It means user enters a plausible range for the heights instead, which is easier to relate to and weird
+    #  bulk effects are automatically detected (like PEG+MCH demonstrated).
+    # TODO: Pull most data from current sensor object and current fresnel analysis object (which should have
+    #  been performed on an angular trace containing buffer+layer, the resulting height corresponds to a 0 %
+    #  swollen version of the layer), but needs input for a range of plausible heights. This range can be calculated as
+    #  a default based on the dry height of the layer in air, but maybe easier to just add a tooltip stating that fact than implementing it.
+    # TODO: Make it so the progress bar updates with each finished injection, and that the results page is
+    #  updated with each injection so it can be aborted if necessary
 
-    # TODO: The methods running calculations here need to use background callbacks (https://dash.plotly.com/background-callbacks)
+    def check_exclusion_height(self):
+        """
+        Perform a single injection iteration to check that fitting looks good and that the height range is chosen correctly
+        """
+        pass
+
     def calculate_exclusion_height(self):
+        """
+
+        """
         pass
 
 
@@ -465,6 +488,7 @@ def add_fresnel_model_object(session_object, sensor_object, data_path_, reflecti
     session_object.fresnel_analysis_instances[session_object.fresnel_analysis_ID_count] = analysis_object
 
     return analysis_object
+
 
 def add_exclusion_height_object(session_object, sensor_object, fresnel_object, data_path_, object_name_):
     """

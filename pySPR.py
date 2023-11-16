@@ -48,6 +48,7 @@
 
 import dash
 import dash_bootstrap_components as dbc
+import diskcache
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
@@ -60,6 +61,14 @@ ask_for_previous_session = True
 default_data_folder = r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR'
 dash_app_theme = dbc.themes.SPACELAB  # Options: CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX,
 # MATERIA, MINTY, MORPH, PULSE, QUARTZ, SANDSTONE, SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, VAPOR, YETI, ZEPHYR.
+
+# Background callback cache configuration
+cache = diskcache.Cache("./cache")
+background_callback_manager = dash.DiskcacheManager(cache)
+# fresnel_cache = diskcache.Cache("./fresnel_cache")
+# fresnel_background_callback_manager = dash.DiskcacheManager(fresnel_cache)
+# exclusion_cache = diskcache.Cache("./exclusion_cache")
+# exclusion_background_callback_manager = dash.DiskcacheManager(exclusion_cache)
 
 if __name__ == '__main__':
 
@@ -142,7 +151,7 @@ if __name__ == '__main__':
     current_fresnel_analysis = None
 
     # Dash app
-    app = dash.Dash(name='pySPR', title='pySPR', external_stylesheets=[dash_app_theme])
+    app = dash.Dash(name='pySPR', title='pySPR', external_stylesheets=[dash_app_theme], background_callback_manager=background_callback_manager)
     app._favicon = 'icon.ico'
 
     # Dash figures
@@ -591,8 +600,9 @@ if __name__ == '__main__':
                                 dbc.Button('Run modelling',
                                            id='fresnel-reflectivity-run-model',
                                            n_clicks=0,
-                                           color='danger',
-                                           title='Run the fresnel model'),
+                                           color='success',
+                                           title='Run the fresnel model',
+                                           disabled=False),
                                 dash.dcc.Store(id='fresnel-reflectivity-run-finished', storage_type='session'),
                                 dbc.DropdownMenu(
                                     id='fresnel-save-dropdown',
@@ -609,18 +619,6 @@ if __name__ == '__main__':
                 ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
                 # Exclusion height determination tab
-                # TODO: Make sure the quality of fit for each d,n pair can be viewed with a slider passing over each injection.
-                #  Should probably do a list or dictionary backend-wise containing each injection.
-                # TODO: Add exclusion height analysis object and list controls, opening a collapse menu with the rest inside.
-                # TODO: Backend-wise, do stepping in height and perform fitting of the refractive index (opposite to matlab script).
-                #  It means user enters a plausible range for the heights instead, which is easier to relate to and weird
-                #  bulk effects are automatically detected (like PEG+MCH demonstrated).
-                # TODO: Pull most data from current sensor object and current fresnel analysis object (which should have
-                #  been performed on an angular trace containing buffer+layer, the resulting height corresponds to a 0 %
-                #  swollen version of the layer), but needs input for a range of plausible heights. This range can be calculated based on
-                # TODO: Make it so the progress bar updates with each finished injection, and that the results page is
-                #  updated with each injection so it can be aborted if necessary
-                # TODO: Add an abort calculation button
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
@@ -736,11 +734,25 @@ if __name__ == '__main__':
                                     ])
                                 ], id='exclusion-height-fit-options-form'),
                                 dash.html.Div([
-                                    dbc.Progress(value=0, color='primary', animated=True, striped=True, style={'height': '35px'}),
-                                    dbc.Button('Run calculation!', id='exclusion-height-run-button',
-                                               color='success',
-                                               n_clicks=0,
-                                               size='lg')
+                                    dbc.Progress(id='exclusion-height-progressbar', value=0, color='primary', animated=True, striped=True, style={'height': '35px'}),
+                                    dbc.ButtonGroup([
+                                        dbc.Button('Run full calculation', id='exclusion-height-run-button',
+                                                   color='success',
+                                                   n_clicks=0,
+                                                   size='lg',
+                                                   disabled=False),
+                                        dbc.Button('Check first', id='exclusion-height-check-button',
+                                                   color='info',
+                                                   n_clicks=0,
+                                                   size='lg',
+                                                   disabled=False),
+                                        dbc.Button('Abort', id='exclusion-height-abort-button',
+                                                   color='danger',
+                                                   n_clicks=0,
+                                                   size='lg',
+                                                   disabled=True),
+                                    ]),
+                                    dash.dcc.Store(id='exclusion-run-finished', storage_type='session')
                                 ], style={'margin-top': '120px'})
                             ], style={'margin-top': '80px'}),
                             dash.html.Div([
@@ -1874,5 +1886,26 @@ if __name__ == '__main__':
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                 current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
                 1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
+
+    # TODO: This callback may need to handle many duplicate outputs that are also changed upon changing the current
+    #  analysis object or adding a new object. This will be tricky...
+    @dash.callback(
+        dash.Output('', ''),
+        prevent_initial_call=True,
+        background=True,
+        running=[
+            (dash.Output('exclusion-height-run-button', 'disabled'), True, False),
+            (dash.Output('exclusion-height-check-button', 'disabled'), True, False),
+            (dash.Output('exclusion-height-abort-button', 'disabled'), False, True)
+        ],
+        cancel=[dash.Input('exclusion-height-abort-button', 'n_clicks')],
+        progress=[dash.Output('exclusion-height-progressbar', 'value'), dash.Output('exclusion-height-progressbar', 'max')]
+    )
+    def run_exclusion_height_calculations():
+        """
+        TODO: This callback handles what happens when running, checking or aborting the exclusion height calculations. Make a
+         separate callback for loading settings and updating the sensorgram plot with selected probe points etc.
+        """
+        pass
 
     app.run_server(debug=True, use_reloader=False)
