@@ -652,10 +652,10 @@ if __name__ == '__main__':
                                                              label='Choose analysis',
                                                              color='primary',
                                                              children=[dbc.DropdownMenuItem(
-                                                                 'FM' + str(exclusion_id) + ' ' +
+                                                                 'EH' + str(exclusion_id) + ' ' +
                                                                  current_session.exclusion_height_analysis_instances[
                                                                      exclusion_id].name,
-                                                                 id={'type': 'fresnel-analysis-list',
+                                                                 id={'type': 'exclusion-analysis-list',
                                                                      'index': exclusion_id},
                                                                  n_clicks=0) for exclusion_id in
                                                                        current_session.exclusion_height_analysis_instances]),
@@ -702,28 +702,24 @@ if __name__ == '__main__':
                                                                     fitted_param=
                                                                     current_sensor.optical_parameters.columns[
                                                                         current_sensor.fitted_layer_index[1]]),
-                                                                id='exclusion-height-sensor')
+                                                                id='exclusion-height-sensor-label')
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
                                                             dbc.Label(
                                                                 'Fresnel analysis: FM{analysis_number} {analysis_name}'.format(
                                                                     analysis_number=1,
                                                                     analysis_name='Placeholder',
-                                                                id='exclusion-height-fresnel-analysis'))
+                                                                id='exclusion-height-fresnel-analysis-label'))
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
                                                             dbc.Label('Height bounds (min, max)', width='auto'),
                                                             dbc.Col([
                                                                 dbc.InputGroup([
                                                                     dbc.Input(id='exclusion-height-option-lowerbound',
-                                                                              value=float(
-                                                                                  current_sensor.fitted_var) - float(
-                                                                                  current_sensor.fitted_var) / 2,
+                                                                              value=float(0),
                                                                               type='number'),
                                                                     dbc.Input(id='exclusion-height-option-upperbound',
-                                                                              value=float(
-                                                                                  current_sensor.fitted_var) + float(
-                                                                                  current_sensor.fitted_var) / 2,
+                                                                              value=float(200),
                                                                               type='number')
                                                                 ])
                                                             ], width=6)
@@ -1889,10 +1885,26 @@ if __name__ == '__main__':
                 1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
 
     @dash.callback(
+        dash.Output('exclusion-height-sensorgram-graph', 'figure'),
+        dash.Output('exclusion-height-analysis-dropdown', 'children'),
+        dash.Output('remove-exclusion-height-analysis-modal', 'is_open'),
+        dash.Output('exclusion-height-sensor-label', 'children'),
+        dash.Output('exclusion-height-fresnel-analysis-label', 'children'),
+        dash.Output('exclusion-height-analysis-option-collapse', 'is_open'),
+        dash.Output('exclusion-height-result-mean', 'children', allow_duplicate=True),
+        dash.Output('exclusion-height-result-all', 'children', allow_duplicate=True),
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure', allow_duplicate=True),
         dash.Output('exclusion-height-reflectivity-graph', 'figure', allow_duplicate=True),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure', allow_duplicate=True),
-        # I think only these inputs should be allowed for this callback
+        dash.Input({'type': 'exclusion-analysis-list', 'index': dash.ALL}, 'n_clicks'),
+        dash.Input('remove-exclusion-height-analysis-button', 'n_clicks'),
+        dash.Input('remove-exclusion-height-analysis-confirm', 'n_clicks'),
+        dash.Input('remove-exclusion-height-analysis-cancel', 'n_clicks'),
+        dash.Input('exclusion-height-sensorgram-graph', 'clickData'),
+        dash.Input('exclusion-height-click-action-clear', 'n_clicks'),
+        dash.Input('exclusion-height-sensorgram-save-png', 'n_clicks'),
+        dash.Input('exclusion-height-sensorgram-save-svg', 'n_clicks'),
+        dash.Input('exclusion-height-sensorgram-save-html', 'n_clicks'),
         dash.Input('exclusion-height-SPRvsTIR-save-png', 'n_clicks'),
         dash.Input('exclusion-height-SPRvsTIR-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-SPRvsTIR-save-html', 'n_clicks'),
@@ -1902,8 +1914,9 @@ if __name__ == '__main__':
         dash.Input('exclusion-height-d-n-pair-save-png', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-html', 'n_clicks'),
+        dash.State('exclusion-height-click-action-selector', 'value'),
         prevent_initial_call=True)
-    def run_exclusion_height_calculations(SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html, reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html, dnpair_save_png, dnpair_save_svg, dnpair_save_html):
+    def setup_exclusion_height_analysis(choose_exclusion, remove_analysis_button, remove_confirm, remove_cancel, click_data, clear_points, sensorgram_png, sensorgram_svg, sensorgram_html, SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html, reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html, dnpair_save_png, dnpair_save_svg, dnpair_save_html, action_selected):
         """
         TODO: This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
         """
@@ -1955,6 +1968,8 @@ if __name__ == '__main__':
     #  analysis object or adding a new object. For fresnel fitting I fixed issues related to this by combining the
     #  callbacks, so this will be tricky... It may work as long as there are only duplicate outputs, and not shared inputs...
     @dash.callback(
+        dash.Output('exclusion-height-result-mean', 'children'),
+        dash.Output('exclusion-height-result-all', 'children'),
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure'),
         dash.Output('exclusion-height-reflectivity-graph', 'figure'),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure'),
