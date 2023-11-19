@@ -416,11 +416,11 @@ class ExclusionHeight:
         injections. The underlying method is described as the "non-interacting probe method" in the literature.
     """
 
-    def __init__(self, sensor_object_, fresnel_object_, data_path_,  object_id_, object_name_):
+    def __init__(self, fresnel_object_, data_path_,  object_id_, object_name_):
         self.object_name = object_name_
         self.object_id = object_id_
-        self.sensor_object = sensor_object_
         self.fresnel_object = fresnel_object_
+        self.sensor_object = fresnel_object_.sensor_object
         self.initial_data_path = data_path_
         self.height_bounds = [0, 200]
         self.injection_points = []
@@ -494,13 +494,13 @@ def add_fresnel_model_object(session_object, sensor_object, data_path_, reflecti
     return analysis_object
 
 
-def add_exclusion_height_object(session_object, sensor_object, fresnel_object, data_path_, object_name_):
+def add_exclusion_height_object(session_object, fresnel_object, data_path_, object_name_):
     """
     Adds analysis objects to a session object.
     :return: an analysis object
     """
     session_object.exclusion_height_analysis_ID_count += 1
-    analysis_object = ExclusionHeight(sensor_object, fresnel_object, data_path_, session_object.exclusion_height_analysis_ID_count, object_name_)
+    analysis_object = ExclusionHeight(fresnel_object, data_path_, session_object.exclusion_height_analysis_ID_count, object_name_)
     session_object.exclusion_height_analysis_instances[session_object.exclusion_height_analysis_ID_count] = analysis_object
 
     return analysis_object
