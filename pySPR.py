@@ -22,6 +22,10 @@
 # TODO: Add an analysis section with de Feijter surface coverage analysis. The idea is that one could select different
 #  parts of the response curve and calculate the surface coverage based on provided constants
 
+# TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
+#          the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
+#          fails the user is prompted to select the new path for the file.
+
 # Regarding the dash app below
 
 # TODO: "Main control DIV". Need buttons for controlling a lot of things:
@@ -1820,7 +1824,11 @@ if __name__ == '__main__':
 
             # If deleting the last fresnel analysis object
             else:
-                current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
+                try:
+                    current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
+                except AttributeError:
+                    pass  # There was no object at all
+
                 return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, []
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
@@ -1955,6 +1963,9 @@ if __name__ == '__main__':
                                         dnpair_figure_JSON):
         """
         TODO: This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
+        TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
+         the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
+         fails the user is prompted to select the new path for the file.
         """
         global current_session
         global current_data_path
