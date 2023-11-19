@@ -112,8 +112,10 @@ if __name__ == '__main__':
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
                                                    sensorgram_df_selection['TIR angle'][0]
 
-            # Set current sensor to be the latest one of the session (highest index value)
+            # Set current sensor and analysis objects to be the latest one of the session (highest index value)
             current_sensor = current_session.sensor_instances[max(current_session.sensor_instances.keys())]
+            current_fresnel_analysis = current_session.fresnel_analysis_instances[max(current_session.fresnel_analysis_instances.keys())]
+            current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[max(current_session.exclusion_height_analysis_instances.keys())]
 
             # Add note to log
             current_session.log = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Reopened session'
@@ -147,8 +149,9 @@ if __name__ == '__main__':
         current_session.save_session()
         current_session.save_sensor(current_sensor.object_id)
 
-    # Add empty analysis object
-    current_fresnel_analysis = None
+        # Add empty analysis objects
+        current_fresnel_analysis = None
+        current_exclusion_height_analysis = None
 
     # Dash app
     app = dash.Dash(name='pySPR', title='pySPR', external_stylesheets=[dash_app_theme], background_callback_manager=background_callback_manager)
@@ -635,13 +638,22 @@ if __name__ == '__main__':
                                             dash.dcc.Store(id='add-exclusion-height-analysis-signal', storage_type='session'),
                                             dbc.Modal([
                                                 dbc.ModalHeader(dbc.ModalTitle('New exclusion height analysis object')),
-                                                dbc.ModalBody(
+                                                dbc.ModalBody([
+                                                    dash.dcc.Dropdown(id='exclusion-choose-background-dropdown',
+                                                                      placeholder='Choose background...',
+                                                                      options=[{'label': 'FM' + str(fresnel_id) + ' ' +
+                                                                                         current_session.fresnel_analysis_instances[
+                                                                                             fresnel_id].name,
+                                                                                'value': fresnel_id} for fresnel_id in
+                                                                               current_session.fresnel_analysis_instances]),
                                                     dbc.Input(id='exclusion-height-analysis-name-input',
-                                                              placeholder='Give a name...', type='text')),
+                                                              placeholder='Give a name...', type='text')
+                                                ]),
                                                 dbc.ModalFooter(
                                                     dbc.Button('Confirm', id='add-exclusion-height-analysis-confirm',
                                                                color='success',
-                                                               n_clicks=0))
+                                                               n_clicks=0)
+                                                )
                                             ],
                                                 id='add-exclusion-height-analysis-modal',
                                                 size='sm',
@@ -708,8 +720,8 @@ if __name__ == '__main__':
                                                             dbc.Label(
                                                                 'Fresnel analysis: FM{analysis_number} {analysis_name}'.format(
                                                                     analysis_number=1,
-                                                                    analysis_name='Placeholder',
-                                                                id='exclusion-height-fresnel-analysis-label'))
+                                                                    analysis_name='Placeholder'),
+                                                                id='exclusion-height-fresnel-analysis-label')
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
                                                             dbc.Label('Height bounds (min, max)', width='auto'),
@@ -1491,6 +1503,7 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-option-extinctionslider', 'value'),
         dash.Output('fresnel-fit-result', 'children'),
         dash.Output('fresnel-fit-sensor', 'children'),
+        dash.Output('exclusion-choose-background-dropdown', 'options'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1578,7 +1591,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
@@ -1644,10 +1657,10 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
@@ -1661,6 +1674,8 @@ if __name__ == '__main__':
                 dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
                                      id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                                      n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
+
+            exclusion_analysis_dropdown = [{'label': 'FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name, 'value': fresnel_id} for fresnel_id in current_session.fresnel_analysis_instances]
 
             current_fresnel_analysis.sensor_object_label = 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
@@ -1714,10 +1729,10 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label
+                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.fresnel_analysis_instances) > 1:
@@ -1734,6 +1749,11 @@ if __name__ == '__main__':
                         'FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
                         id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                         n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
+
+                exclusion_analysis_dropdown = [{'label': 'FM' + str(fresnel_id) + ' ' +
+                                                         current_session.fresnel_analysis_instances[fresnel_id].name,
+                                                'value': fresnel_id} for fresnel_id in
+                                               current_session.fresnel_analysis_instances]
 
                 if current_fresnel_analysis.fitted_result is not None:
                     result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
@@ -1796,15 +1816,15 @@ if __name__ == '__main__':
 
                 return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                     current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
+                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown
 
             # If deleting the last fresnel analysis object
             else:
                 current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
-                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, []
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -1882,20 +1902,24 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                 current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label
+                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update
 
     @dash.callback(
         dash.Output('exclusion-height-sensorgram-graph', 'figure'),
+        dash.Output('add-exclusion-height-analysis-modal', 'is_open'),
         dash.Output('exclusion-height-analysis-dropdown', 'children'),
         dash.Output('remove-exclusion-height-analysis-modal', 'is_open'),
         dash.Output('exclusion-height-sensor-label', 'children'),
         dash.Output('exclusion-height-fresnel-analysis-label', 'children'),
         dash.Output('exclusion-height-analysis-option-collapse', 'is_open'),
+        dash.Output('exclusion-height-result-collapse', 'is_open', allow_duplicate=True),
         dash.Output('exclusion-height-result-mean', 'children', allow_duplicate=True),
         dash.Output('exclusion-height-result-all', 'children', allow_duplicate=True),
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure', allow_duplicate=True),
         dash.Output('exclusion-height-reflectivity-graph', 'figure', allow_duplicate=True),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure', allow_duplicate=True),
+        dash.Input('add-exclusion-height-analysis-button', 'n_clicks'),
+        dash.Input('add-exclusion-height-analysis-confirm', 'n_clicks'),
         dash.Input({'type': 'exclusion-analysis-list', 'index': dash.ALL}, 'n_clicks'),
         dash.Input('remove-exclusion-height-analysis-button', 'n_clicks'),
         dash.Input('remove-exclusion-height-analysis-confirm', 'n_clicks'),
@@ -1914,52 +1938,146 @@ if __name__ == '__main__':
         dash.Input('exclusion-height-d-n-pair-save-png', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-html', 'n_clicks'),
+        dash.State('exclusion-height-analysis-name-input', 'value'),
         dash.State('exclusion-height-click-action-selector', 'value'),
+        dash.State('exclusion-choose-background-dropdown', 'value'),
+        dash.State('exclusion-height-sensorgram-graph', 'figure'),
+        dash.State('exclusion-height-SPRvsTIR-graph', 'figure'),
+        dash.State('exclusion-height-reflectivity-graph', 'figure'),
+        dash.State('exclusion-height-d-n-pair-graph', 'figure'),
         prevent_initial_call=True)
-    def setup_exclusion_height_analysis(choose_exclusion, remove_analysis_button, remove_confirm, remove_cancel, click_data, clear_points, sensorgram_png, sensorgram_svg, sensorgram_html, SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html, reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html, dnpair_save_png, dnpair_save_svg, dnpair_save_html, action_selected):
+    def exclusion_height_analysis_control(add_exclusion, confirm_exclusion, choose_exclusion, remove_analysis_button,
+                                        remove_confirm, remove_cancel, click_data, clear_points, sensorgram_png,
+                                        sensorgram_svg, sensorgram_html, SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html,
+                                        reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html,
+                                        dnpair_save_png, dnpair_save_svg, dnpair_save_html, analysis_name,
+                                        action_selected, background_selected_id, sensorgram_figure_JSON, SPRvsTIR_figure_JSON, reflectivity_figure_JSON,
+                                        dnpair_figure_JSON):
         """
         TODO: This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
         """
         global current_session
+        global current_data_path
+        global current_exclusion_height_analysis
+        global sensorgram_df_selection
 
-        if '' == dash.ctx.triggered_id:
+        if 'exclusion-height-sensorgram-graph' == dash.ctx.triggered_id:
+            # Determines what happens when clicking on the sensorgram plot
 
+            updated_figure = go.Figure(sensorgram_figure_JSON)
 
-            return
+            match action_selected:
+                case 1:  # Offset data
+                    pass
+
+                case 2:  # Add injection points
+                    pass
+
+                case 3:  # Add buffer points
+                    pass
+
+                case 4:  # Add probe points
+                    pass
+
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'exclusion-height-click-action-clear' == dash.ctx.triggered_id:
+            # Determines what happens when clearing the selected points (remove from graph and backend object)
+
+            updated_figure = go.Figure(sensorgram_figure_JSON)
+
+            match action_selected:
+                case 1:  # Offset data (do nothing)
+                    pass
+
+                case 2:  # Clear latest injection point
+                    pass
+
+                case 3:  # Clear latest buffer point
+                    pass
+
+                case 4:  # CLear latest probe point
+                    pass
+
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'add-exclusion-height-analysis-button' == dash.ctx.triggered_id:
+            # Open add analysis name giving modal
+            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'add-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
+            # Add new exclusion height analysis object
+
+            return dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'remove-exclusion-height-analysis-button' == dash.ctx.triggered_id:
+            # Open remove analysis object confirmation modal
+            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'remove-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
+            # Add new exclusion height analysis object
+
+            analysis_options = None
+
+            return dash.no_update, dash.no_update, analysis_options, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'remove-exclusion-height-analysis-cancel' == dash.ctx.triggered_id:
+            # Add new exclusion height analysis object
+
+            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_folder + r'\SPRvsTIR_plot.png', format='png')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-svg' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_folder + r'\SPRvsTIR_plot.svg', format='svg')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-html' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_html(go.Figure(SPRvsTIR_figure_JSON), save_folder + r'\SPRvsTIR_plot.html',
+                                 include_mathjax='cdn')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-png' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_folder + r'\exclusion_fit_plot.png', format='png')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-svg' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_folder + r'\exclusion_fit_plot.svg', format='svg')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-html' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_html(go.Figure(reflectivity_figure_JSON), save_folder + r'\exclusion_fit_plot.html',
+                                 include_mathjax='cdn')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-png' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair__plot.png',
+                                  format='png')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-svg' == dash.ctx.triggered_id:
-
-            return
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair__plot.svg',
+                                  format='svg')
+            raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-html' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_html(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair_plot.html',
+                                 include_mathjax='cdn')
+            raise dash.exceptions.PreventUpdate
+
+        else:
+            # Selecting a previously existing analysis object from pattern matching callbacks
 
             return
 
@@ -1968,6 +2086,7 @@ if __name__ == '__main__':
     #  analysis object or adding a new object. For fresnel fitting I fixed issues related to this by combining the
     #  callbacks, so this will be tricky... It may work as long as there are only duplicate outputs, and not shared inputs...
     @dash.callback(
+        dash.Output('exclusion-height-result-collapse', 'is_open'),
         dash.Output('exclusion-height-result-mean', 'children'),
         dash.Output('exclusion-height-result-all', 'children'),
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure'),
@@ -1992,6 +2111,10 @@ if __name__ == '__main__':
          separate callback for loading settings and updating the sensorgram plot with selected probe points etc.
         """
         global current_session
+        global current_exclusion_height_analysis
+        global time_df
+        global angles_df
+        global ydata_df
 
         if 'exclusion-height-run-button' == dash.ctx.triggered_id:
             # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
