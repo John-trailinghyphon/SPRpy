@@ -417,9 +417,12 @@ class ExclusionHeight:
     """
 
     def __init__(self, fresnel_object_, sensorgram_df_, data_path_,  object_id_, object_name_):
-        self.object_name = object_name_
+        self.name = object_name_
         self.object_id = object_id_
         self.fresnel_object = fresnel_object_
+        self.fresnel_object_label = 'Fresnel background: FM{analysis_number} {analysis_name}'.format(
+                                                                    analysis_number=fresnel_object_.object_id,
+                                                                    analysis_name=fresnel_object_.name)
         self.sensor_object = fresnel_object_.sensor_object
         self.initial_data_path = data_path_
         self.sensorgram_data = sensorgram_df_
@@ -427,8 +430,11 @@ class ExclusionHeight:
         self.injection_points = []
         self.buffer_points = []
         self.probe_points = []
-        self.buffer_data = None
-        self.probe_data = None
+        self.SPR_vs_TIR_df = None
+        self.reflectivity_fit_df = None
+        self.d_n_pair_df = None
+        self.mean_exclusion_result = None
+        self.all_exclusion_result = None
 
     # TODO: The methods running calculations here need to use mutliprocessing and whould be run inside background callbacks in the dash app to prevent timeout after 30s of calculations.
     # TODO: Make sure the quality of fit for each d,n pair can be viewed with a pagination passing over each injection.
