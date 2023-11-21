@@ -118,8 +118,16 @@ if __name__ == '__main__':
 
             # Set current sensor and analysis objects to be the latest one of the session (highest index value)
             current_sensor = current_session.sensor_instances[max(current_session.sensor_instances.keys())]
-            current_fresnel_analysis = current_session.fresnel_analysis_instances[max(current_session.fresnel_analysis_instances.keys())]
-            current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[max(current_session.exclusion_height_analysis_instances.keys())]
+
+            try:
+                current_fresnel_analysis = current_session.fresnel_analysis_instances[max(current_session.fresnel_analysis_instances.keys())]
+            except ValueError:
+                current_fresnel_analysis = None
+
+            try:
+                current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[max(current_session.exclusion_height_analysis_instances.keys())]
+            except ValueError:
+                current_exclusion_height_analysis = None
 
             # Add note to log
             current_session.log = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Reopened session'
@@ -1828,6 +1836,8 @@ if __name__ == '__main__':
                     current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
                 except AttributeError:
                     pass  # There was no object at all
+                current_fresnel_analysis = None
+                current_session.save_session()
 
                 return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, []
 
@@ -2057,11 +2067,6 @@ if __name__ == '__main__':
                                                                      'index': exclusion_id},
                                                                  n_clicks=0) for exclusion_id in current_session.exclusion_height_analysis_instances]
 
-            # Update fresnel object label
-            fresnel_object_label = 'Fresnel analysis: FM{analysis_number} {analysis_name}'.format(
-                                                                    analysis_number=background_object.object_id,
-                                                                    analysis_name=background_object.name)
-
             # Update sensorgram graph
             new_sensorgram_fig = go.Figure(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                       y=current_exclusion_height_analysis.sensorgram_data['SPR angle'],
@@ -2086,21 +2091,115 @@ if __name__ == '__main__':
             new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
 
-            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, fresnel_object_label, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update
+            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open remove analysis object confirmation modal
             return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
-            # Add new exclusion height analysis object
+            if len(current_session.exclusion_height_analysis_instances) > 1:
 
-            analysis_options = None
+                # Pop out the current exclusion height analysis object from the session, delete its .pickle file and make the first instance the current one
+                removed = current_exclusion_height_analysis
+                current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[1]
+                current_session.remove_exclusion_height_analysis(removed.object_id)
+                current_session.save_session()
 
-            return dash.no_update, dash.no_update, analysis_options, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                # Update choose analysis dropdown menu options
+                analysis_options = [dbc.DropdownMenuItem(
+                    'EH' + str(exclusion_id) + ' ' + current_session.exclusion_height_analysis_instances[exclusion_id].name,
+                    id={'type': 'exclusion-analysis-list',
+                        'index': exclusion_id},
+                    n_clicks=0) for exclusion_id in current_session.exclusion_height_analysis_instances]
+
+                # Update results text
+                if current_exclusion_height_analysis.mean_exclusion_result is not None:
+                    mean_result = 'Mean exclusion height: {res}'.format(res=round(current_exclusion_height_analysis.mean_exclusion_result, 4))
+                else:
+                    mean_result = 'Mean exclusion height: None'
+
+                if current_exclusion_height_analysis.all_exclusion_result is not None:
+                    all_result = 'All exclusion height: {res}'.format(res=round(current_exclusion_height_analysis.all_exclusion_result, 4))
+                else:
+                    all_result = 'All exclusion height: None'
+
+                # Update sensorgram figure to new current exclusion height object sensorgram data
+                if current_data_path != current_exclusion_height_analysis.initial_data_path:
+                    line_color_value = '#00CC96'
+                else:
+                    line_color_value = '#636EFA'
+
+                new_sensorgram_fig = go.Figure(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
+                                                          y=current_exclusion_height_analysis.sensorgram_data[
+                                                              'SPR angle'],
+                                                          name='SPR angle',
+                                                          line_color=line_color_value)
+                                               )
+
+                new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
+                                                        y=current_exclusion_height_analysis.sensorgram_data[
+                                                            'TIR angle'],
+                                                        name='TIR angle',
+                                                        line_color='#ef553b')
+                                             )
+
+                if len(current_exclusion_height_analysis.injection_points) > 0:
+                    new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.injection_points],
+                                                            y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.injection_points],
+                                                            name='Injection points',
+                                                            marker_size=12,
+                                                            marker_symbol='arrow',
+                                                            marker_color='black')
+                                                 )
+
+                if len(current_exclusion_height_analysis.buffer_points) > 0:
+                    new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.buffer_points],
+                                                            y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.buffer_points],
+                                                            name='Buffer points',
+                                                            marker_size=12,
+                                                            marker_symbol='arrow')
+                                                 )
+
+                if len(current_exclusion_height_analysis.probe_points) > 0:
+                    new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.probe_points],
+                                                            y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.probe_points],
+                                                            name='Probe points',
+                                                            marker_size=12,
+                                                            marker_symbol='arrow')
+                                                 )
+
+                new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
+                                                 yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
+                                                 font_family='Balto',
+                                                 font_size=19,
+                                                 margin_r=25,
+                                                 margin_l=60,
+                                                 margin_t=40,
+                                                 template='simple_white',
+                                                 uirevision=True)
+                new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
+                new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
+
+                # Update result figures
+                # TODO: use the result dataframes and come up with a good indexing system
+                pass
+
+                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, mean_result, all_result, dash.no_update, dash.no_update, dash.no_update
+
+            else:
+                try:
+                    current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
+                except AttributeError:
+                    pass  # There was no object at all
+
+                current_exclusion_height_analysis = None
+                current_session.save_session()
+
+                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-cancel' == dash.ctx.triggered_id:
-            # Add new exclusion height analysis object
+            # Cancel removal of exclusion height analysis object
 
             return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
