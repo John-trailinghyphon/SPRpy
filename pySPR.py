@@ -363,7 +363,7 @@ if __name__ == '__main__':
                                n_clicks=0,
                                color='danger',
                                title='Save the displayed values to sensor after editing'),
-                    dbc.Button('Select fitted variable',
+                    dbc.Button('Select variable to fit',
                                id='table-select-fitted',
                                n_clicks=0,
                                color='success',

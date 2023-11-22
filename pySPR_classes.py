@@ -430,6 +430,7 @@ class ExclusionHeight:
         self.injection_points = []
         self.buffer_points = []
         self.probe_points = []
+        self.d_n_pair_resolution = 200
         self.SPR_vs_TIR_df = None
         self.reflectivity_fit_df = None
         self.d_n_pair_df = None
