@@ -1958,6 +1958,7 @@ if __name__ == '__main__':
         dash.Input('exclusion-height-d-n-pair-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-html', 'n_clicks'),
         dash.Input('exclusion-height-result-pagination', 'active_page'),
+        dash.Input('exclusion-height-d-n-pair-graph', 'hoverData'),
         dash.State('exclusion-height-analysis-name-input', 'value'),
         dash.State('exclusion-height-click-action-selector', 'value'),
         dash.State('exclusion-choose-background-dropdown', 'value'),
@@ -1965,14 +1966,15 @@ if __name__ == '__main__':
         dash.State('exclusion-height-SPRvsTIR-graph', 'figure'),
         dash.State('exclusion-height-reflectivity-graph', 'figure'),
         dash.State('exclusion-height-d-n-pair-graph', 'figure'),
+        dash.State('exclusion-height-result-pagination', 'active_page'),
         prevent_initial_call=True)
     def exclusion_height_analysis_control(add_exclusion, confirm_exclusion, choose_exclusion, remove_analysis_button,
                                         remove_confirm, remove_cancel, clickData, clear_points, sensorgram_png,
                                         sensorgram_svg, sensorgram_html, SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html,
                                         reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html,
-                                        dnpair_save_png, dnpair_save_svg, dnpair_save_html, active_page, analysis_name,
+                                        dnpair_save_png, dnpair_save_svg, dnpair_save_html, active_page, dnpair_hoverdata, analysis_name,
                                         action_selected, background_selected_id, sensorgram_figure_JSON, SPRvsTIR_figure_JSON, reflectivity_figure_JSON,
-                                        dnpair_figure_JSON):
+                                        dnpair_figure_JSON, active_page_state):
         """
         TODO: This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
         TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
@@ -2052,6 +2054,114 @@ if __name__ == '__main__':
                     pass
 
             return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'exclusion-height-d-n-pair-graph' == dash.ctx.triggered_id:
+
+            # Calculate fresnel trace for hover data points
+            buffer_angles_inj_step = current_exclusion_height_analysis.mean_reflectivity_dfs[active_page_state]['buffer angles']
+            buffer_reflectivity_inj_step = current_exclusion_height_analysis.mean_reflectivity_dfs[active_page_state][
+                'buffer reflectivity']
+            probe_angles_inj_step = current_exclusion_height_analysis.mean_reflectivity_dfs[active_page_state][
+                'probe angles']
+            probe_reflectivity_inj_step = current_exclusion_height_analysis.mean_reflectivity_dfs[active_page_state]['probe reflectivity']
+
+            buffer_RI_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state]['buffer refractive index'][dnpair_hoverdata['points'][0]['pointIndex']]
+            probe_RI_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state]['probe refractive index'][
+                dnpair_hoverdata['points'][0]['pointIndex']]
+            buffer_thickness_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state]['buffer thickness'][
+                dnpair_hoverdata['points'][0]['pointIndex']]
+            probe_thickness_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state]['probe thickness'][
+                dnpair_hoverdata['points'][0]['pointIndex']]
+
+            buffer_ref_indices = current_exclusion_height_analysis.sensor_object.refractive_indices
+            buffer_ext_coefficients = current_exclusion_height_analysis.sensor_object.extinction_coefficients
+            buffer_ref_indices[current_exclusion_height_analysis.sensor_object.fitted_layer_index[0]] = float(buffer_RI_val)
+
+            buffer_layer_thicknesses = current_exclusion_height_analysis.sensor_object.layer_thicknesses
+            buffer_layer_thicknesses[current_exclusion_height_analysis.sensor_object.fitted_layer_index[0]] = float(buffer_thickness_val)
+
+            probe_ref_indices = current_exclusion_height_analysis.sensor_object.refractive_indices
+
+            TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(
+                probe_angles_inj_step,
+                probe_reflectivity_inj_step,
+                current_exclusion_height_analysis.fresnel_object.TIR_range,
+                current_exclusion_height_analysis.fresnel_object.scanspeed)
+
+            probe_ref_indices[-1] = probe_ref_indices[0] * np.sin(np.pi / 180 * TIR_angle)
+
+            probe_ref_indices[current_exclusion_height_analysis.sensor_object.fitted_layer_index[0]] = float(
+                probe_RI_val)
+
+            probe_layer_thicknesses = current_exclusion_height_analysis.sensor_object.layer_thicknesses
+            probe_layer_thicknesses[current_exclusion_height_analysis.sensor_object.fitted_layer_index[0]] = float(
+                probe_thickness_val)
+
+            buffer_fresnel_coefficients = fresnel_calculation(angles=buffer_angles_inj_step,
+                                                              wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
+                                                              layer_thicknesses=buffer_layer_thicknesses,
+                                                              n_re=buffer_ref_indices,
+                                                              n_im=buffer_ext_coefficients,
+                                                              )
+            probe_fresnel_coefficients = fresnel_calculation(angles=probe_angles_inj_step,
+                                                              wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
+                                                              layer_thicknesses=probe_layer_thicknesses,
+                                                              n_re=probe_ref_indices,
+                                                              n_im=buffer_ext_coefficients,  # Should be the same for probe
+                                                              )
+            
+            # Plot mean reflectivity figure with fitted fresnel traces
+            mean_reflectivity_figure = go.Figure(
+                go.Scatter(x=buffer_angles_inj_step,
+                           y=buffer_reflectivity_inj_step,
+                           mode='lines',
+                           name='Buffer',
+                           showlegend=True,
+                           line_color='#636EFA'
+                           ))
+
+            mean_reflectivity_figure.add_trace(
+                go.Scatter(x=probe_angles_inj_step,
+                           y=probe_reflectivity_inj_step,
+                           mode='lines',
+                           name='Probe',
+                           showlegend=True,
+                           line_color='#EF553B'
+                           ))
+
+            mean_reflectivity_figure.add_trace(
+                go.Scatter(x=buffer_angles_inj_step,
+                           y=buffer_fresnel_coefficients,
+                           mode='lines',
+                           showlegend=False,
+                           line_dash='dash',
+                           line_color='black'
+                           ))
+
+            mean_reflectivity_figure.add_trace(
+                go.Scatter(x=probe_angles_inj_step,
+                           y=probe_fresnel_coefficients,
+                           mode='lines',
+                           showlegend=False,
+                           line_dash='dash',
+                           line_color='black'
+                           ))
+
+            mean_reflectivity_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                                   yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                                   font_family='Balto',
+                                                   font_size=19,
+                                                   margin_r=25,
+                                                   margin_l=60,
+                                                   margin_t=40,
+                                                   template='simple_white',
+                                                   uirevision=True)
+            mean_reflectivity_figure.update_xaxes(mirror=True,
+                                                  showline=True)
+            mean_reflectivity_figure.update_yaxes(mirror=True,
+                                                  showline=True)
+
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, mean_reflectivity_figure, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open add analysis name giving modal

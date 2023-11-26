@@ -432,8 +432,8 @@ class ExclusionHeight:
         self.probe_points = []
         self.d_n_pair_resolution = 200
         self.SPR_vs_TIR_dfs = []  # List of dataframes with labels 'SPR angles' and 'TIR angles' for indexing each step result
-        self.mean_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe, then also for fitted buffer reflectivity and so on) ...) for indexing
-        self.d_n_pair_dfs = []  # Use labels 'd' and 'n' for indexing
+        self.mean_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe) for indexing
+        self.d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
         self.mean_exclusion_result = None
         self.all_exclusion_result = []
 
