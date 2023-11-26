@@ -825,7 +825,7 @@ if __name__ == '__main__':
                                 dbc.Label('Injection step', id='exclusion-height-result-pagination-label',
                                           style={'display': 'flex', 'justify-content': 'center'}),
                                 dash.html.Div([
-                                            dbc.Pagination(max_value=12, previous_next=True, id='exclusion-height-result-pagination')
+                                            dbc.Pagination(max_value=2, previous_next=True, id='exclusion-height-result-pagination')
                                 ], style={'display': 'flex', 'justify-content': 'center'}),
                                 dash.html.Div([
                                     dash.html.Div([
@@ -1936,6 +1936,7 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure', allow_duplicate=True),
         dash.Output('exclusion-height-reflectivity-graph', 'figure', allow_duplicate=True),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure', allow_duplicate=True),
+        dash.Output('exclusion-height-result-pagination', 'max_value'),
         dash.Input('add-exclusion-height-analysis-button', 'n_clicks'),
         dash.Input('add-exclusion-height-analysis-confirm', 'n_clicks'),
         dash.Input({'type': 'exclusion-analysis-list', 'index': dash.ALL}, 'n_clicks'),
@@ -1956,6 +1957,7 @@ if __name__ == '__main__':
         dash.Input('exclusion-height-d-n-pair-save-png', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-html', 'n_clicks'),
+        dash.Input('exclusion-height-result-pagination', 'active_page'),
         dash.State('exclusion-height-analysis-name-input', 'value'),
         dash.State('exclusion-height-click-action-selector', 'value'),
         dash.State('exclusion-choose-background-dropdown', 'value'),
@@ -1968,7 +1970,7 @@ if __name__ == '__main__':
                                         remove_confirm, remove_cancel, clickData, clear_points, sensorgram_png,
                                         sensorgram_svg, sensorgram_html, SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html,
                                         reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html,
-                                        dnpair_save_png, dnpair_save_svg, dnpair_save_html, analysis_name,
+                                        dnpair_save_png, dnpair_save_svg, dnpair_save_html, active_page, analysis_name,
                                         action_selected, background_selected_id, sensorgram_figure_JSON, SPRvsTIR_figure_JSON, reflectivity_figure_JSON,
                                         dnpair_figure_JSON):
         """
@@ -1976,6 +1978,7 @@ if __name__ == '__main__':
         TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
          the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
          fails the user is prompted to select the new path for the file.
+        TODO: When hovering over datapoints in the d_n_pair plot, take the d and n values and perform the fresnel calculation in the plot to display the fit
         """
         global current_session
         global current_data_path
@@ -2028,7 +2031,7 @@ if __name__ == '__main__':
                 case 4:  # Add probe points
                     pass
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-click-action-clear' == dash.ctx.triggered_id:
             # Determines what happens when clearing the selected points (remove from graph and backend object)
@@ -2048,11 +2051,11 @@ if __name__ == '__main__':
                 case 4:  # CLear latest probe point
                     pass
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open add analysis name giving modal
-            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
             # Add new exclusion height analysis object to session
@@ -2090,12 +2093,11 @@ if __name__ == '__main__':
             new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
             new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
-
-            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update
+            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open remove analysis object confirmation modal
-            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.exclusion_height_analysis_instances) > 1:
@@ -2182,10 +2184,123 @@ if __name__ == '__main__':
                 new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
                 # Update result figures
-                # TODO: use the result dataframes and come up with a good indexing system
-                pass
+                if len(current_exclusion_height_analysis.SPR_vs_TIR_dfs) > 0:
+                    SPRvsTIR_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['TIR angles'],
+                                                           y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['SPR angles'],
+                                                           mode='lines',
+                                                           showlegend=False,
+                                                           line_color='#636EFA'
+                                                           ))
+                else:
+                    SPRvsTIR_figure = go.Figure(
+                        go.Scatter(x=[0],
+                                   y=[0],
+                                   mode='lines',
+                                   showlegend=False,
+                                   line_color='#636EFA'
+                                   ))
 
-                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, mean_result, all_result, dash.no_update, dash.no_update, dash.no_update
+                SPRvsTIR_figure.update_layout(xaxis_title=r'$\large{\text{TIR angle [ }^{\circ}\text{ ]}}$',
+                                              yaxis_title=r'$\large{\text{SPR angle [ }^{\circ}\text{ ]}}$',
+                                              font_family='Balto',
+                                              font_size=19,
+                                              margin_r=25,
+                                              margin_l=60,
+                                              margin_t=40,
+                                              template='simple_white',
+                                              uirevision=True)
+                SPRvsTIR_figure.update_xaxes(mirror=True,
+                                             showline=True)
+                SPRvsTIR_figure.update_yaxes(mirror=True,
+                                             showline=True)
+
+                if len(current_exclusion_height_analysis.mean_reflectivity_dfs) > 0:
+                    mean_reflectivity_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['buffer angles'],
+                                                           y=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['buffer reflectivity'],
+                                                           mode='lines',
+                                                           name='Buffer',
+                                                           showlegend=True,
+                                                           line_color='#636EFA'
+                                                           ))
+                    mean_reflectivity_figure.add_trace(go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['probe angles'],
+                                                           y=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['probe reflectivity'],
+                                                           mode='lines',
+                                                           name='Probe',
+                                                           showlegend=True,
+                                                           line_color='#EF553B'
+                                                           ))
+                else:
+                    mean_reflectivity_figure = go.Figure(
+                        go.Scatter(x=[0],
+                                   y=[0],
+                                   mode='lines',
+                                   showlegend=False,
+                                   line_color='#636EFA'
+                                   ))
+
+
+                mean_reflectivity_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                              yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                              font_family='Balto',
+                                              font_size=19,
+                                              margin_r=25,
+                                              margin_l=60,
+                                              margin_t=40,
+                                              template='simple_white',
+                                              uirevision=True)
+                mean_reflectivity_figure.update_xaxes(mirror=True,
+                                             showline=True)
+                mean_reflectivity_figure.update_yaxes(mirror=True,
+                                             showline=True)
+
+                if len(current_exclusion_height_analysis.d_n_pair_dfs) > 0:
+
+                    d_n_pair_figure = go.Figure(go.Scatter(
+                        x=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer thickness'],
+                        y=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer refractive index'],
+                        mode='lines+markers',
+                        name='Buffer',
+                        showlegend=True,
+                        line_color='#636EFA'
+                        ))
+
+                    d_n_pair_figure.add_trace(go.Scatter(
+                        x=current_exclusion_height_analysis.d_n_pair_dfs[0]['probe thickness'],
+                        y=current_exclusion_height_analysis.d_n_pair_dfs[0]['probe refractive index'],
+                        mode='lines+markers',
+                        name='Probe',
+                        showlegend=True,
+                        line_color='#EF553B'
+                        ))
+
+                else:
+                    d_n_pair_figure = go.Figure(
+                        go.Scatter(x=[0],
+                                   y=[0],
+                                   mode='lines',
+                                   showlegend=False,
+                                   line_color='#636EFA'
+                                   ))
+
+                d_n_pair_figure.update_layout(
+                    xaxis_title=r'$\large{\text{Height [nm]}}$',
+                    yaxis_title=r'$\large{\text{Refractive index}}$',
+                    font_family='Balto',
+                    font_size=19,
+                    margin_r=25,
+                    margin_l=60,
+                    margin_t=40,
+                    template='simple_white',
+                    uirevision=True)
+                d_n_pair_figure.update_xaxes(mirror=True,
+                                                      showline=True)
+                d_n_pair_figure.update_yaxes(mirror=True,
+                                                      showline=True)
+
+                # Update number of injection steps in pagination of result page
+                num_injection_steps = len(current_exclusion_height_analysis.probe_points)
+
+                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, mean_result, all_result, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps
 
             else:
                 try:
@@ -2196,12 +2311,12 @@ if __name__ == '__main__':
                 current_exclusion_height_analysis = None
                 current_session.save_session()
 
-                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update
+                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-cancel' == dash.ctx.triggered_id:
             # Cancel removal of exclusion height analysis object
 
-            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -2253,6 +2368,95 @@ if __name__ == '__main__':
                                  include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
+        elif 'exclusion-height-result-pagination' == dash.ctx.triggered_id:
+
+            # Update result figures
+            SPRvsTIR_figure = go.Figure(
+                go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page]['TIR angles'],
+                           y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page]['SPR angles'],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='#636EFA'
+                           ))
+
+            SPRvsTIR_figure.update_layout(xaxis_title=r'$\large{\text{TIR angle [ }^{\circ}\text{ ]}}$',
+                                          yaxis_title=r'$\large{\text{SPR angle [ }^{\circ}\text{ ]}}$',
+                                          font_family='Balto',
+                                          font_size=19,
+                                          margin_r=25,
+                                          margin_l=60,
+                                          margin_t=40,
+                                          template='simple_white',
+                                          uirevision=True)
+            SPRvsTIR_figure.update_xaxes(mirror=True,
+                                         showline=True)
+            SPRvsTIR_figure.update_yaxes(mirror=True,
+                                         showline=True)
+
+            mean_reflectivity_figure = go.Figure(
+                go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page]['buffer angles'],
+                           y=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page][
+                               'buffer reflectivity'],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='#636EFA'
+                           ))
+            mean_reflectivity_figure.add_trace(
+                go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page]['probe angles'],
+                           y=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page][
+                               'probe reflectivity'],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='#EF553B'
+                           ))
+
+            mean_reflectivity_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                                   yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                                   font_family='Balto',
+                                                   font_size=19,
+                                                   margin_r=25,
+                                                   margin_l=60,
+                                                   margin_t=40,
+                                                   template='simple_white',
+                                                   uirevision=True)
+            mean_reflectivity_figure.update_xaxes(mirror=True,
+                                                  showline=True)
+            mean_reflectivity_figure.update_yaxes(mirror=True,
+                                                  showline=True)
+
+            d_n_pair_figure = go.Figure(go.Scatter(
+                x=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['buffer thickness'],
+                y=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['buffer refractive index'],
+                mode='lines',
+                showlegend=False,
+                line_color='#636EFA'
+            ))
+
+            d_n_pair_figure.add_trace(go.Scatter(
+                x=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['probe thickness'],
+                y=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['probe refractive index'],
+                mode='lines',
+                showlegend=False,
+                line_color='#EF553B'
+            ))
+
+            d_n_pair_figure.update_layout(
+                xaxis_title=r'$\large{\text{Height [nm]}}$',
+                yaxis_title=r'$\large{\text{Refractive index}}$',
+                font_family='Balto',
+                font_size=19,
+                margin_r=25,
+                margin_l=60,
+                margin_t=40,
+                template='simple_white',
+                uirevision=True)
+            d_n_pair_figure.update_xaxes(mirror=True,
+                                         showline=True)
+            d_n_pair_figure.update_yaxes(mirror=True,
+                                         showline=True)
+
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update
+
         else:
             # Selecting a previously existing analysis object from pattern matching callbacks
 
@@ -2295,6 +2499,8 @@ if __name__ == '__main__':
 
         if 'exclusion-height-run-button' == dash.ctx.triggered_id:
             # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
+
+            # Check injection, buffer and probe points are selected correctly
 
             return
 
