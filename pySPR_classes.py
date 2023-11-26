@@ -431,11 +431,11 @@ class ExclusionHeight:
         self.buffer_points = []
         self.probe_points = []
         self.d_n_pair_resolution = 200
-        self.SPR_vs_TIR_df = None
-        self.reflectivity_fit_df = None
-        self.d_n_pair_df = None
+        self.SPR_vs_TIR_dfs = []  # List of dataframes with labels 'SPR angles' and 'TIR angles' for indexing each step result
+        self.mean_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe, then also for fitted buffer reflectivity and so on) ...) for indexing
+        self.d_n_pair_dfs = []  # Use labels 'd' and 'n' for indexing
         self.mean_exclusion_result = None
-        self.all_exclusion_result = None
+        self.all_exclusion_result = []
 
     # TODO: The methods running calculations here need to use mutliprocessing and whould be run inside background callbacks in the dash app to prevent timeout after 30s of calculations.
     # TODO: Make sure the quality of fit for each d,n pair can be viewed with a pagination passing over each injection.
