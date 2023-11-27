@@ -1990,11 +1990,15 @@ if __name__ == '__main__':
         if 'exclusion-height-sensorgram-graph' == dash.ctx.triggered_id:
             # Determines what happens when clicking on the sensorgram plot
 
-            updated_figure = go.Figure(sensorgram_figure_JSON)
+            sensorgram_figure = go.Figure(sensorgram_figure_JSON)
+
+            new_point_index = int(clickData['points'][0]['pointIndex'])
+            new_point_time = float(clickData['points'][0]['x'])
+            new_point_angle = float(clickData['points'][0]['y'])
 
             match action_selected:
                 case 1:  # Offset data
-                    offset_index = clickData['points'][0]['pointIndex']
+                    offset_index = new_point_index
 
                     updated_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                           y=current_exclusion_height_analysis.sensorgram_data[
@@ -2024,34 +2028,138 @@ if __name__ == '__main__':
                     updated_figure.update_xaxes(mirror=True, showline=True)
                     updated_figure.update_yaxes(mirror=True, showline=True)
 
+                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
                 case 2:  # Add injection points
-                    pass
+                    current_exclusion_height_analysis.injection_points.append((new_point_index, new_point_time, new_point_angle))
 
                 case 3:  # Add buffer points
-                    pass
+                    current_exclusion_height_analysis.buffer_points.append((new_point_index, new_point_time, new_point_angle))
 
                 case 4:  # Add probe points
-                    pass
+                    current_exclusion_height_analysis.probe_points.append((new_point_index, new_point_time, new_point_angle))
+
+            injection_points_time = [item[1] for item in current_exclusion_height_analysis.injection_points]
+            injection_points_angle = [item[2] for item in current_exclusion_height_analysis.injection_points]
+
+            buffer_points_time = [item[1] for item in current_exclusion_height_analysis.buffer_points]
+            buffer_points_angle = [item[2] for item in current_exclusion_height_analysis.buffer_points]
+
+            probe_points_time = [item[1] for item in current_exclusion_height_analysis.probe_points]
+            probe_points_angle = [item[2] for item in current_exclusion_height_analysis.probe_points]
+
+            updated_figure = go.Figure(go.Scatter(x=sensorgram_figure['data'][0]['x'],
+                                                  y=sensorgram_figure['data'][0]['y'],
+                                                  name='SPR angle',
+                                                  line_color='#636efa'))
+
+            updated_figure.add_trace(go.Scatter(x=sensorgram_figure['data'][1]['x'],
+                                                y=sensorgram_figure['data'][1]['y'],
+                                                name='TIR angle',
+                                                line_color='#ef553b'))
+
+            updated_figure.add_trace(go.Scatter(x=injection_points_time,
+                                                y=injection_points_angle,
+                                                name='Injection points',
+                                                marker='arrow',
+                                                marker_color='black',
+                                                showlegend=True))
+
+            updated_figure.add_trace(go.Scatter(x=buffer_points_time,
+                                                y=buffer_points_angle,
+                                                name='Buffer points',
+                                                marker='arrow',
+                                                showlegend=True))
+
+            updated_figure.add_trace(go.Scatter(x=probe_points_time,
+                                                y=probe_points_angle,
+                                                name='Probe points',
+                                                marker='arrow',
+                                                showlegend=True))
+
+            updated_figure.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
+                                         yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
+                                         font_family='Balto',
+                                         font_size=19,
+                                         margin_r=25,
+                                         margin_l=60,
+                                         margin_t=40,
+                                         template='simple_white',
+                                         uirevision=True)
+
+            updated_figure.update_xaxes(mirror=True, showline=True)
+            updated_figure.update_yaxes(mirror=True, showline=True)
 
             return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-click-action-clear' == dash.ctx.triggered_id:
             # Determines what happens when clearing the selected points (remove from graph and backend object)
 
-            updated_figure = go.Figure(sensorgram_figure_JSON)
+            sensorgram_figure = go.Figure(sensorgram_figure_JSON)
 
             match action_selected:
                 case 1:  # Offset data (do nothing)
-                    pass
+                    return dash.exceptions.PreventUpdate
 
                 case 2:  # Clear latest injection point
-                    pass
+                    current_exclusion_height_analysis.injection_points = []
 
                 case 3:  # Clear latest buffer point
-                    pass
+                    current_exclusion_height_analysis.buffer_points = []
 
                 case 4:  # CLear latest probe point
-                    pass
+                    current_exclusion_height_analysis.probe_points = []
+
+            injection_points_time = [item[1] for item in current_exclusion_height_analysis.injection_points]
+            injection_points_angle = [item[2] for item in current_exclusion_height_analysis.injection_points]
+
+            buffer_points_time = [item[1] for item in current_exclusion_height_analysis.buffer_points]
+            buffer_points_angle = [item[2] for item in current_exclusion_height_analysis.buffer_points]
+
+            probe_points_time = [item[1] for item in current_exclusion_height_analysis.probe_points]
+            probe_points_angle = [item[2] for item in current_exclusion_height_analysis.probe_points]
+
+            updated_figure = go.Figure(go.Scatter(x=sensorgram_figure['data'][0]['x'],
+                                                  y=sensorgram_figure['data'][0]['y'],
+                                                  name='SPR angle',
+                                                  line_color='#636efa'))
+
+            updated_figure.add_trace(go.Scatter(x=sensorgram_figure['data'][1]['x'],
+                                                y=sensorgram_figure['data'][1]['y'],
+                                                name='TIR angle',
+                                                line_color='#ef553b'))
+
+            updated_figure.add_trace(go.Scatter(x=injection_points_time,
+                                                y=injection_points_angle,
+                                                name='Injection points',
+                                                marker='arrow',
+                                                marker_color='black',
+                                                showlegend=True))
+
+            updated_figure.add_trace(go.Scatter(x=buffer_points_time,
+                                                y=buffer_points_angle,
+                                                name='Buffer points',
+                                                marker='arrow',
+                                                showlegend=True))
+
+            updated_figure.add_trace(go.Scatter(x=probe_points_time,
+                                                y=probe_points_angle,
+                                                name='Probe points',
+                                                marker='arrow',
+                                                showlegend=True))
+
+            updated_figure.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
+                                         yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
+                                         font_family='Balto',
+                                         font_size=19,
+                                         margin_r=25,
+                                         margin_l=60,
+                                         margin_t=40,
+                                         template='simple_white',
+                                         uirevision=True)
+
+            updated_figure.update_xaxes(mirror=True, showline=True)
+            updated_figure.update_yaxes(mirror=True, showline=True)
 
             return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
@@ -2569,7 +2677,7 @@ if __name__ == '__main__':
 
         else:
             # Selecting a previously existing analysis object from pattern matching callbacks
-
+            # TODO: Choosing a previous analysis needs to function
             return
 
 
