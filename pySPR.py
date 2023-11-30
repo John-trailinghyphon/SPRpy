@@ -747,66 +747,70 @@ if __name__ == '__main__':
                                                                               type='number')
                                                                 ])
                                                             ], width=6)
-                                                        ], style={'margin-bottom': '10px'})
+                                                        ], style={'margin-bottom': '10px'})  # TODO: Add row with height steps and add state to control callback
                                                     ])
                                                 )
-                                            ), id='exclusion-height-analysis-option-collapse', is_open=True)
+                                            ), id='exclusion-height-analysis-option-collapse', is_open=False)
                                     ])
                                 ], id='exclusion-height-fit-options-form'),
-                                dash.html.Div([
-                                    dbc.Progress(id='exclusion-height-progressbar', value=0, color='primary', animated=True, striped=True, style={'height': '35px'}),
-                                    dbc.ButtonGroup([
-                                        dbc.Button('Run full calculation', id='exclusion-height-run-button',
-                                                   color='success',
-                                                   n_clicks=0,
-                                                   size='lg',
-                                                   disabled=False),
-                                        dbc.Button('Check first', id='exclusion-height-check-button',
-                                                   color='info',
-                                                   n_clicks=0,
-                                                   size='lg',
-                                                   disabled=False),
-                                        dbc.Button('Abort', id='exclusion-height-abort-button',
-                                                   color='danger',
-                                                   n_clicks=0,
-                                                   size='lg',
-                                                   disabled=True,
-                                                   title='Cancelling a running calculation. NOTE THAT PREVIOUS PROGRESS IS STILL OVERWRITTEN.'),
-                                    ]),
-                                    dash.dcc.Store(id='exclusion-run-finished', storage_type='session')
-                                ], style={'margin-top': '120px'})
+                                dbc.Collapse([
+                                    dash.html.Div([
+                                        dbc.Progress(id='exclusion-height-progressbar', value=0, color='primary', animated=True, striped=True, style={'height': '35px'}),
+                                        dbc.ButtonGroup([
+                                            dbc.Button('Run full calculation', id='exclusion-height-run-button',
+                                                       color='success',
+                                                       n_clicks=0,
+                                                       size='lg',
+                                                       disabled=False),
+                                            dbc.Button('Check first', id='exclusion-height-check-button',
+                                                       color='info',
+                                                       n_clicks=0,
+                                                       size='lg',
+                                                       disabled=False),
+                                            dbc.Button('Abort', id='exclusion-height-abort-button',
+                                                       color='danger',
+                                                       n_clicks=0,
+                                                       size='lg',
+                                                       disabled=True,
+                                                       title='Cancelling a running calculation. NOTE THAT PREVIOUS PROGRESS IS STILL OVERWRITTEN.'),
+                                        ]),
+                                        dash.dcc.Store(id='exclusion-run-finished', storage_type='session')
+                                    ])
+                                ], id='exclusion-height-progress-collapse', is_open=False, style={'margin-top': '120px'})
                             ], style={'margin-top': '80px'}),
-                            dash.html.Div([
-                                dash.dcc.Graph(id='exclusion-height-sensorgram-graph',
-                                               figure=sensorgram_fig,
-                                               mathjax=True),
+                            dbc.Collapse([
                                 dash.html.Div([
-                                    dbc.Label('Click-action selector', style={'margin-left': '5%', 'margin-top': '35px'}),
-                                    dbc.RadioItems(
-                                        options=[
-                                            {"label": "Offset data", "value": 1},
-                                            {"label": "Choose injection points", "value": 2},
-                                            {"label": "Choose buffer points", "value": 3},
-                                            {"label": "Choose probe points", "value": 4}],
-                                        value=1,
-                                        id='exclusion-height-click-action-selector',
-                                        style={'margin-left': '20px'}),
-                                    dbc.Button('Clear selected points', id='exclusion-height-click-action-clear',
-                                               color='warning',
-                                               n_clicks=0,
-                                               style={'margin-left': '20px', 'margin-top': '35px', 'margin-bot': '35px', 'margin-right': '18%', 'line-height': '1.5'}),
-                                    dbc.DropdownMenu(
-                                        id='exclusion-height-sensorgram-save-dropdown',
-                                        label='Save as...',
-                                        color='info',
-                                        children=[dbc.DropdownMenuItem('.PNG', id='exclusion-height-sensorgram-save-png',
-                                                                       n_clicks=0),
-                                                  dbc.DropdownMenuItem('.SVG', id='exclusion-height-sensorgram-save-svg',
-                                                                       n_clicks=0),
-                                                  dbc.DropdownMenuItem('.HTML', id='exclusion-height-sensorgram-save-html',
-                                                                       n_clicks=0)])
-                                ], style={'display': 'flex', 'justify-content': 'left'}),
-                            ], style={'width': '60%', 'margin-left': '3%'})
+                                    dash.dcc.Graph(id='exclusion-height-sensorgram-graph',
+                                                   figure=sensorgram_fig,
+                                                   mathjax=True),
+                                    dash.html.Div([
+                                        dbc.Label('Click-action selector', style={'margin-left': '5%', 'margin-top': '35px'}),
+                                        dbc.RadioItems(
+                                            options=[
+                                                {"label": "Offset data", "value": 1},
+                                                {"label": "Choose injection points", "value": 2},
+                                                {"label": "Choose buffer points", "value": 3},
+                                                {"label": "Choose probe points", "value": 4}],
+                                            value=1,
+                                            id='exclusion-height-click-action-selector',
+                                            style={'margin-left': '20px'}),
+                                        dbc.Button('Clear selected points', id='exclusion-height-click-action-clear',
+                                                   color='warning',
+                                                   n_clicks=0,
+                                                   style={'margin-left': '20px', 'margin-top': '35px', 'margin-bot': '35px', 'margin-right': '18%', 'line-height': '1.5'}),
+                                        dbc.DropdownMenu(
+                                            id='exclusion-height-sensorgram-save-dropdown',
+                                            label='Save as...',
+                                            color='info',
+                                            children=[dbc.DropdownMenuItem('.PNG', id='exclusion-height-sensorgram-save-png',
+                                                                           n_clicks=0),
+                                                      dbc.DropdownMenuItem('.SVG', id='exclusion-height-sensorgram-save-svg',
+                                                                           n_clicks=0),
+                                                      dbc.DropdownMenuItem('.HTML', id='exclusion-height-sensorgram-save-html',
+                                                                           n_clicks=0)])
+                                    ], style={'display': 'flex', 'justify-content': 'left'}),
+                                ])
+                            ], id='exclusion-height-sensorgram-collapse', is_open=False, style={'width': '60%', 'margin-left': '3%'})
                         ], style={'display': 'flex', 'justify-content': 'center'}),
 
                         # Results
@@ -893,7 +897,7 @@ if __name__ == '__main__':
                                     ], style={'width': '33%'})
                                 ], style={'display': 'flex', 'justify-content': 'center'})
                             ], style={'margin-top': '40px'}),
-                        ], id='exclusion-height-result-collapse', is_open=True)
+                        ], id='exclusion-height-result-collapse', is_open=False)
                     ], id='exclusion-height-tab-content')
                 ], label='Exclusion height determination', tab_id='exclusion-height-tab', style={'margin-top': '10px'}),
 
@@ -1930,6 +1934,8 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-sensor-label', 'children'),
         dash.Output('exclusion-height-fresnel-analysis-label', 'children'),
         dash.Output('exclusion-height-analysis-option-collapse', 'is_open'),
+        dash.Output('exclusion-height-progress-collapse', 'is_open'),
+        dash.Output('exclusion-height-sensorgram-collapse', 'is_open'),
         dash.Output('exclusion-height-result-collapse', 'is_open', allow_duplicate=True),
         dash.Output('exclusion-height-result-mean', 'children', allow_duplicate=True),
         dash.Output('exclusion-height-result-all', 'children', allow_duplicate=True),
@@ -1976,10 +1982,11 @@ if __name__ == '__main__':
                                         action_selected, background_selected_id, sensorgram_figure_JSON, SPRvsTIR_figure_JSON, reflectivity_figure_JSON,
                                         dnpair_figure_JSON, active_page_state):
         """
-        TODO: This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
+        This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
         TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
          the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
          fails the user is prompted to select the new path for the file.
+        TODO: Add number of height steps as option
         TODO: When hovering over datapoints in the d_n_pair plot, take the d and n values and perform the fresnel calculation in the plot to display the fit
         """
         global current_session
@@ -2028,7 +2035,7 @@ if __name__ == '__main__':
                     updated_figure.update_xaxes(mirror=True, showline=True)
                     updated_figure.update_yaxes(mirror=True, showline=True)
 
-                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
                 case 2:  # Add injection points
                     current_exclusion_height_analysis.injection_points.append((new_point_index, new_point_time, new_point_angle))
@@ -2061,20 +2068,26 @@ if __name__ == '__main__':
             updated_figure.add_trace(go.Scatter(x=injection_points_time,
                                                 y=injection_points_angle,
                                                 name='Injection points',
-                                                marker='arrow',
+                                                mode='markers',
+                                                marker_size=14,
+                                                marker_symbol='arrow',
                                                 marker_color='black',
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=buffer_points_time,
                                                 y=buffer_points_angle,
                                                 name='Buffer points',
-                                                marker='arrow',
+                                                mode='markers',
+                                                marker_size=14,
+                                                marker_symbol='arrow',
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=probe_points_time,
                                                 y=probe_points_angle,
                                                 name='Probe points',
-                                                marker='arrow',
+                                                mode='markers',
+                                                marker_size=14,
+                                                marker_symbol='arrow',
                                                 showlegend=True))
 
             updated_figure.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
@@ -2090,7 +2103,7 @@ if __name__ == '__main__':
             updated_figure.update_xaxes(mirror=True, showline=True)
             updated_figure.update_yaxes(mirror=True, showline=True)
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-click-action-clear' == dash.ctx.triggered_id:
             # Determines what happens when clearing the selected points (remove from graph and backend object)
@@ -2132,20 +2145,26 @@ if __name__ == '__main__':
             updated_figure.add_trace(go.Scatter(x=injection_points_time,
                                                 y=injection_points_angle,
                                                 name='Injection points',
-                                                marker='arrow',
+                                                mode='markers',
+                                                marker_size=14,
+                                                marker_symbol='arrow',
                                                 marker_color='black',
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=buffer_points_time,
                                                 y=buffer_points_angle,
                                                 name='Buffer points',
-                                                marker='arrow',
+                                                mode='markers',
+                                                marker_size=14,
+                                                marker_symbol='arrow',
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=probe_points_time,
                                                 y=probe_points_angle,
                                                 name='Probe points',
-                                                marker='arrow',
+                                                mode='markers',
+                                                marker_size=14,
+                                                marker_symbol='arrow',
                                                 showlegend=True))
 
             updated_figure.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
@@ -2161,7 +2180,7 @@ if __name__ == '__main__':
             updated_figure.update_xaxes(mirror=True, showline=True)
             updated_figure.update_yaxes(mirror=True, showline=True)
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-d-n-pair-graph' == dash.ctx.triggered_id:
 
@@ -2269,13 +2288,14 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                                   showline=True)
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, mean_reflectivity_figure, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, mean_reflectivity_figure, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open add analysis name giving modal
-            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
+
             # Add new exclusion height analysis object to session
             background_object = current_session.fresnel_analysis_instances[background_selected_id]
             current_exclusion_height_analysis = add_exclusion_height_object(current_session, background_object, sensorgram_df_selection, current_data_path, analysis_name)
@@ -2311,18 +2331,18 @@ if __name__ == '__main__':
             new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
             new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
-            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open remove analysis object confirmation modal
-            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.exclusion_height_analysis_instances) > 1:
 
                 # Pop out the current exclusion height analysis object from the session, delete its .pickle file and make the first instance the current one
                 removed = current_exclusion_height_analysis
-                current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[1]
+                current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[0]
                 current_session.remove_exclusion_height_analysis(removed.object_id)
                 current_session.save_session()
 
@@ -2518,7 +2538,7 @@ if __name__ == '__main__':
                 # Update number of injection steps in pagination of result page
                 num_injection_steps = len(current_exclusion_height_analysis.probe_points)
 
-                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, mean_result, all_result, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps
+                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, True, mean_result, all_result, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps
 
             else:
                 try:
@@ -2529,12 +2549,12 @@ if __name__ == '__main__':
                 current_exclusion_height_analysis = None
                 current_session.save_session()
 
-                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-cancel' == dash.ctx.triggered_id:
             # Cancel removal of exclusion height analysis object
 
-            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -2673,13 +2693,206 @@ if __name__ == '__main__':
             d_n_pair_figure.update_yaxes(mirror=True,
                                          showline=True)
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update
 
         else:
             # Selecting a previously existing analysis object from pattern matching callbacks
-            # TODO: Choosing a previous analysis needs to function
-            return
 
+            # Select a new current exclusion height analysis object
+            current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[dash.callback_context.triggered_id.index]
+
+            # Update choose analysis dropdown menu options
+            analysis_options = [dbc.DropdownMenuItem(
+                'EH' + str(exclusion_id) + ' ' + current_session.exclusion_height_analysis_instances[exclusion_id].name,
+                id={'type': 'exclusion-analysis-list',
+                    'index': exclusion_id},
+                n_clicks=0) for exclusion_id in current_session.exclusion_height_analysis_instances]
+
+            # Update results text
+            if current_exclusion_height_analysis.mean_exclusion_result is not None:
+                mean_result = 'Mean exclusion height: {res}'.format(res=round(current_exclusion_height_analysis.mean_exclusion_result, 4))
+            else:
+                mean_result = 'Mean exclusion height: None'
+
+            if current_exclusion_height_analysis.all_exclusion_result is not None:
+                all_result = 'All exclusion height: {res}'.format(res=current_exclusion_height_analysis.all_exclusion_result)
+            else:
+                all_result = 'All exclusion height: None'
+
+            # Update sensorgram figure to new current exclusion height object sensorgram data
+            if current_data_path != current_exclusion_height_analysis.initial_data_path:
+                line_color_value = '#00CC96'
+            else:
+                line_color_value = '#636EFA'
+
+            new_sensorgram_fig = go.Figure(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
+                                                      y=current_exclusion_height_analysis.sensorgram_data[
+                                                          'SPR angle'],
+                                                      name='SPR angle',
+                                                      line_color=line_color_value)
+                                           )
+
+            new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
+                                                    y=current_exclusion_height_analysis.sensorgram_data[
+                                                        'TIR angle'],
+                                                    name='TIR angle',
+                                                    line_color='#ef553b')
+                                         )
+
+            if len(current_exclusion_height_analysis.injection_points) > 0:
+                new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.injection_points],
+                                                        y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.injection_points],
+                                                        name='Injection points',
+                                                        marker_size=12,
+                                                        marker_symbol='arrow',
+                                                        marker_color='black')
+                                             )
+
+            if len(current_exclusion_height_analysis.buffer_points) > 0:
+                new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.buffer_points],
+                                                        y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.buffer_points],
+                                                        name='Buffer points',
+                                                        marker_size=12,
+                                                        marker_symbol='arrow')
+                                             )
+
+            if len(current_exclusion_height_analysis.probe_points) > 0:
+                new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.probe_points],
+                                                        y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.probe_points],
+                                                        name='Probe points',
+                                                        marker_size=12,
+                                                        marker_symbol='arrow')
+                                             )
+
+            new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
+                                             yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
+                                             font_family='Balto',
+                                             font_size=19,
+                                             margin_r=25,
+                                             margin_l=60,
+                                             margin_t=40,
+                                             template='simple_white',
+                                             uirevision=True)
+            new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
+            new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
+
+            # Update result figures
+            if len(current_exclusion_height_analysis.SPR_vs_TIR_dfs) > 0:
+                SPRvsTIR_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['TIR angles'],
+                                                       y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['SPR angles'],
+                                                       mode='lines',
+                                                       showlegend=False,
+                                                       line_color='#636EFA'
+                                                       ))
+            else:
+                SPRvsTIR_figure = go.Figure(
+                    go.Scatter(x=[0],
+                               y=[0],
+                               mode='lines',
+                               showlegend=False,
+                               line_color='#636EFA'
+                               ))
+
+            SPRvsTIR_figure.update_layout(xaxis_title=r'$\large{\text{TIR angle [ }^{\circ}\text{ ]}}$',
+                                          yaxis_title=r'$\large{\text{SPR angle [ }^{\circ}\text{ ]}}$',
+                                          font_family='Balto',
+                                          font_size=19,
+                                          margin_r=25,
+                                          margin_l=60,
+                                          margin_t=40,
+                                          template='simple_white',
+                                          uirevision=True)
+            SPRvsTIR_figure.update_xaxes(mirror=True,
+                                         showline=True)
+            SPRvsTIR_figure.update_yaxes(mirror=True,
+                                         showline=True)
+
+            if len(current_exclusion_height_analysis.mean_reflectivity_dfs) > 0:
+                mean_reflectivity_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['buffer angles'],
+                                                       y=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['buffer reflectivity'],
+                                                       mode='lines',
+                                                       name='Buffer',
+                                                       showlegend=True,
+                                                       line_color='#636EFA'
+                                                       ))
+                mean_reflectivity_figure.add_trace(go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['probe angles'],
+                                                       y=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['probe reflectivity'],
+                                                       mode='lines',
+                                                       name='Probe',
+                                                       showlegend=True,
+                                                       line_color='#EF553B'
+                                                       ))
+            else:
+                mean_reflectivity_figure = go.Figure(
+                    go.Scatter(x=[0],
+                               y=[0],
+                               mode='lines',
+                               showlegend=False,
+                               line_color='#636EFA'
+                               ))
+
+            mean_reflectivity_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                          yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                          font_family='Balto',
+                                          font_size=19,
+                                          margin_r=25,
+                                          margin_l=60,
+                                          margin_t=40,
+                                          template='simple_white',
+                                          uirevision=True)
+            mean_reflectivity_figure.update_xaxes(mirror=True,
+                                         showline=True)
+            mean_reflectivity_figure.update_yaxes(mirror=True,
+                                         showline=True)
+
+            if len(current_exclusion_height_analysis.d_n_pair_dfs) > 0:
+
+                d_n_pair_figure = go.Figure(go.Scatter(
+                    x=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer thickness'],
+                    y=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer refractive index'],
+                    mode='lines+markers',
+                    name='Buffer',
+                    showlegend=True,
+                    line_color='#636EFA'
+                    ))
+
+                d_n_pair_figure.add_trace(go.Scatter(
+                    x=current_exclusion_height_analysis.d_n_pair_dfs[0]['probe thickness'],
+                    y=current_exclusion_height_analysis.d_n_pair_dfs[0]['probe refractive index'],
+                    mode='lines+markers',
+                    name='Probe',
+                    showlegend=True,
+                    line_color='#EF553B'
+                    ))
+
+            else:
+                d_n_pair_figure = go.Figure(
+                    go.Scatter(x=[0],
+                               y=[0],
+                               mode='lines',
+                               showlegend=False,
+                               line_color='#636EFA'
+                               ))
+
+            d_n_pair_figure.update_layout(
+                xaxis_title=r'$\large{\text{Height [nm]}}$',
+                yaxis_title=r'$\large{\text{Refractive index}}$',
+                font_family='Balto',
+                font_size=19,
+                margin_r=25,
+                margin_l=60,
+                margin_t=40,
+                template='simple_white',
+                uirevision=True)
+            d_n_pair_figure.update_xaxes(mirror=True,
+                                                  showline=True)
+            d_n_pair_figure.update_yaxes(mirror=True,
+                                                  showline=True)
+
+            # Update number of injection steps in pagination of result page
+            num_injection_steps = len(current_exclusion_height_analysis.probe_points)
+
+            return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, True, mean_result, all_result, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps
 
     # TODO: This callback may need to handle many duplicate outputs that are also changed upon changing the current
     #  analysis object or adding a new object. For fresnel fitting I fixed issues related to this by combining the
