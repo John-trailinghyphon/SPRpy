@@ -450,13 +450,13 @@ class ExclusionHeight:
     # TODO: Make it so the progress bar updates with each finished injection, and that the results page is
     #  updated with each injection so it can be aborted if necessary
 
-    def check_exclusion_height(self):
+    def check_exclusion_height(self, lower_bound_, upper_bound_, step_resolution_):
         """
         Perform a single injection iteration to check that fitting looks good and that the height range is chosen correctly
         """
         pass
 
-    def calculate_full_exclusion_height(self):
+    def calculate_full_exclusion_height(self, lower_bound_, upper_bound_, step_resolution_):
         """
 
         """
