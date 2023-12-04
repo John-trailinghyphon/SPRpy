@@ -427,6 +427,8 @@ class ExclusionHeight:
         self.initial_data_path = data_path_
         self.sensorgram_data = sensorgram_df_
         self.height_bounds = [0, 200]
+        self.points_below_SPR_angle = None
+        self.points_above_SPR_angle = None
         self.injection_points = []
         self.buffer_points = []
         self.probe_points = []
