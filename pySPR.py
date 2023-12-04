@@ -2755,7 +2755,7 @@ if __name__ == '__main__':
                 current_exclusion_height_analysis.probe_reflectivity_dfs[reflectivity_index]['reflectivity'] = sliced_probe_reflectivity_spectras.mean(axis=0)
                 probepoint_index += 2  # Next pair of probe point indices
 
-            # Calculate number of points above and below minimum based on fresnel model background range
+            # Calculate number of points above and below minimum point based on fresnel model background range
             background_reflectivity = current_exclusion_height_analysis.fresnel_object.measurement_data[
                 'reflectivity']
             background_angles = current_exclusion_height_analysis.fresnel_object.measurement_data['angles']
@@ -2766,15 +2766,16 @@ if __name__ == '__main__':
             selection_ydata_series = background_reflectivity[selection_criterion].squeeze(axis=1)
             smoothened_selection = bottleneck.move_mean(selection_ydata_series.to_numpy(), window=4, min_count=1)  # Ensures closer fit to minimum position
             smoothened_selection_frame = pd.Series(smoothened_selection)
-            current_exclusion_height_analysis.points_below_SPR_angle = len(
+            current_exclusion_height_analysis.points_below_SPR_min_ind = len(
                 smoothened_selection_frame[(smoothened_selection_frame.index < smoothened_selection_frame.idxmin())])
-            current_exclusion_height_analysis.points_above_SPR_angle = len(
+            current_exclusion_height_analysis.points_above_SPR_min_ind = len(
                 smoothened_selection_frame[(smoothened_selection_frame.index > smoothened_selection_frame.idxmin())])
 
 
 
             # TODO: Started working on underlying logic for height exclusion. Lot of work to do, but start with initializing model step in control callback. Also decide on how to get the angle range for probe injections (kind of have to do an auto detection thing based on SPR minumum I think, either way the optimal angle range will shift at different time points since the SPR angle shifts...
-            # TODO: base the angle range on the amount of points chosen in the fresnel object angle range from the minimum value
+            # TODO: base the angle range on the amount of points chosen in the fresnel object angle range from the minimum value.
+            # TODO: Offset and extinction correction can also be copied from fresnel background object
 
             SPRvsTIR_figure = None
             mean_reflectivity_figure = None
