@@ -53,6 +53,7 @@
 import dash
 import dash_bootstrap_components as dbc
 import diskcache
+import bottleneck
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
@@ -2740,8 +2741,7 @@ if __name__ == '__main__':
 
         elif 'exclusion-height-initialize-model' == dash.ctx.triggered_id:
 
-            # TODO: Calculate average angular traces based on selected points and SPR vs TIR plots. Also activates the run calculations and progress buttons
-
+            # Calculate average reflectivity traces based on selected points
             bufferpoint_index = 0
             for reflectivity_index in range(int(len(current_exclusion_height_analysis.buffer_points) / 2)):
                 sliced_buffer_reflectivity_spectras = ydata_df[current_exclusion_height_analysis.buffer_points[bufferpoint_index][0]: current_exclusion_height_analysis.buffer_points[bufferpoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
@@ -2754,6 +2754,27 @@ if __name__ == '__main__':
                                                                current_exclusion_height_analysis.probe_points[probepoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
                 current_exclusion_height_analysis.probe_reflectivity_dfs[reflectivity_index]['reflectivity'] = sliced_probe_reflectivity_spectras.mean(axis=0)
                 probepoint_index += 2  # Next pair of probe point indices
+
+            # Calculate number of points above and below minimum based on fresnel model background range
+            background_reflectivity = current_exclusion_height_analysis.fresnel_object.measurement_data[
+                'reflectivity']
+            background_angles = current_exclusion_height_analysis.fresnel_object.measurement_data['angles']
+            selection_criterion = (background_angles >=
+                                   current_exclusion_height_analysis.fresnel_object.angle_range[0]) & (
+                                              background_angles <=
+                                              current_exclusion_height_analysis.fresnel_object.angle_range[1])
+            selection_ydata_series = background_reflectivity[selection_criterion].squeeze(axis=1)
+            smoothened_selection = bottleneck.move_mean(selection_ydata_series.to_numpy(), window=4, min_count=1)  # Ensures closer fit to minimum position
+            smoothened_selection_frame = pd.Series(smoothened_selection)
+            current_exclusion_height_analysis.points_below_SPR_angle = len(
+                smoothened_selection_frame[(smoothened_selection_frame.index < smoothened_selection_frame.idxmin())])
+            current_exclusion_height_analysis.points_above_SPR_angle = len(
+                smoothened_selection_frame[(smoothened_selection_frame.index > smoothened_selection_frame.idxmin())])
+
+
+
+            # TODO: Started working on underlying logic for height exclusion. Lot of work to do, but start with initializing model step in control callback. Also decide on how to get the angle range for probe injections (kind of have to do an auto detection thing based on SPR minumum I think, either way the optimal angle range will shift at different time points since the SPR angle shifts...
+            # TODO: base the angle range on the amount of points chosen in the fresnel object angle range from the minimum value
 
             SPRvsTIR_figure = None
             mean_reflectivity_figure = None
