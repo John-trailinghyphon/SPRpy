@@ -2016,6 +2016,9 @@ if __name__ == '__main__':
         global current_data_path
         global current_exclusion_height_analysis
         global sensorgram_df_selection
+        global ydata_df
+        global time_df
+        global angles_df
 
         if 'exclusion-height-sensorgram-graph' == dash.ctx.triggered_id:
             # Determines what happens when clicking on the sensorgram plot
@@ -2095,6 +2098,7 @@ if __name__ == '__main__':
                                                 marker_size=14,
                                                 marker_symbol='arrow',
                                                 marker_color='black',
+                                                marker_angle=-20,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=buffer_points_time,
@@ -2103,6 +2107,7 @@ if __name__ == '__main__':
                                                 mode='markers',
                                                 marker_size=14,
                                                 marker_symbol='arrow',
+                                                marker_angle=20,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=probe_points_time,
@@ -2175,6 +2180,7 @@ if __name__ == '__main__':
                                                 marker_size=14,
                                                 marker_symbol='arrow',
                                                 marker_color='black',
+                                                marker_angle=-20,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=buffer_points_time,
@@ -2183,6 +2189,7 @@ if __name__ == '__main__':
                                                 mode='markers',
                                                 marker_size=14,
                                                 marker_symbol='arrow',
+                                                marker_angle=20,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=probe_points_time,
@@ -2334,6 +2341,7 @@ if __name__ == '__main__':
             # Calculate suggestions of lower and upper bounds for height
             lower_height_bound = float(background_object.sensor_object.layer_thicknesses[-2])
             upper_height_bound = float(background_object.sensor_object.layer_thicknesses[-2]) * 6
+            current_exclusion_height_analysis.height_bounds = [lower_height_bound, upper_height_bound]
 
             # Update choose analysis dropdown menu options
             analysis_options = [dbc.DropdownMenuItem('EH' + str(exclusion_id) + ' ' + current_session.exclusion_height_analysis_instances[exclusion_id].name,
@@ -2379,9 +2387,9 @@ if __name__ == '__main__':
                 current_session.remove_exclusion_height_analysis(removed.object_id)
                 current_session.save_session()
 
-                # Calculate suggestions of lower and upper bounds for height
-                lower_height_bound = float(current_exclusion_height_analysis.sensor_object.layer_thicknesses[-2])
-                upper_height_bound = float(current_exclusion_height_analysis.sensor_object.layer_thicknesses[-2]) * 6
+                # Lower and upper bounds for height
+                lower_height_bound = current_exclusion_height_analysis.height_bounds[0]
+                upper_height_bound = current_exclusion_height_analysis.height_bounds[1]
 
                 # Update choose analysis dropdown menu options
                 analysis_options = [dbc.DropdownMenuItem(
@@ -2669,17 +2677,15 @@ if __name__ == '__main__':
                                          showline=True)
 
             mean_reflectivity_figure = go.Figure(
-                go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page]['buffer angles'],
-                           y=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page][
-                               'buffer reflectivity'],
+                go.Scatter(x=current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page]['angles'],
+                           y=current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page]['reflectivity'],
                            mode='lines',
                            showlegend=False,
                            line_color='#636EFA'
                            ))
             mean_reflectivity_figure.add_trace(
-                go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page]['probe angles'],
-                           y=current_exclusion_height_analysis.mean_reflectivity_dfs[active_page][
-                               'probe reflectivity'],
+                go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page]['angles'],
+                           y=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page]['reflectivity'],
                            mode='lines',
                            showlegend=False,
                            line_color='#EF553B'
@@ -2700,21 +2706,20 @@ if __name__ == '__main__':
                                                   showline=True)
 
             d_n_pair_figure = go.Figure(go.Scatter(
-                x=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['buffer thickness'],
-                y=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['buffer refractive index'],
+                x=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page]['thickness'],
+                y=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page]['refractive index'],
                 mode='lines',
                 showlegend=False,
                 line_color='#636EFA'
             ))
 
             d_n_pair_figure.add_trace(go.Scatter(
-                x=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['probe thickness'],
-                y=current_exclusion_height_analysis.d_n_pair_dfs[active_page]['probe refractive index'],
+                x=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page]['thickness'],
+                y=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page]['refractive index'],
                 mode='lines',
                 showlegend=False,
                 line_color='#EF553B'
             ))
-
             d_n_pair_figure.update_layout(
                 xaxis_title=r'$\large{\text{Height [nm]}}$',
                 yaxis_title=r'$\large{\text{Refractive index}}$',
@@ -2725,6 +2730,7 @@ if __name__ == '__main__':
                 margin_t=40,
                 template='simple_white',
                 uirevision=True)
+
             d_n_pair_figure.update_xaxes(mirror=True,
                                          showline=True)
             d_n_pair_figure.update_yaxes(mirror=True,
@@ -2734,7 +2740,20 @@ if __name__ == '__main__':
 
         elif 'exclusion-height-initialize-model' == dash.ctx.triggered_id:
 
-            # Calculate average angular traces based on selected points and SPR vs TIR plots. Also activate the run calculations and progress buttons
+            # TODO: Calculate average angular traces based on selected points and SPR vs TIR plots. Also activates the run calculations and progress buttons
+
+            bufferpoint_index = 0
+            for reflectivity_index in range(int(len(current_exclusion_height_analysis.buffer_points) / 2)):
+                sliced_buffer_reflectivity_spectras = ydata_df[current_exclusion_height_analysis.buffer_points[bufferpoint_index][0]: current_exclusion_height_analysis.buffer_points[bufferpoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
+                current_exclusion_height_analysis.buffer_reflectivity_dfs[reflectivity_index]['reflectivity'] = sliced_buffer_reflectivity_spectras.mean(axis=0)
+                bufferpoint_index += 2  # Next pair of buffer point indices
+
+            probepoint_index = 0
+            for reflectivity_index in range(int(len(current_exclusion_height_analysis.probe_points) / 2)):
+                sliced_probe_reflectivity_spectras = ydata_df[current_exclusion_height_analysis.probe_points[probepoint_index][0]:
+                                                               current_exclusion_height_analysis.probe_points[probepoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
+                current_exclusion_height_analysis.probe_reflectivity_dfs[reflectivity_index]['reflectivity'] = sliced_probe_reflectivity_spectras.mean(axis=0)
+                probepoint_index += 2  # Next pair of probe point indices
 
             SPRvsTIR_figure = None
             mean_reflectivity_figure = None
@@ -2747,9 +2766,9 @@ if __name__ == '__main__':
             # Select a new current exclusion height analysis object
             current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[dash.callback_context.triggered_id.index]
 
-            # Calculate suggestions of lower and upper bounds for height
-            lower_height_bound = float(current_exclusion_height_analysis.sensor_object.layer_thicknesses[-2])
-            upper_height_bound = float(current_exclusion_height_analysis.sensor_object.layer_thicknesses[-2]) * 6
+            # Lower and upper bounds for height
+            lower_height_bound = current_exclusion_height_analysis.height_bounds[0]
+            upper_height_bound = current_exclusion_height_analysis.height_bounds[1]
 
             # Update choose analysis dropdown menu options
             analysis_options = [dbc.DropdownMenuItem(
@@ -2795,7 +2814,8 @@ if __name__ == '__main__':
                                                         name='Injection points',
                                                         marker_size=12,
                                                         marker_symbol='arrow',
-                                                        marker_color='black')
+                                                        marker_color='black',
+                                                        marker_angle=-20)
                                              )
 
             if len(current_exclusion_height_analysis.buffer_points) > 0:
@@ -2803,7 +2823,8 @@ if __name__ == '__main__':
                                                         y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.buffer_points],
                                                         name='Buffer points',
                                                         marker_size=12,
-                                                        marker_symbol='arrow')
+                                                        marker_symbol='arrow',
+                                                        marker_angle=20)
                                              )
 
             if len(current_exclusion_height_analysis.probe_points) > 0:
@@ -2986,10 +3007,17 @@ if __name__ == '__main__':
 
             # Check injection, buffer and probe points are selected correctly
 
+            current_exclusion_height_analysis.height_points = [lower_bound, upper_bound]
+            current_exclusion_height_analysis.d_n_pair_resolution = resolution
+
             return
 
         elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
             # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
+
+            current_exclusion_height_analysis.height_points = [lower_bound, upper_bound]
+            current_exclusion_height_analysis.d_n_pair_resolution = resolution
+
             return
 
     app.run_server(debug=True, use_reloader=False)

@@ -432,8 +432,10 @@ class ExclusionHeight:
         self.probe_points = []
         self.d_n_pair_resolution = 200
         self.SPR_vs_TIR_dfs = []  # List of dataframes with labels 'SPR angles' and 'TIR angles' for indexing each step result
-        self.mean_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe) for indexing
-        self.d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
+        self.buffer_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe) for indexing
+        self.probe_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe) for indexing
+        self.buffer_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
+        self.probe_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
         self.mean_exclusion_result = None
         self.all_exclusion_result = []
 
@@ -450,17 +452,78 @@ class ExclusionHeight:
     # TODO: Make it so the progress bar updates with each finished injection, and that the results page is
     #  updated with each injection so it can be aborted if necessary
 
-    def check_exclusion_height(self, lower_bound_, upper_bound_, step_resolution_):
-        """
-        Perform a single injection iteration to check that fitting looks good and that the height range is chosen correctly
-        """
-        pass
 
-    def calculate_full_exclusion_height(self, lower_bound_, upper_bound_, step_resolution_):
-        """
+def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index_, height):
+    """
 
-        """
-        pass
+    :param ini_guess:
+    :param bounds:
+    :param TIR_range:
+    :param scanspeed:
+    :return:
+    """
+
+    selection_xdata_ = exclusion_height_analysis_object.buffer_reflectivity_dfs[step_index_]['angles']  # This should already be the selected range
+    selection_ydata_ = exclusion_height_analysis_object.buffer_reflectivity_dfs[step_index_]['reflectivity']
+
+    # Calculate TIR angle and bulk refractive index
+    TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(selection_xdata_, selection_ydata_, exclusion_height_analysis_object.fresnel_object.TIR_range, exclusion_height_analysis_object.fresnel_object.scanspeed)
+    exclusion_height_analysis_object.sensor_object.refractive_indices[-1] = exclusion_height_analysis_object.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
+
+    # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
+    for offset_ind in range(3):
+        offset_ydata_ = selection_ydata_ - exclusion_height_analysis_object.fresnel_object.y_offset
+
+        # Perform the fitting
+        result = scipy.optimize.least_squares(fresnel_calculation,
+                                              exclusion_height_analysis_object.fresnel_object.ini_guess,
+                                              bounds=exclusion_height_analysis_object.fresnel_object.bounds,
+                                              kwargs={'fitted_layer_index': exclusion_height_analysis_object.sensor_object.fitted_layer_index,
+                                                      'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
+                                                      'layer_thicknesses': exclusion_height_analysis_object.sensor_object.layer_thicknesses,
+                                                      'n_re': exclusion_height_analysis_object.sensor_object.refractive_indices,
+                                                      'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
+                                                      'angles': selection_xdata_,
+                                                      'ydata': offset_ydata_,
+                                                      'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
+                                                      'polarization': exclusion_height_analysis_object.sensor_object.polarization}
+                                              )
+        # Collect the results from least_squares object and calculate corresponding fresnel coefficients
+        fitted_result = result['x'][0]
+        fresnel_coefficients = fresnel_calculation(fitted_result,
+                                                   fitted_layer_index=exclusion_height_analysis_object.sensor_object.fitted_layer_index,
+                                                   angles=selection_xdata_,
+                                                   wavelength=exclusion_height_analysis_object.sensor_object.wavelength,
+                                                   layer_thicknesses=exclusion_height_analysis_object.sensor_object.layer_thicknesses,
+                                                   n_re=exclusion_height_analysis_object.sensor_object.refractive_indices,
+                                                   n_im=exclusion_height_analysis_object.sensor_object.extinction_coefficients,
+                                                   ydata=None,
+                                                   ydata_type='R',
+                                                   polarization=1
+                                                   )
+        if offset_ind < 2:
+            # Calculate new y_offset
+            exclusion_height_analysis_object.fresnel_object.y_offset = exclusion_height_analysis_object.fresnel_object.y_offset + np.min(offset_ydata_) - np.min(fresnel_coefficients)
+
+    # Shift fresnel coefficients back to measurement data  level
+    fresnel_ydata = fresnel_coefficients + exclusion_height_analysis_object.fresnel_object.y_offset
+
+    # Compile into fresnel_coefficients data frame
+    exclusion_height_analysis_object.fitted_data = pd.DataFrame(data={'angles': selection_xdata_, 'ydata': fresnel_ydata})
+
+    return exclusion_height_analysis_object.fitted_data
+
+def check_exclusion_height(self):
+    """
+    Perform a single injection iteration to check that fitting looks good and that the height range is chosen correctly
+    """
+    pass
+
+def calculate_full_exclusion_height(self):
+    """
+
+    """
+    pass
 
 
 def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
