@@ -427,8 +427,8 @@ class ExclusionHeight:
         self.initial_data_path = data_path_
         self.sensorgram_data = sensorgram_df_
         self.height_bounds = [0, 200]
-        self.points_below_SPR_angle = None
-        self.points_above_SPR_angle = None
+        self.points_below_SPR_min_ind = None
+        self.points_above_SPR_min_ind = None
         self.injection_points = []
         self.buffer_points = []
         self.probe_points = []
@@ -453,6 +453,7 @@ class ExclusionHeight:
     #  a default based on the dry height of the layer in air, but maybe easier to just add a tooltip stating that fact than implementing it.
     # TODO: Make it so the progress bar updates with each finished injection, and that the results page is
     #  updated with each injection so it can be aborted if necessary
+    # TODO: There is no need to include different offsets for buffer and probe, they can simply use the offset from fresnel background object (if it is modeled from the liquid!)
 
 
 def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index_, height):
@@ -473,39 +474,39 @@ def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index
     exclusion_height_analysis_object.sensor_object.refractive_indices[-1] = exclusion_height_analysis_object.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
     # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
-    for offset_ind in range(3):
-        offset_ydata_ = selection_ydata_ - exclusion_height_analysis_object.fresnel_object.y_offset
+    # for offset_ind in range(3): # TODO: There is no need to include different offsets for buffer and probe
+    offset_ydata_ = selection_ydata_ - exclusion_height_analysis_object.fresnel_object.y_offset
 
-        # Perform the fitting
-        result = scipy.optimize.least_squares(fresnel_calculation,
-                                              exclusion_height_analysis_object.fresnel_object.ini_guess,
-                                              bounds=exclusion_height_analysis_object.fresnel_object.bounds,
-                                              kwargs={'fitted_layer_index': exclusion_height_analysis_object.sensor_object.fitted_layer_index,
-                                                      'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
-                                                      'layer_thicknesses': exclusion_height_analysis_object.sensor_object.layer_thicknesses,
-                                                      'n_re': exclusion_height_analysis_object.sensor_object.refractive_indices,
-                                                      'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
-                                                      'angles': selection_xdata_,
-                                                      'ydata': offset_ydata_,
-                                                      'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
-                                                      'polarization': exclusion_height_analysis_object.sensor_object.polarization}
-                                              )
-        # Collect the results from least_squares object and calculate corresponding fresnel coefficients
-        fitted_result = result['x'][0]
-        fresnel_coefficients = fresnel_calculation(fitted_result,
-                                                   fitted_layer_index=exclusion_height_analysis_object.sensor_object.fitted_layer_index,
-                                                   angles=selection_xdata_,
-                                                   wavelength=exclusion_height_analysis_object.sensor_object.wavelength,
-                                                   layer_thicknesses=exclusion_height_analysis_object.sensor_object.layer_thicknesses,
-                                                   n_re=exclusion_height_analysis_object.sensor_object.refractive_indices,
-                                                   n_im=exclusion_height_analysis_object.sensor_object.extinction_coefficients,
-                                                   ydata=None,
-                                                   ydata_type='R',
-                                                   polarization=1
-                                                   )
-        if offset_ind < 2:
-            # Calculate new y_offset
-            exclusion_height_analysis_object.fresnel_object.y_offset = exclusion_height_analysis_object.fresnel_object.y_offset + np.min(offset_ydata_) - np.min(fresnel_coefficients)
+    # Perform the fitting
+    result = scipy.optimize.least_squares(fresnel_calculation,
+                                          exclusion_height_analysis_object.fresnel_object.ini_guess,
+                                          bounds=exclusion_height_analysis_object.fresnel_object.bounds,
+                                          kwargs={'fitted_layer_index': exclusion_height_analysis_object.sensor_object.fitted_layer_index,
+                                                  'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
+                                                  'layer_thicknesses': exclusion_height_analysis_object.sensor_object.layer_thicknesses,
+                                                  'n_re': exclusion_height_analysis_object.sensor_object.refractive_indices,
+                                                  'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
+                                                  'angles': selection_xdata_,
+                                                  'ydata': offset_ydata_,
+                                                  'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
+                                                  'polarization': exclusion_height_analysis_object.sensor_object.polarization}
+                                          )
+    # Collect the results from least_squares object and calculate corresponding fresnel coefficients
+    fitted_result = result['x'][0]
+    fresnel_coefficients = fresnel_calculation(fitted_result,
+                                               fitted_layer_index=exclusion_height_analysis_object.sensor_object.fitted_layer_index,
+                                               angles=selection_xdata_,
+                                               wavelength=exclusion_height_analysis_object.sensor_object.wavelength,
+                                               layer_thicknesses=exclusion_height_analysis_object.sensor_object.layer_thicknesses,
+                                               n_re=exclusion_height_analysis_object.sensor_object.refractive_indices,
+                                               n_im=exclusion_height_analysis_object.sensor_object.extinction_coefficients,
+                                               ydata=None,
+                                               ydata_type='R',
+                                               polarization=1
+                                               )
+    # if offset_ind < 2: # TODO: There is no need to include different offsets for buffer and probe
+    #     # Calculate new y_offset
+    #     exclusion_height_analysis_object.fresnel_object.y_offset = exclusion_height_analysis_object.fresnel_object.y_offset + np.min(offset_ydata_) - np.min(fresnel_coefficients)
 
     # Shift fresnel coefficients back to measurement data  level
     fresnel_ydata = fresnel_coefficients + exclusion_height_analysis_object.fresnel_object.y_offset
