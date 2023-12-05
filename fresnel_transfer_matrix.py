@@ -1,6 +1,7 @@
 # Contains fresnel function for the transfer-matrix method and curve fitting
 
 import numpy as np
+import pandas as pd
 import bottleneck
 
 
@@ -126,6 +127,13 @@ def fresnel_calculation(fitted_var=None,
 
 
 def TIR_determination(xdata, ydata, TIR_range, scanspeed):
+
+    # Convert to numpy array first if necessary
+    if isinstance(xdata, pd.Series):
+        xdata = xdata.to_numpy()
+
+    if isinstance(ydata, pd.Series):
+        ydata = ydata.to_numpy()
 
     TIR_ydata = ydata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
     TIR_xdata = xdata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
