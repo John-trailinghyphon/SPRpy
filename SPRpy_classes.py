@@ -4,7 +4,7 @@ import scipy
 import pickle
 import copy
 import bottleneck
-from pySPR_functions import *
+from SPRpy_functions import *
 from fresnel_transfer_matrix import fresnel_calculation
 
 
@@ -17,9 +17,9 @@ class Session:
 
     def __init__(self, name='Session', directory=os.getcwd(), current_data_path=None):
         self.name = datetime.datetime.now().__str__()[0:16].replace(':', '_') + ' ' + name
-        if not os.path.exists(directory + r'\pySPR sessions'):
-            os.mkdir(directory + r'\pySPR sessions')
-        self.location = directory + r'\pySPR sessions' + r'\{name_}'.format(name_=self.name)
+        if not os.path.exists(directory + r'\SPRpy sessions'):
+            os.mkdir(directory + r'\SPRpy sessions')
+        self.location = directory + r'\SPRpy sessions' + r'\{name_}'.format(name_=self.name)
         if not os.path.exists(self.location):
             os.mkdir(self.location)
         if not os.path.exists(self.location + r'\Sensors'):
@@ -33,7 +33,7 @@ class Session:
         self.exclusion_height_analysis_instances = {}
         self.exclusion_height_analysis_ID_count = 0
         self.current_data_path = current_data_path
-        self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to pySPR!' \
+        self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to SPRpy!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can import previous results under "File and session controls".'
 
@@ -463,52 +463,49 @@ class ExclusionHeight:
         # Calculate number of points above and below minimum point based on fresnel model background range
         background_reflectivity = self.fresnel_object.measurement_data['reflectivity']
         background_angles = self.fresnel_object.measurement_data['angles']
-        selection_criterion = (background_angles >=
-                               self.fresnel_object.angle_range[0]) & (
-                                      background_angles <=
-                                      self.fresnel_object.angle_range[1])
+        selection_criterion = (background_angles >= self.fresnel_object.angle_range[0]) & (background_angles <= self.fresnel_object.angle_range[1])
         selection_ydata_series = background_reflectivity[selection_criterion].squeeze(axis=1)
-        smoothened_selection = bottleneck.move_mean(selection_ydata_series.to_numpy(), window=4,
-                                                    min_count=1)  # Ensures closer fit to minimum position
-        smoothened_selection_frame = pd.Series(smoothened_selection)
-        self.points_below_SPR_min_ind = len(
-            smoothened_selection_frame[(smoothened_selection_frame.index < smoothened_selection_frame.idxmin())])
-        self.points_above_SPR_min_ind = len(
-            smoothened_selection_frame[(smoothened_selection_frame.index > smoothened_selection_frame.idxmin())])
+        smoothened_selection = bottleneck.move_mean(selection_ydata_series.to_numpy(), window=4, min_count=1)  # Ensures closer fit to minimum position
+        smoothened_selection_series = pd.Series(smoothened_selection)
+        self.points_below_SPR_min_ind = len(smoothened_selection_series[(smoothened_selection_series.index < smoothened_selection_series.idxmin())])
+        self.points_above_SPR_min_ind = len(smoothened_selection_series[(smoothened_selection_series.index > smoothened_selection_series.idxmin())])
 
         # Calculate average reflectivity traces based on selected points
         bufferpoint_index = 0
         for reflectivity_index in range(int(len(self.buffer_points) / 2)):
-            sliced_buffer_reflectivity_spectras = ydata_df[
-                                                  self.buffer_points[bufferpoint_index][0]:
-                                                  self.buffer_points[
-                                                      bufferpoint_index + 1][0],
-                                                  :]  # Selecting all spectras between the pairwise selected buffer points
+            sliced_buffer_reflectivity_spectras = ydata_df[self.buffer_points[bufferpoint_index][0]:self.buffer_points[bufferpoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
             mean_buffer_reflectivity = sliced_buffer_reflectivity_spectras.mean(axis=0)
 
-            # TODO: Calculate TIR and bulk RI for each spectra
-            self.buffer_bulk_RIs[reflectivity_index] = None
+            # Calculate TIR and bulk RI for each mean spectra
+            buffer_TIR_angle, _, _ = TIR_determination(background_angles, mean_buffer_reflectivity, self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            self.buffer_bulk_RIs[reflectivity_index] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * buffer_TIR_angle)
 
-            buffer_SPR_min_ind = mean_buffer_reflectivity.idxmin()
-            self.buffer_reflectivity_dfs[reflectivity_index][
-                'reflectivity'] = None  # TODO: Make a selected angle range based on move_mean filtered minimum value and points below and above as determined previously
-            bufferpoint_index += 2  # Next pair of buffer point indices
+            # Calculate appropriate range selection
+            buffer_reflectivity_minimum_ind = pd.Series(bottleneck.move_mean(mean_buffer_reflectivity.squeeze(axis=1).to_numpy(), window=4, min_count=1)).idxmin()
+            self.buffer_reflectivity_dfs[reflectivity_index] = pd.DataFrame(data={'reflectivity': mean_buffer_reflectivity[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
+                                                                                  'angles': background_angles[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
+                                                                                  })
+
+            # Next pair of buffer point indices
+            bufferpoint_index += 2
 
         probepoint_index = 0
         for reflectivity_index in range(int(len(self.probe_points) / 2)):
-            sliced_probe_reflectivity_spectras = ydata_df[
-                                                 self.probe_points[probepoint_index][0]:
-                                                 self.probe_points[probepoint_index + 1][
-                                                     0],
-                                                 :]  # Selecting all spectras between the pairwise selected probe point
+            sliced_probe_reflectivity_spectras = ydata_df[self.probe_points[probepoint_index][0]:self.probe_points[probepoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected probe point
             mean_probe_reflectivity = sliced_probe_reflectivity_spectras.mean(axis=0)
 
-            # TODO: Calculate TIR and bulk RI for each spectra
-            self.probe_bulk_RIs[reflectivity_index] = None
+            # Calculate TIR and bulk RI for each mean spectra
+            probe_TIR_angle, _, _ = TIR_determination(background_angles, mean_probe_reflectivity, self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            self.probe_bulk_RIs[reflectivity_index] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * probe_TIR_angle)
 
-            self.probe_reflectivity_dfs[reflectivity_index][
-                'reflectivity'] = None  # TODO: Make a selected angle range based on move_mean filtered minimum value and points below and above as determined previously
-            probepoint_index += 2  # Next pair of probe point indices
+            # Calculate appropriate range selection
+            probe_reflectivity_minimum_ind = pd.Series(bottleneck.move_mean(mean_probe_reflectivity.squeeze(axis=1).to_numpy(), window=4, min_count=1)).idxmin()
+            self.probe_reflectivity_dfs[reflectivity_index] = pd.DataFrame(data={'reflectivity': mean_probe_reflectivity[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
+                                                                                  'angles': background_angles[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
+                                                                                  })
+
+            # Next pair of probe point indices
+            probepoint_index += 2
 
         # Create SPR vs TIR data frames
 
