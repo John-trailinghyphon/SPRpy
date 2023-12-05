@@ -1,5 +1,7 @@
 import datetime
 import os
+
+import pandas as pd
 import scipy
 import pickle
 import copy
@@ -507,13 +509,17 @@ class ExclusionHeight:
             # Next pair of probe point indices
             probepoint_index += 2
 
+        injectionpoint_index = 0
         # Create SPR vs TIR data frames
+        for reflectivity_index in range(int(len(self.injection_points) / 2)):
 
+            self.SPR_vs_TIR_dfs[reflectivity_index] = pd.DataFrame(data={'SPR angles': self.sensorgram_data['SPR angle'][self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]],
+                                                                         'TIR angles': self.sensorgram_data['TIR angle'][self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]]
+                                                                         })
+            # Next pair of injection point indices
+            injectionpoint_index += 2
 
-
-        data_frames = None
-
-        return data_frames
+        return
 
 def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index_, height):
     """

@@ -2744,9 +2744,7 @@ if __name__ == '__main__':
             # TODO: base the angle range on the amount of points chosen in the fresnel object angle range from the minimum value.
             # TODO: Offset and extinction correction can also be copied from fresnel background object if it is properly modelled from liquid measurements (include proper instruction!)
 
-            data_frames = current_exclusion_height_analysis.initialize_model(ydata_df)
-
-
+            current_exclusion_height_analysis.initialize_model(ydata_df)
 
             SPRvsTIR_figure = None
             mean_reflectivity_figure = None
