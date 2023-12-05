@@ -56,7 +56,7 @@ import diskcache
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-from pySPR_classes import *
+from SPRpy_classes import *
 
 # Configuration parameters
 TIR_range_water_or_long_measurement = (60.8, 63)  # TIR range for water --> Automatically used for 50 or more scans per file
@@ -166,7 +166,7 @@ if __name__ == '__main__':
         current_exclusion_height_analysis = None
 
     # Dash app
-    app = dash.Dash(name='pySPR', title='pySPR', external_stylesheets=[dash_app_theme], background_callback_manager=background_callback_manager)
+    app = dash.Dash(name='SPRpy', title='SPRpy', external_stylesheets=[dash_app_theme], background_callback_manager=background_callback_manager)
     app._favicon = 'icon.ico'
 
     # Dash figures
@@ -219,7 +219,7 @@ if __name__ == '__main__':
                     ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
                 ),
                 dash.dcc.Markdown('''
-                # **#pySPR#**
+                # **#SPRpy#**
                 ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
                 dbc.Card(
                     [
