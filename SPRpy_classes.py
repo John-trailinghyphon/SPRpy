@@ -349,6 +349,7 @@ class FresnelModel:
         # Add extinction correction to fitted surface layer extinction value
         extinction_corrected = self.sensor_object.extinction_coefficients
         extinction_corrected[self.sensor_object.fitted_layer_index[0]] += self.extinction_correction
+        self.sensor_object.optical_parameters['n'].iloc[self.sensor_object.fitted_layer_index[0]] += self.extinction_correction
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
@@ -461,7 +462,7 @@ class ExclusionHeight:
     def initialize_model(self, ydata_df):
 
         # Calculate number of points above and below minimum point based on fresnel model background range
-        background_reflectivity = self.fresnel_object.measurement_data['reflectivity']
+        background_reflectivity = self.fresnel_object.measurement_data['ydata']
         background_angles = self.fresnel_object.measurement_data['angles']
         selection_criterion = (background_angles >= self.fresnel_object.angle_range[0]) & (background_angles <= self.fresnel_object.angle_range[1])
         selection_ydata_series = background_reflectivity[selection_criterion].squeeze(axis=1)
