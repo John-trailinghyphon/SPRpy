@@ -769,10 +769,10 @@ if __name__ == '__main__':
                                                             dbc.Label('Injection points: ', width='auto', id='exclusion-height-settings-injection-points')
                                                         ]),
                                                         dbc.Row([
-                                                            dbc.Label('Buffer points: ', width='auto', id='exclusion-height-settings-injection-points')
+                                                            dbc.Label('Buffer points: ', width='auto', id='exclusion-height-settings-buffer-points')
                                                         ]),
                                                         dbc.Row([
-                                                            dbc.Label('Probe points: ', width='auto', id='exclusion-height-settings-injection-points')
+                                                            dbc.Label('Probe points: ', width='auto', id='exclusion-height-settings-probe-points')
                                                         ]),
                                                         dbc.Row([
                                                             dbc.Col([
@@ -2062,21 +2062,19 @@ if __name__ == '__main__':
 
             match action_selected:
                 case 1:  # Offset data
-                    offset_index = new_point_index
+                    current_exclusion_height_analysis.sensorgram_offset_ind = new_point_index
 
                     updated_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                           y=current_exclusion_height_analysis.sensorgram_data[
-                                                                'SPR angle'] -
-                                                            current_exclusion_height_analysis.sensorgram_data[
-                                                                'SPR angle'].loc[offset_index],
+                                                                'SPR angle'] - current_exclusion_height_analysis.sensorgram_data[
+                                                                'SPR angle'].iloc[current_exclusion_height_analysis.sensorgram_offset_ind],
                                                           name='SPR angle',
                                                           line_color='#636efa'))
 
                     updated_figure.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                         y=current_exclusion_height_analysis.sensorgram_data[
-                                                              'TIR angle'] -
-                                                          current_exclusion_height_analysis.sensorgram_data[
-                                                              'TIR angle'].loc[offset_index],
+                                                              'TIR angle'] - current_exclusion_height_analysis.sensorgram_data[
+                                                                'TIR angle'].iloc[current_exclusion_height_analysis.sensorgram_offset_ind],
                                                         name='TIR angle',
                                                         line_color='#ef553b'))
 
@@ -2092,7 +2090,7 @@ if __name__ == '__main__':
                     updated_figure.update_xaxes(mirror=True, showline=True)
                     updated_figure.update_yaxes(mirror=True, showline=True)
 
-                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
                 case 2:  # Add injection points
                     current_exclusion_height_analysis.injection_points.append((new_point_index, new_point_time, new_point_angle))
@@ -2111,12 +2109,6 @@ if __name__ == '__main__':
 
             probe_points_time = [item[1] for item in current_exclusion_height_analysis.probe_points]
             probe_points_angle = [item[2] for item in current_exclusion_height_analysis.probe_points]
-
-            injection_time_string = '{length} injection points: {points}'.format(length=len(injection_points_time), points=injection_points_time)
-
-            buffer_time_string = '{length} buffer points: {points}'.format(length=len(buffer_points_time), points=buffer_points_time)
-
-            probe_time_string = '{length} probe points: {points}'.format(length=len(probe_points_time), points=probe_points_time)
 
             updated_figure = go.Figure(go.Scatter(x=sensorgram_figure['data'][0]['x'],
                                                   y=sensorgram_figure['data'][0]['y'],
@@ -2167,6 +2159,19 @@ if __name__ == '__main__':
 
             updated_figure.update_xaxes(mirror=True, showline=True)
             updated_figure.update_yaxes(mirror=True, showline=True)
+
+            injection_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.injection_points]
+            buffer_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.buffer_points]
+            probe_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.probe_points]
+
+            injection_time_string = '{length} injection points: {points}'.format(length=len(injection_points_time_),
+                                                                                 points=injection_points_time_)
+
+            buffer_time_string = '{length} buffer points: {points}'.format(length=len(buffer_points_time_),
+                                                                           points=buffer_points_time_)
+
+            probe_time_string = '{length} probe points: {points}'.format(length=len(probe_points_time_),
+                                                                         points=probe_points_time_)
 
             current_session.save_session()
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
@@ -2200,15 +2205,6 @@ if __name__ == '__main__':
             probe_points_time = [item[1] for item in current_exclusion_height_analysis.probe_points]
             probe_points_angle = [item[2] for item in current_exclusion_height_analysis.probe_points]
 
-            injection_time_string = '{length} injection points: {points}'.format(length=len(injection_points_time),
-                                                                                 points=injection_points_time)
-
-            buffer_time_string = '{length} buffer points: {points}'.format(length=len(buffer_points_time),
-                                                                           points=buffer_points_time)
-
-            probe_time_string = '{length} probe points: {points}'.format(length=len(probe_points_time),
-                                                                         points=probe_points_time)
-
             updated_figure = go.Figure(go.Scatter(x=sensorgram_figure['data'][0]['x'],
                                                   y=sensorgram_figure['data'][0]['y'],
                                                   name='SPR angle',
@@ -2259,6 +2255,18 @@ if __name__ == '__main__':
             updated_figure.update_xaxes(mirror=True, showline=True)
             updated_figure.update_yaxes(mirror=True, showline=True)
 
+            injection_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.injection_points]
+            buffer_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.buffer_points]
+            probe_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.probe_points]
+
+            injection_time_string = '{length} injection points: {points}'.format(length=len(injection_points_time_),
+                                                                                 points=injection_points_time_)
+
+            buffer_time_string = '{length} buffer points: {points}'.format(length=len(buffer_points_time_),
+                                                                           points=buffer_points_time_)
+
+            probe_time_string = '{length} probe points: {points}'.format(length=len(probe_points_time_),
+                                                                         points=probe_points_time_)
             current_session.save_session()
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
 
@@ -2267,15 +2275,15 @@ if __name__ == '__main__':
         elif 'exclusion-height-d-n-pair-graph' == dash.ctx.triggered_id:
 
             # Calculate fresnel trace for hover data points
-            buffer_angles_inj_step = current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page_state]['angles']
-            buffer_reflectivity_inj_step = current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page_state]['reflectivity']
-            probe_angles_inj_step = current_exclusion_height_analysis.probe_reflectivity_dfs[active_page_state]['angles']
-            probe_reflectivity_inj_step = current_exclusion_height_analysis.probe_reflectivity_dfs[active_page_state]['reflectivity']
+            buffer_angles_inj_step = current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page_state-1]['angles']
+            buffer_reflectivity_inj_step = current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page_state-1]['reflectivity']
+            probe_angles_inj_step = current_exclusion_height_analysis.probe_reflectivity_dfs[active_page_state-1]['angles']
+            probe_reflectivity_inj_step = current_exclusion_height_analysis.probe_reflectivity_dfs[active_page_state-1]['reflectivity']
 
-            buffer_RI_val = current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page_state]['refractive index'][dnpair_hoverdata['points'][0]['pointIndex']]
-            probe_RI_val = current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page_state]['refractive index'][dnpair_hoverdata['points'][0]['pointIndex']]
-            buffer_thickness_val = current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page_state]['thickness'][dnpair_hoverdata['points'][0]['pointIndex']]
-            probe_thickness_val = current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page_state]['thickness'][dnpair_hoverdata['points'][0]['pointIndex']]
+            buffer_RI_val = current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page_state-1]['refractive index'][dnpair_hoverdata['points'][0]['pointIndex']]
+            probe_RI_val = current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page_state-1]['refractive index'][dnpair_hoverdata['points'][0]['pointIndex']]
+            buffer_thickness_val = current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page_state-1]['thickness'][dnpair_hoverdata['points'][0]['pointIndex']]
+            probe_thickness_val = current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page_state-1]['thickness'][dnpair_hoverdata['points'][0]['pointIndex']]
 
             buffer_ref_indices = current_exclusion_height_analysis.sensor_object.refractive_indices
             buffer_ext_coefficients = current_exclusion_height_analysis.sensor_object.extinction_coefficients
@@ -2413,7 +2421,7 @@ if __name__ == '__main__':
             new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
             new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
-            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, lower_height_bound, upper_height_bound, dash.no_update, dash.no_update, dash.no_update
+            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, False, 'Mean exclusion height: None', 'All exclusion heights: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, lower_height_bound, upper_height_bound, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open remove analysis object confirmation modal
@@ -2459,14 +2467,16 @@ if __name__ == '__main__':
 
                 new_sensorgram_fig = go.Figure(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                           y=current_exclusion_height_analysis.sensorgram_data[
-                                                              'SPR angle'],
+                                                              'SPR angle'] - current_exclusion_height_analysis.sensorgram_data[
+                                                                'SPR angle'].iloc[current_exclusion_height_analysis.sensorgram_offset_ind],
                                                           name='SPR angle',
                                                           line_color=line_color_value)
                                                )
 
                 new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                         y=current_exclusion_height_analysis.sensorgram_data[
-                                                            'TIR angle'],
+                                                            'TIR angle'] - current_exclusion_height_analysis.sensorgram_data[
+                                                                'TIR angle'].iloc[current_exclusion_height_analysis.sensorgram_offset_ind],
                                                         name='TIR angle',
                                                         line_color='#ef553b')
                                              )
@@ -2476,37 +2486,42 @@ if __name__ == '__main__':
                 probe_time_string = '0 selected probe points '
 
                 if len(current_exclusion_height_analysis.injection_points) > 0:
-                    new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.injection_points],
-                                                            y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.injection_points],
+                    new_sensorgram_fig.add_trace(go.Scatter(x=[item[1] for item in current_exclusion_height_analysis.injection_points],
+                                                            y=[item[2] for item in current_exclusion_height_analysis.injection_points],
                                                             name='Injection points',
-                                                            marker_size=12,
+                                                            mode='markers',
+                                                            marker_size=14,
                                                             marker_symbol='arrow',
-                                                            marker_color='black')
+                                                            marker_color='black',
+                                                            marker_angle=-20)
                                                  )
-                    injection_points_time = [item[1] for item in current_exclusion_height_analysis.injection_points]
+                    injection_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.injection_points]
                     injection_time_string = '{length} selected injection points: {points}'.format(
                         length=len(injection_points_time),
                         points=injection_points_time)
 
                 if len(current_exclusion_height_analysis.buffer_points) > 0:
-                    new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.buffer_points],
-                                                            y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.buffer_points],
+                    new_sensorgram_fig.add_trace(go.Scatter(x=[item[1] for item in current_exclusion_height_analysis.buffer_points],
+                                                            y=[item[2] for item in current_exclusion_height_analysis.buffer_points],
                                                             name='Buffer points',
-                                                            marker_size=12,
-                                                            marker_symbol='arrow')
+                                                            mode='markers',
+                                                            marker_size=14,
+                                                            marker_symbol='arrow',
+                                                            marker_angle=20,)
                                                  )
-                    buffer_points_time = [item[1] for item in current_exclusion_height_analysis.buffer_points]
+                    buffer_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.buffer_points]
                     buffer_time_string = '{length} selected buffer points: {points}'.format(length=len(buffer_points_time),
                                                                                    points=buffer_points_time)
 
                 if len(current_exclusion_height_analysis.probe_points) > 0:
-                    new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.probe_points],
-                                                            y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.probe_points],
+                    new_sensorgram_fig.add_trace(go.Scatter(x=[item[1] for item in current_exclusion_height_analysis.probe_points],
+                                                            y=[item[2] for item in current_exclusion_height_analysis.probe_points],
                                                             name='Probe points',
-                                                            marker_size=12,
+                                                            mode='markers',
+                                                            marker_size=14,
                                                             marker_symbol='arrow')
                                                  )
-                    probe_points_time = [item[1] for item in current_exclusion_height_analysis.probe_points]
+                    probe_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.probe_points]
                     probe_time_string = '{length} selected probe points: {points}'.format(length=len(probe_points_time),
                                                                                  points=probe_points_time)
 
@@ -2592,7 +2607,7 @@ if __name__ == '__main__':
                 mean_reflectivity_figure.update_yaxes(mirror=True,
                                              showline=True)
 
-                if len(current_exclusion_height_analysis.d_n_pair_dfs) > 0:
+                if len(current_exclusion_height_analysis.buffer_d_n_pair_dfs) > 0:
 
                     d_n_pair_figure = go.Figure(go.Scatter(
                         x=current_exclusion_height_analysis.buffer_d_n_pair_dfs[0]['thickness'],
@@ -2637,7 +2652,10 @@ if __name__ == '__main__':
                                                       showline=True)
 
                 # Update number of injection steps in pagination of result page
-                num_injection_steps = len(current_exclusion_height_analysis.probe_points)
+                if len(current_exclusion_height_analysis.probe_points) > 0:
+                    num_injection_steps = len(current_exclusion_height_analysis.probe_points)
+                else:
+                    num_injection_steps = dash.no_update
 
                 return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, True, mean_result, all_result, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string
 
@@ -2711,8 +2729,8 @@ if __name__ == '__main__':
 
             # Update result figures
             SPRvsTIR_figure = go.Figure(
-                go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page]['TIR angles'],
-                           y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page]['SPR angles'],
+                go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page-1]['TIR angles'],
+                           y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page-1]['SPR angles'],
                            mode='lines',
                            showlegend=False,
                            line_color='#636EFA'
@@ -2733,17 +2751,19 @@ if __name__ == '__main__':
                                          showline=True)
 
             mean_reflectivity_figure = go.Figure(
-                go.Scatter(x=current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page]['angles'],
-                           y=current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page]['reflectivity'],
+                go.Scatter(x=current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page-1]['angles'],
+                           y=current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page-1]['reflectivity'],
                            mode='lines',
-                           showlegend=False,
+                           name='Buffer',
+                           showlegend=True,
                            line_color='#636EFA'
                            ))
             mean_reflectivity_figure.add_trace(
-                go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page]['angles'],
-                           y=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page]['reflectivity'],
+                go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page-1]['angles'],
+                           y=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page-1]['reflectivity'],
                            mode='lines',
-                           showlegend=False,
+                           name='Probe',
+                           showlegend=True,
                            line_color='#EF553B'
                            ))
 
@@ -2761,49 +2781,119 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                                   showline=True)
 
-            d_n_pair_figure = go.Figure(go.Scatter(
-                x=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page]['thickness'],
-                y=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page]['refractive index'],
-                mode='lines',
-                showlegend=False,
-                line_color='#636EFA'
-            ))
+            if len(current_exclusion_height_analysis.buffer_reflectivity_dfs) > 0 and len(current_exclusion_height_analysis.probe_reflectivity_dfs) > 0:
+                d_n_pair_figure = go.Figure(go.Scatter(
+                    x=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page-1]['thickness'],
+                    y=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page-1]['refractive index'],
+                    mode='lines+markers',
+                    name='Buffer',
+                    showlegend=True,
+                    line_color='#636EFA'
+                ))
 
-            d_n_pair_figure.add_trace(go.Scatter(
-                x=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page]['thickness'],
-                y=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page]['refractive index'],
-                mode='lines',
-                showlegend=False,
-                line_color='#EF553B'
-            ))
-            d_n_pair_figure.update_layout(
-                xaxis_title=r'$\large{\text{Height [nm]}}$',
-                yaxis_title=r'$\large{\text{Refractive index}}$',
-                font_family='Balto',
-                font_size=19,
-                margin_r=25,
-                margin_l=60,
-                margin_t=40,
-                template='simple_white',
-                uirevision=True)
+                d_n_pair_figure.add_trace(go.Scatter(
+                    x=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page-1]['thickness'],
+                    y=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page-1]['refractive index'],
+                    mode='lines+markers',
+                    name='Probe',
+                    showlegend=True,
+                    line_color='#EF553B'
+                ))
+                d_n_pair_figure.update_layout(
+                    xaxis_title=r'$\large{\text{Height [nm]}}$',
+                    yaxis_title=r'$\large{\text{Refractive index}}$',
+                    font_family='Balto',
+                    font_size=19,
+                    margin_r=25,
+                    margin_l=60,
+                    margin_t=40,
+                    template='simple_white',
+                    uirevision=True)
 
-            d_n_pair_figure.update_xaxes(mirror=True,
-                                         showline=True)
-            d_n_pair_figure.update_yaxes(mirror=True,
-                                         showline=True)
+                d_n_pair_figure.update_xaxes(mirror=True,
+                                             showline=True)
+                d_n_pair_figure.update_yaxes(mirror=True,
+                                             showline=True)
+            else:
+                d_n_pair_figure = dash.no_update
 
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-initialize-model' == dash.ctx.triggered_id:
 
-            # TODO: Offset and extinction correction can also be copied from fresnel background object if it is properly modelled from liquid measurements (include proper instruction!)
+            # Check that appropriate points have been selected
+            if len(current_exclusion_height_analysis.buffer_points) % 4 == 0 and len(current_exclusion_height_analysis.injection_points) % 2 == 0 and len(current_exclusion_height_analysis.probe_points) % 2 == 0:
 
-            current_exclusion_height_analysis.initialize_model(ydata_df)
+                # Initializes model parameters and attributes prepping for running. Also activate run buttons and result page.
+                current_exclusion_height_analysis.initialize_model(ydata_df)
 
-            SPRvsTIR_figure = None
-            mean_reflectivity_figure = None
+                SPRvsTIR_figure = go.Figure(
+                    go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['TIR angles'],
+                               y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['SPR angles'],
+                               mode='lines',
+                               showlegend=False,
+                               line_color='#636EFA'
+                               ))
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                SPRvsTIR_figure.update_layout(xaxis_title=r'$\large{\text{TIR angle [ }^{\circ}\text{ ]}}$',
+                                              yaxis_title=r'$\large{\text{SPR angle [ }^{\circ}\text{ ]}}$',
+                                              font_family='Balto',
+                                              font_size=19,
+                                              margin_r=25,
+                                              margin_l=60,
+                                              margin_t=40,
+                                              template='simple_white',
+                                              uirevision=True)
+                SPRvsTIR_figure.update_xaxes(mirror=True,
+                                             showline=True)
+                SPRvsTIR_figure.update_yaxes(mirror=True,
+                                             showline=True)
+
+                mean_reflectivity_figure = go.Figure(
+                    go.Scatter(x=current_exclusion_height_analysis.buffer_reflectivity_dfs[0]['angles'],
+                               y=current_exclusion_height_analysis.buffer_reflectivity_dfs[0]['reflectivity'],
+                               mode='lines',
+                               name='Buffer',
+                               showlegend=True,
+                               line_color='#636EFA'
+                               ))
+                mean_reflectivity_figure.add_trace(
+                    go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[0]['angles'],
+                               y=current_exclusion_height_analysis.probe_reflectivity_dfs[0]['reflectivity'],
+                               mode='lines',
+                               name='Probe',
+                               showlegend=True,
+                               line_color='#EF553B'
+                               ))
+
+                mean_reflectivity_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                                       yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                                       font_family='Balto',
+                                                       font_size=19,
+                                                       margin_r=25,
+                                                       margin_l=60,
+                                                       margin_t=40,
+                                                       template='simple_white',
+                                                       uirevision=True)
+                mean_reflectivity_figure.update_xaxes(mirror=True,
+                                                      showline=True)
+                mean_reflectivity_figure.update_yaxes(mirror=True,
+                                                      showline=True)
+
+                # Update number of injection steps in pagination of result page
+                num_injection_steps = len(current_exclusion_height_analysis.probe_points)
+
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, True, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, num_injection_steps, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+            else:
+                if len(current_exclusion_height_analysis.injection_points) % 2 != 0:
+                    print('ERROR: Odd number of selected injection points. Need to select 2 points per injection.')
+                elif len(current_exclusion_height_analysis.buffer_points) % 4 != 0:
+                    print('ERROR: Wrong number of selected buffer points. Need to select 4 points per injection.')
+                elif len(current_exclusion_height_analysis.probe_points) % 2 != 0:
+                    print('ERROR: Odd number of selected probe points. Need to select 2 points per injection.')
+
+                raise dash.exceptions.PreventUpdate
 
         else:
             # Selecting a previously existing analysis object from pattern matching callbacks
@@ -2841,14 +2931,16 @@ if __name__ == '__main__':
 
             new_sensorgram_fig = go.Figure(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                       y=current_exclusion_height_analysis.sensorgram_data[
-                                                          'SPR angle'],
+                                                          'SPR angle'] - current_exclusion_height_analysis.sensorgram_data[
+                                                                'SPR angle'].iloc[current_exclusion_height_analysis.sensorgram_offset_ind],
                                                       name='SPR angle',
                                                       line_color=line_color_value)
                                            )
 
             new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'],
                                                     y=current_exclusion_height_analysis.sensorgram_data[
-                                                        'TIR angle'],
+                                                        'TIR angle'] - current_exclusion_height_analysis.sensorgram_data[
+                                                                'TIR angle'].iloc[current_exclusion_height_analysis.sensorgram_offset_ind],
                                                     name='TIR angle',
                                                     line_color='#ef553b')
                                          )
@@ -2858,41 +2950,43 @@ if __name__ == '__main__':
             buffer_time_string = '0 selected buffer points'
             probe_time_string = '0 selected probe points'
 
-
             if len(current_exclusion_height_analysis.injection_points) > 0:
-                new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.injection_points],
-                                                        y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.injection_points],
+                new_sensorgram_fig.add_trace(go.Scatter(x=[item[1] for item in current_exclusion_height_analysis.injection_points],
+                                                        y=[item[2] for item in current_exclusion_height_analysis.injection_points],
                                                         name='Injection points',
-                                                        marker_size=12,
+                                                        mode='markers',
+                                                        marker_size=14,
                                                         marker_symbol='arrow',
                                                         marker_color='black',
                                                         marker_angle=-20)
                                              )
-                injection_points_time = [item[1] for item in current_exclusion_height_analysis.injection_points]
+                injection_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.injection_points]
                 injection_time_string = '{length} selected injection points: {points}'.format(
                     length=len(injection_points_time),
                     points=injection_points_time)
 
             if len(current_exclusion_height_analysis.buffer_points) > 0:
-                new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.buffer_points],
-                                                        y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.buffer_points],
+                new_sensorgram_fig.add_trace(go.Scatter(x=[item[1] for item in current_exclusion_height_analysis.buffer_points],
+                                                        y=[item[2] for item in current_exclusion_height_analysis.buffer_points],
                                                         name='Buffer points',
-                                                        marker_size=12,
+                                                        mode='markers',
+                                                        marker_size=14,
                                                         marker_symbol='arrow',
                                                         marker_angle=20)
                                              )
-                buffer_points_time = [item[1] for item in current_exclusion_height_analysis.buffer_points]
+                buffer_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.buffer_points]
                 buffer_time_string = '{length} selected buffer points: {points}'.format(length=len(buffer_points_time),
                                                                                         points=buffer_points_time)
 
             if len(current_exclusion_height_analysis.probe_points) > 0:
-                new_sensorgram_fig.add_trace(go.Scatter(x=current_exclusion_height_analysis.sensorgram_data['time'].loc[current_exclusion_height_analysis.probe_points],
-                                                        y=current_exclusion_height_analysis.sensorgram_data['SPR angle'].loc[current_exclusion_height_analysis.probe_points],
+                new_sensorgram_fig.add_trace(go.Scatter(x=[item[1] for item in current_exclusion_height_analysis.probe_points],
+                                                        y=[item[2] for item in current_exclusion_height_analysis.probe_points],
                                                         name='Probe points',
-                                                        marker_size=12,
+                                                        mode='markers',
+                                                        marker_size=14,
                                                         marker_symbol='arrow')
                                              )
-                probe_points_time = [item[1] for item in current_exclusion_height_analysis.probe_points]
+                probe_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.probe_points]
                 probe_time_string = '{length} selected probe points: {points}'.format(length=len(probe_points_time),
                                                                                       points=probe_points_time)
 
@@ -2939,16 +3033,16 @@ if __name__ == '__main__':
             SPRvsTIR_figure.update_yaxes(mirror=True,
                                          showline=True)
 
-            if len(current_exclusion_height_analysis.mean_reflectivity_dfs) > 0:
-                mean_reflectivity_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['buffer angles'],
-                                                       y=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['buffer reflectivity'],
+            if len(current_exclusion_height_analysis.buffer_reflectivity_dfs) > 0:
+                mean_reflectivity_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.buffer_reflectivity_dfs[0]['angles'],
+                                                       y=current_exclusion_height_analysis.buffer_reflectivity_dfs[0]['reflectivity'],
                                                        mode='lines',
                                                        name='Buffer',
                                                        showlegend=True,
                                                        line_color='#636EFA'
                                                        ))
-                mean_reflectivity_figure.add_trace(go.Scatter(x=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['probe angles'],
-                                                       y=current_exclusion_height_analysis.mean_reflectivity_dfs[0]['probe reflectivity'],
+                mean_reflectivity_figure.add_trace(go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[0]['angles'],
+                                                       y=current_exclusion_height_analysis.probe_reflectivity_dfs[0]['reflectivity'],
                                                        mode='lines',
                                                        name='Probe',
                                                        showlegend=True,
@@ -2977,11 +3071,11 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                          showline=True)
 
-            if len(current_exclusion_height_analysis.d_n_pair_dfs) > 0:
+            if len(current_exclusion_height_analysis.buffer_d_n_pair_dfs) > 0:
 
                 d_n_pair_figure = go.Figure(go.Scatter(
-                    x=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer thickness'],
-                    y=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer refractive index'],
+                    x=current_exclusion_height_analysis.buffer_d_n_pair_dfs[0]['thickness'],
+                    y=current_exclusion_height_analysis.buffer_d_n_pair_dfs[0]['refractive index'],
                     mode='lines+markers',
                     name='Buffer',
                     showlegend=True,
@@ -2989,8 +3083,8 @@ if __name__ == '__main__':
                     ))
 
                 d_n_pair_figure.add_trace(go.Scatter(
-                    x=current_exclusion_height_analysis.d_n_pair_dfs[0]['probe thickness'],
-                    y=current_exclusion_height_analysis.d_n_pair_dfs[0]['probe refractive index'],
+                    x=current_exclusion_height_analysis.probe_d_n_pair_dfs[0]['thickness'],
+                    y=current_exclusion_height_analysis.probe_d_n_pair_dfs[0]['refractive index'],
                     mode='lines+markers',
                     name='Probe',
                     showlegend=True,
