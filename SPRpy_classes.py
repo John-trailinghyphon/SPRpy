@@ -224,7 +224,7 @@ class Sensor:
                     case 980:
                         self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.0003])
                         self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0])
-                self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],
+                self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],  # NOTE: sensor_object.optical_parameters will auto-update when changing sensor_object.layer_thicknesses, sensor_object.refractive_indices or sensor_object.extinction_coefficients
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
                                                              'k': self.extinction_coefficients})
@@ -348,8 +348,7 @@ class FresnelModel:
 
         # Add extinction correction to fitted surface layer extinction value
         extinction_corrected = self.sensor_object.extinction_coefficients
-        extinction_corrected[self.sensor_object.fitted_layer_index[0]] += self.extinction_correction
-        self.sensor_object.optical_parameters['n'].iloc[self.sensor_object.fitted_layer_index[0]] += self.extinction_correction
+        extinction_corrected[0] += self.extinction_correction  # Correct Prism layer extinction
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
@@ -475,18 +474,18 @@ class ExclusionHeight:
         # Calculate average reflectivity traces based on selected points
         bufferpoint_index = 0
         for reflectivity_index in range(int(len(self.buffer_points) / 2)):
-            print('Not here 1')  # TODO: Investigate the correct way to slice ydata_df: pandas.errors.InvalidIndexError: (slice(437, 477, None), slice(None, None, None))
-            sliced_buffer_reflectivity_spectras = ydata_df[self.buffer_points[bufferpoint_index][0]:self.buffer_points[bufferpoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
+
+            sliced_buffer_reflectivity_spectras = ydata_df.iloc[self.buffer_points[bufferpoint_index][0]:self.buffer_points[bufferpoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
             mean_buffer_reflectivity = sliced_buffer_reflectivity_spectras.mean(axis=0)
-            print('Not here 2')
+
             # Calculate TIR and bulk RI for each mean spectra
-            buffer_TIR_angle, _, _ = TIR_determination(background_angles, mean_buffer_reflectivity, self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            buffer_TIR_angle, _, _ = TIR_determination(background_angles.squeeze(), mean_buffer_reflectivity.squeeze(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
             self.buffer_bulk_RIs[reflectivity_index] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * buffer_TIR_angle)
 
             # Calculate appropriate range selection
             buffer_reflectivity_minimum_ind = pd.Series(bottleneck.move_mean(mean_buffer_reflectivity.to_numpy(), window=4, min_count=1)).idxmin()
-            self.buffer_reflectivity_dfs[reflectivity_index] = pd.DataFrame(data={'reflectivity': mean_buffer_reflectivity[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
-                                                                                  'angles': background_angles[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
+            self.buffer_reflectivity_dfs[reflectivity_index] = pd.DataFrame(data={'reflectivity': mean_buffer_reflectivity.iloc[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
+                                                                                  'angles': background_angles.iloc[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
                                                                                   })
 
             # Next pair of buffer point indices
@@ -494,17 +493,17 @@ class ExclusionHeight:
 
         probepoint_index = 0
         for reflectivity_index in range(int(len(self.probe_points) / 2)):
-            sliced_probe_reflectivity_spectras = ydata_df[self.probe_points[probepoint_index][0]:self.probe_points[probepoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected probe point
+            sliced_probe_reflectivity_spectras = ydata_df.iloc[self.probe_points[probepoint_index][0]:self.probe_points[probepoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected probe point
             mean_probe_reflectivity = sliced_probe_reflectivity_spectras.mean(axis=0)
 
             # Calculate TIR and bulk RI for each mean spectra
-            probe_TIR_angle, _, _ = TIR_determination(background_angles, mean_probe_reflectivity, self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            probe_TIR_angle, _, _ = TIR_determination(background_angles.squeeze(), mean_probe_reflectivity.squeeze(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
             self.probe_bulk_RIs[reflectivity_index] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * probe_TIR_angle)
 
             # Calculate appropriate range selection
             probe_reflectivity_minimum_ind = pd.Series(bottleneck.move_mean(mean_probe_reflectivity.to_numpy(), window=4, min_count=1)).idxmin()
-            self.probe_reflectivity_dfs[reflectivity_index] = pd.DataFrame(data={'reflectivity': mean_probe_reflectivity[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
-                                                                                  'angles': background_angles[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
+            self.probe_reflectivity_dfs[reflectivity_index] = pd.DataFrame(data={'reflectivity': mean_probe_reflectivity.iloc[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
+                                                                                  'angles': background_angles.iloc[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
                                                                                   })
 
             # Next pair of probe point indices
@@ -514,8 +513,8 @@ class ExclusionHeight:
         # Create SPR vs TIR data frames
         for reflectivity_index in range(int(len(self.injection_points) / 2)):
 
-            self.SPR_vs_TIR_dfs[reflectivity_index] = pd.DataFrame(data={'SPR angles': self.sensorgram_data['SPR angle'][self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]],
-                                                                         'TIR angles': self.sensorgram_data['TIR angle'][self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]]
+            self.SPR_vs_TIR_dfs[reflectivity_index] = pd.DataFrame(data={'SPR angles': self.sensorgram_data.loc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0], 'SPR angle'],
+                                                                         'TIR angles': self.sensorgram_data.loc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0], 'TIR angle'],
                                                                          })
             # Next pair of injection point indices
             injectionpoint_index += 2
