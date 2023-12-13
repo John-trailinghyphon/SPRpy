@@ -549,6 +549,11 @@ if __name__ == '__main__':
                                                 dbc.Form([
                                                     dbc.Row([
                                                         dbc.Label(
+                                                            'Data path: ' + current_data_path.split('/')[-1],
+                                                            id='fresnel-fit-datapath')
+                                                    ], style={'margin-bottom': '10px'}),
+                                                    dbc.Row([
+                                                        dbc.Label(
                                                             'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                                                                 sensor_number=current_sensor.object_id,
                                                                 sensor_name=current_sensor.name,
@@ -590,7 +595,7 @@ if __name__ == '__main__':
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
-                                                        dbc.Label('Glass extinction correction [1e-3]', width='auto'),
+                                                        dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),
                                                         dbc.Col([
                                                             dash.dcc.Slider(min=-0.0005, max=0.0005,
                                                                             step=0.00005,
@@ -1333,7 +1338,7 @@ if __name__ == '__main__':
 
     # Update the reflectivity plot in the Response quantification tab
     @dash.callback(
-        dash.Output('quantification-reflectivity-graph', 'figure'),
+        dash.Output('quantification-reflectivity-graph', 'figure', allow_duplicate=True),
         dash.Input('quantification-reflectivity-add-data-trace', 'n_clicks'),
         dash.Input('quantification-reflectivity-add-fresnel-trace', 'n_clicks'),
         dash.Input('quantification-reflectivity-clear-traces', 'n_clicks'),
@@ -1341,10 +1346,11 @@ if __name__ == '__main__':
         dash.Input('quantification-reflectivity-save-svg', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-html', 'n_clicks'),
         dash.Input('quantification-sensorgram-graph', 'hoverData'),
+        dash.Input('loaded-new-measurement', 'data'),
         dash.State('quantification-reflectivity-graph', 'figure'),
-        dash.State('hover-selection-switch', 'value')
-    )
-    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, clear_traces, save_png, save_svg, save_html, hoverData, figure_JSON, lock_hover):
+        dash.State('hover-selection-switch', 'value'),
+        prevent_initial_call=True)
+    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, clear_traces, save_png, save_svg, save_html, hoverData, loaded_new, figure_JSON, lock_hover):
 
         global ydata_df
         global angles_df
@@ -1418,6 +1424,28 @@ if __name__ == '__main__':
 
         # Clear added traces from the reflectivity plot
         elif 'quantification-reflectivity-clear-traces' == dash.ctx.triggered_id:
+            new_figure = go.Figure(go.Scatter(x=reflectivity_df['angles'],
+                                              y=reflectivity_df['ydata'],
+                                              mode='lines',
+                                              showlegend=False,
+                                              line_color='#636efa'))
+            new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                     yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                     font_family='Balto',
+                                     font_size=19,
+                                     margin_r=25,
+                                     margin_l=60,
+                                     margin_t=40,
+                                     template='simple_white',
+                                     uirevision=True)
+            new_figure.update_xaxes(mirror=True,
+                                    showline=True)
+            new_figure.update_yaxes(mirror=True,
+                                    showline=True)
+
+            return new_figure
+
+        elif 'loaded-new-measurement' == dash.ctx.triggered_id:
             new_figure = go.Figure(go.Scatter(x=reflectivity_df['angles'],
                                               y=reflectivity_df['ydata'],
                                               mode='lines',
@@ -1560,6 +1588,7 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-option-rangeslider', 'marks'),
         dash.Output('fresnel-fit-option-rangeslider', 'min'),
         dash.Output('fresnel-fit-option-rangeslider', 'max'),
+        dash.Output('fresnel-fit-datapath', 'children'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1647,7 +1676,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
@@ -1713,10 +1742,10 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
@@ -1789,10 +1818,10 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')
+                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int'), 'Data path: ' + current_fresnel_analysis.initial_data_path
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.fresnel_analysis_instances) > 1:
@@ -1876,7 +1905,7 @@ if __name__ == '__main__':
 
                 return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                     current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update
+                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: ' + current_fresnel_analysis.initial_data_path
 
             # If deleting the last fresnel analysis object
             else:
@@ -1887,10 +1916,10 @@ if __name__ == '__main__':
                 current_fresnel_analysis = None
                 current_session.save_session()
 
-                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update
+                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update. dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -1971,7 +2000,7 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                 current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')
+                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int'), 'Data path: ' + current_fresnel_analysis.initial_data_path
 
     # TODO: Add labels for selected points in settings square (add Outputs)
     @dash.callback(
