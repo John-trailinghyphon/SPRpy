@@ -590,16 +590,16 @@ if __name__ == '__main__':
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
-                                                        dbc.Label('Glass extinction correction', width='auto'),
+                                                        dbc.Label('Glass extinction correction [1e-3]', width='auto'),
                                                         dbc.Col([
                                                             dash.dcc.Slider(min=-0.0005, max=0.0005,
                                                                             step=0.00005,
-                                                                            marks={-0.0005: '-5e-3', -0.0004: '-4e-3',
-                                                                                   -0.0003: '-3e-3', -0.0002: '-2e-3',
-                                                                                   -0.0001: '-1e-3', 0: '0',
-                                                                                   0.0001: '1e-3', 0.0002: '2e-3',
-                                                                                   0.0003: '3e-3', 0.0004: '4e-3',
-                                                                                   0.0005: '5e-3'},
+                                                                            marks={-0.0005: '-5', -0.0004: '-4',
+                                                                                   -0.0003: '-3', -0.0002: '-2',
+                                                                                   -0.0001: '-1', 0: '0',
+                                                                                   0.0001: '1', 0.0002: '2',
+                                                                                   0.0003: '3', 0.0004: '4',
+                                                                                   0.0005: '5'},
                                                                             tooltip={"placement": "top",
                                                                                      "always_visible": True},
                                                                             id='fresnel-fit-option-extinctionslider')
