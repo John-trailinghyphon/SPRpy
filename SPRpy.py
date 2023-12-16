@@ -56,6 +56,7 @@ import diskcache
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
+import math
 from SPRpy_classes import *
 
 # Configuration parameters
@@ -549,7 +550,7 @@ if __name__ == '__main__':
                                                 dbc.Form([
                                                     dbc.Row([
                                                         dbc.Label(
-                                                            'Data path: ' + current_data_path.split('/')[-1],
+                                                            'Data path: \n' + current_data_path.split('/')[-1],
                                                             id='fresnel-fit-datapath')
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
@@ -1750,7 +1751,7 @@ if __name__ == '__main__':
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
             current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
-            current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 2, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
+            current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 4, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
             current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
@@ -1818,7 +1819,7 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int'), 'Data path: ' + current_fresnel_analysis.initial_data_path
+                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int'), 'Data path: \n' + current_fresnel_analysis.initial_data_path
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -1905,7 +1906,7 @@ if __name__ == '__main__':
 
                 return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                     current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: ' + current_fresnel_analysis.initial_data_path
+                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path
 
             # If deleting the last fresnel analysis object
             else:
@@ -2000,7 +2001,7 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                 current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int'), 'Data path: ' + current_fresnel_analysis.initial_data_path
+                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int'), 'Data path: \n' + current_fresnel_analysis.initial_data_path
 
     # TODO: Add labels for selected points in settings square (add Outputs)
     @dash.callback(
@@ -2756,10 +2757,12 @@ if __name__ == '__main__':
 
         elif 'exclusion-height-result-pagination' == dash.ctx.triggered_id:
 
+            SPR_TIR_probe_ind = math.ceil(active_page/2) - 1
+
             # Update result figures
             SPRvsTIR_figure = go.Figure(
-                go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page-1]['TIR angles'],
-                           y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[active_page-1]['SPR angles'],
+                go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[SPR_TIR_probe_ind]['TIR angles'],
+                           y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[SPR_TIR_probe_ind]['SPR angles'],
                            mode='lines',
                            showlegend=False,
                            line_color='#636EFA'
@@ -2788,8 +2791,8 @@ if __name__ == '__main__':
                            line_color='#636EFA'
                            ))
             mean_reflectivity_figure.add_trace(
-                go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page-1]['angles'],
-                           y=current_exclusion_height_analysis.probe_reflectivity_dfs[active_page-1]['reflectivity'],
+                go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[SPR_TIR_probe_ind]['angles'],
+                           y=current_exclusion_height_analysis.probe_reflectivity_dfs[SPR_TIR_probe_ind]['reflectivity'],
                            mode='lines',
                            name='Probe',
                            showlegend=True,
@@ -2810,7 +2813,7 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                                   showline=True)
 
-            if len(current_exclusion_height_analysis.buffer_reflectivity_dfs) > 0 and len(current_exclusion_height_analysis.probe_reflectivity_dfs) > 0:
+            if len(current_exclusion_height_analysis.buffer_d_n_pair_dfs) > 0 and len(current_exclusion_height_analysis.probe_d_n_pair_dfs) > 0:
                 d_n_pair_figure = go.Figure(go.Scatter(
                     x=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page-1]['thickness'],
                     y=current_exclusion_height_analysis.buffer_d_n_pair_dfs[active_page-1]['refractive index'],
@@ -2821,8 +2824,8 @@ if __name__ == '__main__':
                 ))
 
                 d_n_pair_figure.add_trace(go.Scatter(
-                    x=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page-1]['thickness'],
-                    y=current_exclusion_height_analysis.probe_d_n_pair_dfs[active_page-1]['refractive index'],
+                    x=current_exclusion_height_analysis.probe_d_n_pair_dfs[SPR_TIR_probe_ind]['thickness'],
+                    y=current_exclusion_height_analysis.probe_d_n_pair_dfs[SPR_TIR_probe_ind]['refractive index'],
                     mode='lines+markers',
                     name='Probe',
                     showlegend=True,
@@ -2855,6 +2858,9 @@ if __name__ == '__main__':
 
                 # Initializes model parameters and attributes prepping for running. Also activate run buttons and result page.
                 current_exclusion_height_analysis.initialize_model(ydata_df)
+
+                current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
+                current_session.save_session()
 
                 SPRvsTIR_figure = go.Figure(
                     go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['TIR angles'],
@@ -3204,4 +3210,4 @@ if __name__ == '__main__':
 
             return
 
-    app.run_server(debug=True, use_reloader=False)
+    app.run(debug=True, use_reloader=False, host='127.0.0.1', port=8050)

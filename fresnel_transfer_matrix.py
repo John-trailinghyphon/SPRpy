@@ -1,7 +1,7 @@
 # Contains fresnel function for the transfer-matrix method and curve fitting
 
 import numpy as np
-import pandas as pd2
+import pandas as pd
 import bottleneck
 
 
@@ -129,10 +129,10 @@ def fresnel_calculation(fitted_var=None,
 def TIR_determination(xdata, ydata, TIR_range, scanspeed):
 
     # Convert to numpy array first if necessary
-    if isinstance(xdata, pd2.Series):
+    if isinstance(xdata, pd.Series):
         xdata = xdata.to_numpy()
 
-    if isinstance(ydata, pd2.Series):
+    if isinstance(ydata, pd.Series):
         ydata = ydata.to_numpy()
 
     TIR_ydata = ydata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
@@ -144,11 +144,11 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
         TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=7, min_count=1)
 
         # Find maximum derivative
-        deriv_ydata = np.concatenate(([0], np.diff(TIR_ydata_filtered)))  # Add extra 0 for dimensions
+        deriv_ydata = np.concatenate(([np.diff(TIR_ydata_filtered)[0]], np.diff(TIR_ydata_filtered)))  # Add extra value for dimensions
         dTIR_i = np.argmax(deriv_ydata)
 
         # Fit against the derivative spike where the derivative is max, considering also -3 +2 nearest neighbors
-        pd = np.polyfit(TIR_xdata_filtered[dTIR_i-4:dTIR_i+5],
+        poly_c = np.polyfit(TIR_xdata_filtered[dTIR_i-4:dTIR_i+5],
                         deriv_ydata[dTIR_i-4:dTIR_i+5], 3)
 
         # Recreate the curve with a lot more points
@@ -164,7 +164,7 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
         dTIR_i = np.argmax(deriv_ydata)
 
         # Fit against the derivative spike where the derivative is max, considering also -3 +2 nearest neighbors
-        pd = np.polyfit(TIR_xdata_filtered[dTIR_i-3:dTIR_i+3],
+        poly_c = np.polyfit(TIR_xdata_filtered[dTIR_i-3:dTIR_i+3],
                         deriv_ydata[dTIR_i-3:dTIR_i+3], 3)
 
         # Recreate the curve with a lot more points
@@ -174,7 +174,7 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
         raise ValueError('Invalid scanspeed value')
 
     # Find TIR from max of deriv fit
-    deriv_TIR_fit_y = np.polyval(pd, deriv_TIR_fit_x)
+    deriv_TIR_fit_y = np.polyval(poly_c, deriv_TIR_fit_x)
     dTIR_final = np.argmax(deriv_TIR_fit_y)
     TIR_theta = deriv_TIR_fit_x[dTIR_final]
 
