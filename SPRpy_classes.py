@@ -599,14 +599,18 @@ def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index
 
     return exclusion_height_analysis_object.fitted_data
 
-def check_exclusion_height(self):
+def calculate_exclusion_height(self):
     """
-    Perform a single injection iteration to check that fitting looks good and that the height range is chosen correctly
+    TODO: this should be the main function that is called to calculate exclusion heights
     """
     pass
 
-def calculate_full_exclusion_height(self):
+def calculate_all_exclusion_heights(self):
     """
+    TODO: This function should start multiprocessing of several calls to calculate_exclusion_height() for different injection steps
+     I think the best way to get the results are using the pipe method, where each process writes to a pipe and the main process reads from the pipe.
+     The main process should then update the progress bar and the results page with each finished injection.
+    TODO: See chatGPT history for multiprocessing example using Pipe connection objects ro recieve the result from each process.
 
     """
     pass
