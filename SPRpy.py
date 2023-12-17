@@ -2108,6 +2108,45 @@ if __name__ == '__main__':
                                                         name='TIR angle',
                                                         line_color='#ef553b'))
 
+                    if len(current_exclusion_height_analysis.injection_points) > 0:
+                        injection_points_time = [item[1] for item in current_exclusion_height_analysis.injection_points]
+                        injection_points_angle = [item[2] for item in current_exclusion_height_analysis.injection_points]
+
+                        updated_figure.add_trace(go.Scatter(x=injection_points_time,
+                                                            y=injection_points_angle,
+                                                            name='Injection points',
+                                                            mode='markers',
+                                                            marker_size=14,
+                                                            marker_symbol='arrow',
+                                                            marker_color='black',
+                                                            marker_angle=-20,
+                                                            showlegend=True))
+
+                    if len(current_exclusion_height_analysis.buffer_points) > 0:
+                        buffer_points_time = [item[1] for item in current_exclusion_height_analysis.buffer_points]
+                        buffer_points_angle = [item[2] for item in current_exclusion_height_analysis.buffer_points]
+
+                        updated_figure.add_trace(go.Scatter(x=buffer_points_time,
+                                                            y=buffer_points_angle,
+                                                            name='Buffer points',
+                                                            mode='markers',
+                                                            marker_size=14,
+                                                            marker_symbol='arrow',
+                                                            marker_angle=20,
+                                                            showlegend=True))
+
+                    if len(current_exclusion_height_analysis.probe_points) > 0:
+                        probe_points_time = [item[1] for item in current_exclusion_height_analysis.probe_points]
+                        probe_points_angle = [item[2] for item in current_exclusion_height_analysis.probe_points]
+
+                        updated_figure.add_trace(go.Scatter(x=probe_points_time,
+                                                            y=probe_points_angle,
+                                                            name='Probe points',
+                                                            mode='markers',
+                                                            marker_size=14,
+                                                            marker_symbol='arrow',
+                                                            showlegend=True))
+
                     updated_figure.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
                                                  yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
                                                  font_family='Balto',
