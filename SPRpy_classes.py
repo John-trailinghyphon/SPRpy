@@ -518,12 +518,16 @@ class ExclusionHeight:
             # Next pair of probe point indices
             probepoint_index += 2
 
-        injectionpoint_index = 0
+
         # Create SPR vs TIR data frames
+        injectionpoint_index = 0
+        offset_SPR_sensorgram = self.sensorgram_data['SPR angle'] - self.sensorgram_data.loc[self.sensorgram_offset_ind, 'SPR angle']
+        offset_TIR_sensorgram = self.sensorgram_data['TIR angle'] - self.sensorgram_data.loc[self.sensorgram_offset_ind, 'TIR angle']
+
         for reflectivity_index in range(int(len(self.injection_points) / 2)):
 
-            self.SPR_vs_TIR_dfs.append(pd.DataFrame(data={'SPR angles': self.sensorgram_data.loc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0], 'SPR angle'],
-                                                          'TIR angles': self.sensorgram_data.loc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0], 'TIR angle'],
+            self.SPR_vs_TIR_dfs.append(pd.DataFrame(data={'SPR angles': offset_SPR_sensorgram.iloc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]],
+                                                          'TIR angles': offset_TIR_sensorgram.iloc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]],
                                                           })
                                        )
 
