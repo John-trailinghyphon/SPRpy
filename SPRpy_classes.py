@@ -4,6 +4,7 @@ import scipy
 import pickle
 import copy
 import bottleneck
+import multiprocessing
 from SPRpy_functions import *
 from fresnel_transfer_matrix import fresnel_calculation
 
@@ -599,22 +600,99 @@ def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index
 
     return exclusion_height_analysis_object.fitted_data
 
-def calculate_exclusion_height(self):
+def calculate_exclusion_height(exclusion_height_analysis_object, step_index_, height_step):
     """
-    TODO: this should be the main function that is called to calculate exclusion heights
+    TODO: this should be the main function that is called to calculate exclusion heights. It should output a dictionary with the results for each step.
     """
     pass
 
-def calculate_all_exclusion_heights(self):
+def exclusion_height_process(exclusion_height_analysis_object, step_index_, height_step, connection):
+
+    result = calculate_exclusion_height(exclusion_height_analysis_object, step_index_, height_step)
+    connection.send(result)
+    connection.close()
+
+def process_all_exclusion_heights(exclusion_height_analysis_object, height_range):
     """
     TODO: This function should start multiprocessing of several calls to calculate_exclusion_height() for different injection steps
      I think the best way to get the results are using the pipe method, where each process writes to a pipe and the main process reads from the pipe.
      The main process should then update the progress bar and the results page with each finished injection.
-    TODO: See chatGPT history for multiprocessing example using Pipe connection objects ro recieve the result from each process.
+    TODO: See chatGPT history for multiprocessing example using Pipe connection objects to recieve the result from each process.
 
     """
-    pass
 
+    # TODO: Need to check for the number of cores available and limit the number of processes to that number.
+    #  Also need to check if the number of processes is larger than the number of steps and limit it to the number of steps.
+    #  The number of steps is the number of injections, which is len(exclusion_height_analysis_object.injection_points) / 2
+    #  The number of cores can be found using multiprocessing.cpu_count()
+    #  The number of processes should be limited to the number of cores, or the number of steps, whichever is smallest.
+
+    buffer_connections = []
+    probe_connections = []
+    buffer_processes = []
+    probe_processes = []
+
+    step = 0
+    while step < min(len(exclusion_height_analysis_object.injection_points) / 2, multiprocessing.cpu_count()):
+        # Setup buffer process
+        buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
+        buffer_connections.append(buffer_parent_conn)
+        buffer_process = multiprocessing.Process(target=worker_process, args=(data_frame, additional_parameters, child_conn))
+        buffer_processes.append(buffer_process)
+
+        # Setup probe process
+        probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
+        probe_connections.append(probe_parent_conn)
+        probe_process = multiprocessing.Process(target=worker_process, args=(data_frame, additional_parameters, child_conn))
+        probe_processes.append(probe_process)
+
+        # Start processes
+        buffer_process.start()
+        probe_process.start()
+
+        # Update step
+        step += 2
+
+    # If there are more steps than cpu cores, wait for the next two processes to finish and start new processes for the remaining steps
+    if step < len(exclusion_height_analysis_object.injection_points) / 2:
+        for process_index in range(len(exclusion_height_analysis_object.injection_points) / 2 - multiprocessing.cpu_count()):
+            buffer_processes[process_index].join()
+            probe_processes[process_index].join()
+
+            # Setup buffer process
+            buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
+            buffer_connections.append(buffer_parent_conn)
+            buffer_process = multiprocessing.Process(target=worker_process,
+                                                     args=(data_frame, additional_parameters, child_conn))
+            buffer_processes.append(buffer_process)
+
+            # Setup probe process
+            probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
+            probe_connections.append(probe_parent_conn)
+            probe_process = multiprocessing.Process(target=worker_process,
+                                                    args=(data_frame, additional_parameters, child_conn))
+            probe_processes.append(probe_process)
+
+            # Start processes
+            buffer_process.start()
+            probe_process.start()
+
+    # Wait for all processes to finish and collect results
+    for buffer_process in buffer_processes:
+        buffer_process.join()
+
+    for probe_process in probe_processes:
+        probe_process.join()
+
+    buffer_results = []
+    for buffer_conn in buffer_connections:
+        buffer_results.append(buffer_conn.recv())
+
+    probe_results = []
+    for probe_conn in probe_connections:
+        probe_results.append(probe_conn.recv())
+
+    return buffer_results, probe_results
 
 def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
 
