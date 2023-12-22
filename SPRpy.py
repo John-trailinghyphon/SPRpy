@@ -3235,17 +3235,18 @@ if __name__ == '__main__':
             # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
 
             # Check injection, buffer and probe points are selected correctly
-
-            current_exclusion_height_analysis.height_points = [lower_bound, upper_bound]
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
+            current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
+
 
             return
 
         elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
             # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
 
-            current_exclusion_height_analysis.height_points = [lower_bound, upper_bound]
+            # Check injection, buffer and probe points are selected correctly
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
+            current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
 
             return
 
