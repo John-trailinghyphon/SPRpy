@@ -429,13 +429,13 @@ class ExclusionHeight:
         self.initial_data_path = data_path_
         self.sensorgram_data = sensorgram_df_
         self.sensorgram_offset_ind = 0
-        self.height_bounds = [0, 200]
+        self.d_n_pair_resolution = 200
+        self.height_steps = np.linspace(0, 200, self.d_n_pair_resolution)
         self.points_below_SPR_min_ind = None
         self.points_above_SPR_min_ind = None
         self.injection_points = []
         self.buffer_points = []
         self.probe_points = []
-        self.d_n_pair_resolution = 200
         self.SPR_vs_TIR_dfs = []  # List of dataframes with labels 'SPR angles' and 'TIR angles' for indexing each step result
         self.buffer_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe) for indexing
         self.buffer_bulk_RIs = []  # Calculated from TIR angle of each reflectivity DF
@@ -443,8 +443,9 @@ class ExclusionHeight:
         self.probe_bulk_RIs = []  # Calculated from TIR angle of each reflectivity DF
         self.buffer_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
         self.probe_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
-        self.mean_exclusion_result = None
-        self.all_exclusion_result = []
+        self.all_exclusion_RI_steps = []
+        self.all_exclusion_height_results = []
+        self.mean_exclusion_height_result = None
 
     # TODO: The methods running calculations here need to use mutliprocessing and whould be run inside background callbacks in the dash app to prevent timeout after 30s of calculations.
     # TODO: Make sure the quality of fit for each d,n pair can be viewed with a pagination passing over each injection.
@@ -600,19 +601,47 @@ def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index
 
     return exclusion_height_analysis_object.fitted_data
 
-def calculate_exclusion_height(exclusion_height_analysis_object, step_index_, height_step):
-    """
-    TODO: this should be the main function that is called to calculate exclusion heights. It should output a dictionary with the results for each step.
-    """
-    pass
 
-def exclusion_height_process(exclusion_height_analysis_object, step_index_, height_step, connection):
+def calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index):
+    """
+    TODO: this should be the main function that is called to calculate exclusion heights. It should output a list with the RI results for each step.
 
-    result = calculate_exclusion_height(exclusion_height_analysis_object, step_index_, height_step)
+    :param exclusion_height_analysis_object: object containing all parameters and data
+    :param data_frame_index: index of dataframe and buffer or probe RI bulk value
+    :return RI_results: list of calculated RI results for each height step
+    """
+    # Check if calculations should be performed on buffer or probe data
+    if buffer_or_probe_flag == 'buffer':
+        # TODO: Don't forget to swap the buffer RI bulk value of exclusion_height_analysis_object.fresnel_object.refractive_indeces to the exclusion_height_analysis_object.buffer_bulk_RIs[data_frame_index]
+        RI_results = []
+
+        return RI_results
+    elif buffer_or_probe_flag == 'probe':
+        # TODO: Don't forget to swap the probe RI bulk value of exclusion_height_analysis_object.fresnel_object.refractive_indeces to the exclusion_height_analysis_object.probe_bulk_RIs[data_frame_index]
+        RI_results = []
+
+        return RI_results
+    else:
+        raise ValueError('only buffer or probe allowed')
+
+
+def exclusion_height_process(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index, connection):
+    '''
+    This function initiates the calculations and send back the result to the spawning process
+
+    :param exclusion_height_analysis_object: object containing all parameters and data
+    :param buffer_or_probe_flag: either 'buffer' or 'probe'
+    :param data_frame_index: index of dataframe
+    :param connection: child pipe connection object from multiprocessing.Pipe()
+    :return: None
+    '''
+
+    result = calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index)
     connection.send(result)
     connection.close()
 
-def process_all_exclusion_heights(exclusion_height_analysis_object, height_range):
+
+def process_all_exclusion_heights(exclusion_height_analysis_object):
     """
     TODO: This function should start multiprocessing of several calls to calculate_exclusion_height() for different injection steps
      I think the best way to get the results are using the pipe method, where each process writes to a pipe and the main process reads from the pipe.
@@ -624,7 +653,7 @@ def process_all_exclusion_heights(exclusion_height_analysis_object, height_range
     # TODO: Need to check for the number of cores available and limit the number of processes to that number.
     #  Also need to check if the number of processes is larger than the number of steps and limit it to the number of steps.
     #  The number of steps is the number of injections, which is len(exclusion_height_analysis_object.injection_points) / 2
-    #  The number of cores can be found using multiprocessing.cpu_count()
+    #  The number of cores can be found using multiprocessing.cpu_count()-2 (to save cores for other applications)
     #  The number of processes should be limited to the number of cores, or the number of steps, whichever is smallest.
 
     buffer_connections = []
@@ -632,67 +661,70 @@ def process_all_exclusion_heights(exclusion_height_analysis_object, height_range
     buffer_processes = []
     probe_processes = []
 
-    step = 0
-    while step < min(len(exclusion_height_analysis_object.injection_points) / 2, multiprocessing.cpu_count()):
+    buffer_index = 0
+    probe_index = 0
+    process_step = 0
+    while process_step < min(len(exclusion_height_analysis_object.injection_points) / 2, multiprocessing.cpu_count()-2):
         # Setup buffer process
         buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
         buffer_connections.append(buffer_parent_conn)
-        buffer_process = multiprocessing.Process(target=worker_process, args=(data_frame, additional_parameters, child_conn))
+        buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'buffer', buffer_index, buffer_child_conn))
         buffer_processes.append(buffer_process)
+        buffer_index += 1
 
         # Setup probe process
         probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
         probe_connections.append(probe_parent_conn)
-        probe_process = multiprocessing.Process(target=worker_process, args=(data_frame, additional_parameters, child_conn))
+        probe_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'probe', probe_index, probe_child_conn))
         probe_processes.append(probe_process)
+        probe_index += 1
 
         # Start processes
         buffer_process.start()
         probe_process.start()
 
         # Update step
-        step += 2
+        process_step += 2
 
     # If there are more steps than cpu cores, wait for the next two processes to finish and start new processes for the remaining steps
-    if step < len(exclusion_height_analysis_object.injection_points) / 2:
-        for process_index in range(len(exclusion_height_analysis_object.injection_points) / 2 - multiprocessing.cpu_count()):
+    if process_step < len(exclusion_height_analysis_object.injection_points) / 2:
+        for process_index in range(len(exclusion_height_analysis_object.injection_points) / 2 - (multiprocessing.cpu_count()-2)):
             buffer_processes[process_index].join()
             probe_processes[process_index].join()
 
             # Setup buffer process
             buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
             buffer_connections.append(buffer_parent_conn)
-            buffer_process = multiprocessing.Process(target=worker_process,
-                                                     args=(data_frame, additional_parameters, child_conn))
+            buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'buffer', buffer_index, buffer_child_conn))
             buffer_processes.append(buffer_process)
+            buffer_index += 1
 
             # Setup probe process
             probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
             probe_connections.append(probe_parent_conn)
-            probe_process = multiprocessing.Process(target=worker_process,
-                                                    args=(data_frame, additional_parameters, child_conn))
+            probe_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'probe', probe_index, probe_child_conn))
             probe_processes.append(probe_process)
+            probe_index += 1
 
             # Start processes
             buffer_process.start()
             probe_process.start()
 
-    # Wait for all processes to finish and collect results
-    for buffer_process in buffer_processes:
-        buffer_process.join()
 
-    for probe_process in probe_processes:
+    # Wait for each process to finish and collect and record results
+    for buffer_process, probe_process, buffer_conn, probe_conn in zip(buffer_processes, probe_processes, buffer_connections, probe_connections):
+        buffer_process.join()
         probe_process.join()
 
-    buffer_results = []
-    for buffer_conn in buffer_connections:
-        buffer_results.append(buffer_conn.recv())
+        buffer_RI_result = buffer_conn.recv()
+        probe_RI_result = probe_conn.recv()
 
-    probe_results = []
-    for probe_conn in probe_connections:
-        probe_results.append(probe_conn.recv())
+        exclusion_height_analysis_object.all_exclusion_RI_steps.append(pd.DataFrame(data={'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result}))
 
-    return buffer_results, probe_results
+        # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_height_results
+        # TODO: Base this on matlab intersection code for finding the exclusion height
+
+
 
 def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
 
