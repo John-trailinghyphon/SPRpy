@@ -447,20 +447,6 @@ class ExclusionHeight:
         self.all_exclusion_results = []
         self.mean_exclusion_height_result = None
 
-    # TODO: The methods running calculations here need to use mutliprocessing and whould be run inside background callbacks in the dash app to prevent timeout after 30s of calculations.
-    # TODO: Make sure the quality of fit for each d,n pair can be viewed with a pagination passing over each injection.
-    #  Should probably do a list or dictionary backend-wise containing each injection.
-    # TODO: Backend-wise, do stepping in height and perform fitting of the refractive index (opposite to matlab script).
-    #  It means user enters a plausible range for the heights instead, which is easier to relate to and weird
-    #  bulk effects are automatically detected (like PEG+MCH demonstrated).
-    # TODO: Pull most data from current sensor object and current fresnel analysis object (which should have
-    #  been performed on an angular trace containing buffer+layer, the resulting height corresponds to a 0 %
-    #  swollen version of the layer), but needs input for a range of plausible heights. This range can be calculated as
-    #  a default based on the dry height of the layer in air, but maybe easier to just add a tooltip stating that fact than implementing it.
-    # TODO: Make it so the progress bar updates with each finished injection, and that the results page is
-    #  updated with each injection so it can be aborted if necessary
-    # TODO: There is no need to include different offsets for buffer and probe, they can simply use the offset from fresnel background object (if it is modeled from the liquid!)
-
     def initialize_model(self, ydata_df):
 
         # Calculate number of points above and below minimum point based on fresnel model background range
@@ -539,102 +525,92 @@ class ExclusionHeight:
         return
 
 
-def model_buffer_reflectivity_trace(exclusion_height_analysis_object, step_index_, height):
-    """
-
-    :param ini_guess:
-    :param bounds:
-    :param TIR_range:
-    :param scanspeed:
-    :return:
-    """
-
-    # TODO: Adapt this code to model layer RI instead of height
-
-    selection_xdata_ = exclusion_height_analysis_object.buffer_reflectivity_dfs[step_index_]['angles']  # This should already be the selected range
-    selection_ydata_ = exclusion_height_analysis_object.buffer_reflectivity_dfs[step_index_]['reflectivity']
-
-    # Calculate TIR angle and bulk refractive index
-    TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(selection_xdata_, selection_ydata_, exclusion_height_analysis_object.fresnel_object.TIR_range, exclusion_height_analysis_object.fresnel_object.scanspeed)
-    exclusion_height_analysis_object.sensor_object.refractive_indices[-1] = exclusion_height_analysis_object.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
-
-    # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
-    # for offset_ind in range(3): # TODO: There is no need to include different offsets for buffer and probe
-    offset_ydata_ = selection_ydata_ - exclusion_height_analysis_object.fresnel_object.y_offset
-
-    # Perform the fitting
-    result = scipy.optimize.least_squares(fresnel_calculation,
-                                          exclusion_height_analysis_object.fresnel_object.ini_guess,
-                                          bounds=exclusion_height_analysis_object.fresnel_object.bounds,
-                                          kwargs={'fitted_layer_index': exclusion_height_analysis_object.sensor_object.fitted_layer_index,
-                                                  'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
-                                                  'layer_thicknesses': exclusion_height_analysis_object.sensor_object.layer_thicknesses,
-                                                  'n_re': exclusion_height_analysis_object.sensor_object.refractive_indices,
-                                                  'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
-                                                  'angles': selection_xdata_,
-                                                  'ydata': offset_ydata_,
-                                                  'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
-                                                  'polarization': exclusion_height_analysis_object.sensor_object.polarization}
-                                          )
-    # Collect the results from least_squares object and calculate corresponding fresnel coefficients
-    fitted_result = result['x'][0]
-    fresnel_coefficients = fresnel_calculation(fitted_result,
-                                               fitted_layer_index=exclusion_height_analysis_object.sensor_object.fitted_layer_index,
-                                               angles=selection_xdata_,
-                                               wavelength=exclusion_height_analysis_object.sensor_object.wavelength,
-                                               layer_thicknesses=exclusion_height_analysis_object.sensor_object.layer_thicknesses,
-                                               n_re=exclusion_height_analysis_object.sensor_object.refractive_indices,
-                                               n_im=exclusion_height_analysis_object.sensor_object.extinction_coefficients,
-                                               ydata=None,
-                                               ydata_type='R',
-                                               polarization=1
-                                               )
-    # if offset_ind < 2: # TODO: There is no need to include different offsets for buffer and probe
-    #     # Calculate new y_offset
-    #     exclusion_height_analysis_object.fresnel_object.y_offset = exclusion_height_analysis_object.fresnel_object.y_offset + np.min(offset_ydata_) - np.min(fresnel_coefficients)
-
-    # Shift fresnel coefficients back to measurement data  level
-    fresnel_ydata = fresnel_coefficients + exclusion_height_analysis_object.fresnel_object.y_offset
-
-    # Compile into fresnel_coefficients data frame
-    exclusion_height_analysis_object.fitted_data = pd.DataFrame(data={'angles': selection_xdata_, 'ydata': fresnel_ydata})
-
-    return exclusion_height_analysis_object.fitted_data
-
-
 def calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index):
     """
-    TODO: this should be the main function that is called to calculate exclusion heights. It should output a list with the RI results for each step.
+    This function calculates the exclusion height for a single injection step
 
     :param exclusion_height_analysis_object: object containing all parameters and data
+    :param buffer_or_probe_flag: either 'buffer' or 'probe'
     :param data_frame_index: index of dataframe and buffer or probe RI bulk value
     :return RI_results: list of calculated RI results for each height step
     """
+
     # Check if calculations should be performed on buffer or probe data
     if buffer_or_probe_flag == 'buffer':
-        # TODO: Don't forget to swap the buffer RI bulk value of exclusion_height_analysis_object.fresnel_object.refractive_indeces to the exclusion_height_analysis_object.buffer_bulk_RIs[data_frame_index]
+
+        # Add bulk RI to layers
+        refractive_indices = copy.deepcopy(exclusion_height_analysis_object.sensor_object.refractive_indices)
+        refractive_indices[-1] = exclusion_height_analysis_object.buffer_bulk_RIs[data_frame_index]
+        layer_thicknesses = copy.deepcopy(exclusion_height_analysis_object.sensor_object.layer_thicknesses)
+
         RI_results = []
+        for height in exclusion_height_analysis_object.height_steps:
+
+            layer_thicknesses[-2] = height  # Surface layer height should be updated to current height step
+
+            # Perform the fitting
+            result = scipy.optimize.least_squares(fresnel_calculation,
+                                                  1.38,
+                                                  bounds=[1.0, 3.0],
+                                                  kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
+                                                          'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
+                                                          'layer_thicknesses': layer_thicknesses,
+                                                          'n_re': refractive_indices,
+                                                          'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
+                                                          'angles': exclusion_height_analysis_object.buffer_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
+                                                          'ydata': exclusion_height_analysis_object.buffer_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object.fresnel_object.y_offset,
+                                                          'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
+                                                          'polarization': exclusion_height_analysis_object.sensor_object.polarization}
+                                                  )
+            # Collect the results from least_squares object
+            RI_results.append(result['x'][0])
 
         return RI_results
+
     elif buffer_or_probe_flag == 'probe':
-        # TODO: Don't forget to swap the probe RI bulk value of exclusion_height_analysis_object.fresnel_object.refractive_indeces to the exclusion_height_analysis_object.probe_bulk_RIs[data_frame_index]
+
+        # Add bulk RI to layers
+        refractive_indices = copy.deepcopy(exclusion_height_analysis_object.sensor_object.refractive_indices)
+        refractive_indices[-1] = exclusion_height_analysis_object.probe_bulk_RIs[data_frame_index]
+        layer_thicknesses = copy.deepcopy(exclusion_height_analysis_object.sensor_object.layer_thicknesses)
+
         RI_results = []
+        for height in exclusion_height_analysis_object.height_steps:
+
+            layer_thicknesses[-2] = height
+
+            result = scipy.optimize.least_squares(fresnel_calculation,
+                                                  1.38,
+                                                  bounds=[1.0, 3.0],
+                                                  kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
+                                                          'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
+                                                          'layer_thicknesses': layer_thicknesses,
+                                                          'n_re': refractive_indices,
+                                                          'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
+                                                          'angles': exclusion_height_analysis_object.probe_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
+                                                          'ydata': exclusion_height_analysis_object.probe_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object.fresnel_object.y_offset,
+                                                          'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
+                                                          'polarization': exclusion_height_analysis_object.sensor_object.polarization}
+                                                  )
+            # Collect the results from least_squares object
+            RI_results.append(result['x'][0])
 
         return RI_results
+
     else:
         raise ValueError('only buffer or probe allowed')
 
 
 def exclusion_height_process(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index, connection):
-    '''
-    This function initiates the calculations and send back the result to the spawning process
+    """
+    This function initiates the calculations and sends back the result
 
     :param exclusion_height_analysis_object: object containing all parameters and data
     :param buffer_or_probe_flag: either 'buffer' or 'probe'
     :param data_frame_index: index of dataframe
     :param connection: child pipe connection object from multiprocessing.Pipe()
     :return: None
-    '''
+    """
 
     result = calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index)
     connection.send(result)
@@ -643,18 +619,11 @@ def exclusion_height_process(exclusion_height_analysis_object, buffer_or_probe_f
 
 def process_all_exclusion_heights(exclusion_height_analysis_object):
     """
-    TODO: This function should start multiprocessing of several calls to calculate_exclusion_height() for different injection steps
-     I think the best way to get the results are using the pipe method, where each process writes to a pipe and the main process reads from the pipe.
-     The main process should then update the progress bar and the results page with each finished injection.
-    TODO: See chatGPT history for multiprocessing example using Pipe connection objects to recieve the result from each process.
+    This function initiates all processes, executes them and collects the results. All results are stored inside the exclusion height object.
 
+    :param exclusion_height_analysis_object: object that stores all required data and parameters
+    :return: None
     """
-
-    # TODO: Need to check for the number of cores available and limit the number of processes to that number.
-    #  Also need to check if the number of processes is larger than the number of steps and limit it to the number of steps.
-    #  The number of steps is the number of injections, which is len(exclusion_height_analysis_object.injection_points) / 2
-    #  The number of cores can be found using multiprocessing.cpu_count()-2 (to save cores for other applications)
-    #  The number of processes should be limited to the number of cores, or the number of steps, whichever is smallest.
 
     buffer_connections = []
     probe_connections = []
@@ -709,7 +678,6 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
             # Start processes
             buffer_process.start()
             probe_process.start()
-
 
     # Wait for each process to finish and collect and record results
     result_step_index = 0
