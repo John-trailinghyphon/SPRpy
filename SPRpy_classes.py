@@ -445,7 +445,9 @@ class ExclusionHeight:
         self.probe_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
         self.all_exclusion_RI_steps = []
         self.all_exclusion_results = []
-        self.mean_exclusion_height_result = None
+        self.mean_exclusion_height_result = None  # Tuple of mean value of exclusion height from all injection steps, and standard deviation
+        self.mean_exclusion_RI_result = None  # Tuple of mean value of exclusion RI from all injection steps, and standard deviation
+        self.abort_flag = False
 
     def initialize_model(self, ydata_df):
 
@@ -525,11 +527,11 @@ class ExclusionHeight:
         return
 
 
-def calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index):
+def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_probe_flag, data_frame_index):
     """
     This function calculates the exclusion height for a single injection step
 
-    :param exclusion_height_analysis_object: object containing all parameters and data
+    :param exclusion_height_analysis_object_copy: object containing all parameters and data
     :param buffer_or_probe_flag: either 'buffer' or 'probe'
     :param data_frame_index: index of dataframe and buffer or probe RI bulk value
     :return RI_results: list of calculated RI results for each height step
@@ -539,28 +541,27 @@ def calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe
     if buffer_or_probe_flag == 'buffer':
 
         # Add bulk RI to layers
-        refractive_indices = copy.deepcopy(exclusion_height_analysis_object.sensor_object.refractive_indices)
-        refractive_indices[-1] = exclusion_height_analysis_object.buffer_bulk_RIs[data_frame_index]
-        layer_thicknesses = copy.deepcopy(exclusion_height_analysis_object.sensor_object.layer_thicknesses)
+        refractive_indices = exclusion_height_analysis_object_copy.sensor_object.refractive_indices
+        refractive_indices[-1] = exclusion_height_analysis_object_copy.buffer_bulk_RIs[data_frame_index]
 
         RI_results = []
-        for height in exclusion_height_analysis_object.height_steps:
+        for height in exclusion_height_analysis_object_copy.height_steps:
 
-            layer_thicknesses[-2] = height  # Surface layer height should be updated to current height step
+            exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses[-2] = height  # Surface layer height should be updated to current height step
 
             # Perform the fitting
             result = scipy.optimize.least_squares(fresnel_calculation,
                                                   1.38,
                                                   bounds=[1.0, 3.0],
                                                   kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
-                                                          'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
-                                                          'layer_thicknesses': layer_thicknesses,
+                                                          'wavelength': exclusion_height_analysis_object_copy.sensor_object.wavelength,
+                                                          'layer_thicknesses': exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses,
                                                           'n_re': refractive_indices,
-                                                          'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
-                                                          'angles': exclusion_height_analysis_object.buffer_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
-                                                          'ydata': exclusion_height_analysis_object.buffer_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object.fresnel_object.y_offset,
-                                                          'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
-                                                          'polarization': exclusion_height_analysis_object.sensor_object.polarization}
+                                                          'n_im': exclusion_height_analysis_object_copy.sensor_object.extinction_coefficients,
+                                                          'angles': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
+                                                          'ydata': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object_copy.fresnel_object.y_offset,
+                                                          'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
+                                                          'polarization': exclusion_height_analysis_object_copy.sensor_object.polarization}
                                                   )
             # Collect the results from least_squares object
             RI_results.append(result['x'][0])
@@ -570,27 +571,26 @@ def calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe
     elif buffer_or_probe_flag == 'probe':
 
         # Add bulk RI to layers
-        refractive_indices = copy.deepcopy(exclusion_height_analysis_object.sensor_object.refractive_indices)
-        refractive_indices[-1] = exclusion_height_analysis_object.probe_bulk_RIs[data_frame_index]
-        layer_thicknesses = copy.deepcopy(exclusion_height_analysis_object.sensor_object.layer_thicknesses)
+        refractive_indices = exclusion_height_analysis_object_copy.sensor_object.refractive_indices
+        refractive_indices[-1] = exclusion_height_analysis_object_copy.probe_bulk_RIs[data_frame_index]
 
         RI_results = []
-        for height in exclusion_height_analysis_object.height_steps:
+        for height in exclusion_height_analysis_object_copy.height_steps:
 
-            layer_thicknesses[-2] = height
+            exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses[-2] = height
 
             result = scipy.optimize.least_squares(fresnel_calculation,
                                                   1.38,
                                                   bounds=[1.0, 3.0],
                                                   kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
-                                                          'wavelength': exclusion_height_analysis_object.sensor_object.wavelength,
-                                                          'layer_thicknesses': layer_thicknesses,
+                                                          'wavelength': exclusion_height_analysis_object_copy.sensor_object.wavelength,
+                                                          'layer_thicknesses': exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses,
                                                           'n_re': refractive_indices,
-                                                          'n_im': exclusion_height_analysis_object.sensor_object.extinction_coefficients,
-                                                          'angles': exclusion_height_analysis_object.probe_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
-                                                          'ydata': exclusion_height_analysis_object.probe_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object.fresnel_object.y_offset,
-                                                          'ydata_type': exclusion_height_analysis_object.sensor_object.data_type,
-                                                          'polarization': exclusion_height_analysis_object.sensor_object.polarization}
+                                                          'n_im': exclusion_height_analysis_object_copy.sensor_object.extinction_coefficients,
+                                                          'angles': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
+                                                          'ydata': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object_copy.fresnel_object.y_offset,
+                                                          'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
+                                                          'polarization': exclusion_height_analysis_object_copy.sensor_object.polarization}
                                                   )
             # Collect the results from least_squares object
             RI_results.append(result['x'][0])
@@ -601,18 +601,18 @@ def calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe
         raise ValueError('only buffer or probe allowed')
 
 
-def exclusion_height_process(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index, connection):
+def exclusion_height_process(exclusion_height_analysis_object_copy, buffer_or_probe_flag, data_frame_index, connection):
     """
     This function initiates the calculations and sends back the result
 
-    :param exclusion_height_analysis_object: object containing all parameters and data
+    :param exclusion_height_analysis_object_copy: object containing all parameters and data
     :param buffer_or_probe_flag: either 'buffer' or 'probe'
     :param data_frame_index: index of dataframe
     :param connection: child pipe connection object from multiprocessing.Pipe()
     :return: None
     """
 
-    result = calculate_exclusion_height(exclusion_height_analysis_object, buffer_or_probe_flag, data_frame_index)
+    result = calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_probe_flag, data_frame_index)
     connection.send(result)
     connection.close()
 
@@ -637,14 +637,14 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
         # Setup buffer process
         buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
         buffer_connections.append(buffer_parent_conn)
-        buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'buffer', buffer_index, buffer_child_conn))
+        buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
         buffer_processes.append(buffer_process)
         buffer_index += 1
 
         # Setup probe process
         probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
         probe_connections.append(probe_parent_conn)
-        probe_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'probe', probe_index, probe_child_conn))
+        probe_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
         probe_processes.append(probe_process)
         probe_index += 1
 
@@ -664,14 +664,14 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
             # Setup buffer process
             buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
             buffer_connections.append(buffer_parent_conn)
-            buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'buffer', buffer_index, buffer_child_conn))
+            buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
             buffer_processes.append(buffer_process)
             buffer_index += 1
 
             # Setup probe process
             probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
             probe_connections.append(probe_parent_conn)
-            probe_process = multiprocessing.Process(target=exclusion_height_process, args=(exclusion_height_analysis_object, 'probe', probe_index, probe_child_conn))
+            probe_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
             probe_processes.append(probe_process)
             probe_index += 1
 
@@ -682,6 +682,18 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
     # Wait for each process to finish and collect and record results
     result_step_index = 0
     for buffer_process, probe_process, buffer_conn, probe_conn in zip(buffer_processes, probe_processes, buffer_connections, probe_connections):
+
+        # Check if user has aborted the analysis
+        if exclusion_height_analysis_object.abort_flag:
+            for buffer_process, probe_process in zip(buffer_processes, probe_processes):
+                buffer_process.terminate()
+                probe_process.terminate()
+
+            exclusion_height_analysis_object.abort_flag = False
+
+            return
+
+        # Wait for processes to finish and collect results
         buffer_process.join()
         probe_process.join()
 
@@ -708,6 +720,8 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
                 break
 
         result_step_index += 1
+
+    return
 
 
 def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):

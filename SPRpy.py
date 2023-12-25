@@ -2,22 +2,6 @@
 # either load .csv files directly or run conversion of .spr2 files using 'spr2_to_csv.py' in a separate thread
 # (preferably showing a progress bar if possible)
 
-#  Start with rewriting the dry scan fitting code and function files into python. Use scipy.optimize.least_squares
-#  to replace MATLABs lsqnonlin.
-
-#  Should have a class for modelling dry scan reflectivity traces and a second one for fitting reflectivity traces.
-#  Each class should have methods for running the calculations using the fresnel_calculation() function and for saving
-#  the results in an "experiment workbook". The optical parameters (with many defaults) and some naming strings should
-#  be provided when an object is instanced from the class.
-
-#  The workbook can be its own class with methods that define how data is stored and loaded for the dash app. The
-#  idea is that this can be loaded by the app if a user wants to redo some modelling without starting all over again.
-#  It should save a path to the datafile that was used for the analysis so that it has access to the data.
-
-# TODO: For the non-interacting probe method where a previously calculated background is used in the calculations, there
-#  is a need of some way to select a previous analysis. The easiest way is probably to make sure that each analysis is
-#  named something? I imagine that the user selects from a list of names of each analysis (and there should be a default
-#  name that auto-increments with the object ID.
 
 # TODO: Add an analysis section with de Feijter surface coverage analysis. The idea is that one could select different
 #  parts of the response curve and calculate the surface coverage based on provided constants
@@ -29,12 +13,8 @@
 # Regarding the dash app below
 
 # TODO: "Main control DIV". Need buttons for controlling a lot of things:
-#  - Choosing analysis method (default should be fitting reflectivity traces, like background)
 #  - Session control (this should be done lasts, as it requires to figure out how to reinitiate the whole Dash interface with new values)
 #     * removing sensor objects and analysis objects from the active session
-#  - Adding new analysis object (starting an analysis DIV)
-#     * Selecting between different available types, which will change the analysis interface DIV and its options
-#     * run calculations, fitting, quantification, selecting values, etc.
 #  - Exporting the finished analysis as a HTML file with retained interactivity (omitting control DIV elements). This
 #  can then be added to obsidian notes for instance, allowing straight forward result documentation.
 
@@ -50,6 +30,7 @@
 # 9 '#FF97FF',
 # 10 '#FECB52'
 
+import time
 import dash
 import dash_bootstrap_components as dbc
 import diskcache
@@ -2003,7 +1984,7 @@ if __name__ == '__main__':
                 current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
                 1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int'), 'Data path: \n' + current_fresnel_analysis.initial_data_path
 
-    # TODO: Add labels for selected points in settings square (add Outputs)
+
     @dash.callback(
         dash.Output('exclusion-height-sensorgram-graph', 'figure'),
         dash.Output('add-exclusion-height-analysis-modal', 'is_open'),
@@ -2070,7 +2051,6 @@ if __name__ == '__main__':
         TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
          the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
          fails the user is prompted to select the new path for the file.
-        TODO: Add labels for chosen points in settings square
         TODO: When hovering over datapoints in the d_n_pair plot, take the d and n values and perform the fresnel calculation in the plot to display the fit
         """
         global current_session
@@ -3194,9 +3174,6 @@ if __name__ == '__main__':
 
             return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, True, mean_result, all_result, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string
 
-    # TODO: This callback may need to handle many duplicate outputs that are also changed upon changing the current
-    #  analysis object or adding a new object. For fresnel fitting I fixed issues related to this by combining the
-    #  callbacks, so this will be tricky... It may work as long as there are only duplicate outputs, and not shared inputs...
     @dash.callback(
         dash.Output('exclusion-height-result-collapse', 'is_open'),
         dash.Output('exclusion-height-result-mean', 'children'),
@@ -3220,34 +3197,82 @@ if __name__ == '__main__':
         cancel=[dash.Input('exclusion-height-abort-button', 'n_clicks')],
         progress=[dash.Output('exclusion-height-progressbar', 'value'), dash.Output('exclusion-height-progressbar', 'max')]
     )
-    def run_exclusion_height_calculations(run_button, check_button, abort_button, lower_bound, upper_bound, resolution):
+    def run_exclusion_height_calculations(set_progress, run_button, check_button, abort_button, lower_bound, upper_bound, resolution):
         """
-        TODO: This callback handles what happens when running, checking or aborting the exclusion height calculations. Make a
-         separate callback for loading settings and updating the sensorgram plot with selected probe points etc.
+        This callback runs the exclusion height calculations in the background. It is triggered by the run button, and
+        updates the progress bar. It also updates the result figures when the calculations are done.
+
+        :param set_progress: defines the progress bar value and max value
+        :param run_button:
+        :param check_button:
+        :param abort_button:
+        :param lower_bound:
+        :param upper_bound:
+        :param resolution:
+        :return:
         """
+
         global current_session
         global current_exclusion_height_analysis
-        global time_df
-        global angles_df
-        global ydata_df
 
         if 'exclusion-height-run-button' == dash.ctx.triggered_id:
-            # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
 
-            # Check injection, buffer and probe points are selected correctly
+            # Set resolution and height steps
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
+            current_exclusion_height_analysis.height_bounds[0] = lower_bound
+            current_exclusion_height_analysis.height_bounds[1] = upper_bound
             current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
 
+            # Overwrite previous results
+            injection_steps = len(current_exclusion_height_analysis.injection_points) / 2
+            current_exclusion_height_analysis.all_exclusion_results = [0] * injection_steps
+            current_exclusion_height_analysis.all_exclusion_RI_steps = [0] * injection_steps
+            current_exclusion_height_analysis.mean_exclusion_height_result = (None, None)
+            current_exclusion_height_analysis.mean_exclusion_RI_result = (None, None)
+
+            # Run exclusion height calculations
+            process_all_exclusion_heights(current_exclusion_height_analysis)
+
+            # Check for progress
+            while len(current_exclusion_height_analysis.all_exclusion_results) < injection_steps:
+                set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
+                time.sleep(1)
+
+            # Set progress to 100% when done
+            set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
+
+            # Calculate mean exclusion height and RI, along with standard deviation (as a tuple)
+            current_exclusion_height_analysis.mean_exclusion_height_result = (np.mean(np.ndarray([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.ndarray([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])))
+            current_exclusion_height_analysis.mean_exclusion_RI_result = (np.mean(np.ndarray([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.ndarray([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])))
+
+            # Save session
+            current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
+            current_session.save_session()
+
+            # TODO: Makes sure to return the correct output based on the results
 
             return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
-            # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
 
-            # Check injection, buffer and probe points are selected correctly
+            # Set resolution and height steps
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
+            current_exclusion_height_analysis.height_bounds[0] = lower_bound
+            current_exclusion_height_analysis.height_bounds[1] = upper_bound
             current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
 
-            return
+            return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+    @dash.callback(
+        dash.Output('exclusion-height-result-collapse', 'is_open'),
+        dash.Input('exclusion-height-abort-button', 'n_clicks'),
+        prevent_initial_call=True)
+    def abort_exclusion_height_backend_calculations(abort_button):
+        global current_exclusion_height_analysis
+
+        current_exclusion_height_analysis.abort_flag = True
+        time.sleep(2)  # Wait a bit for the other callback before aborting
+
+        return dash.no_update
 
     app.run(debug=True, use_reloader=False, host='127.0.0.1', port=8050)
