@@ -444,7 +444,7 @@ class ExclusionHeight:
         self.buffer_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
         self.probe_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
         self.all_exclusion_RI_steps = []
-        self.all_exclusion_height_results = []
+        self.all_exclusion_results = []
         self.mean_exclusion_height_result = None
 
     # TODO: The methods running calculations here need to use mutliprocessing and whould be run inside background callbacks in the dash app to prevent timeout after 30s of calculations.
@@ -712,6 +712,7 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
 
 
     # Wait for each process to finish and collect and record results
+    result_step_index = 0
     for buffer_process, probe_process, buffer_conn, probe_conn in zip(buffer_processes, probe_processes, buffer_connections, probe_connections):
         buffer_process.join()
         probe_process.join()
@@ -719,11 +720,26 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
         buffer_RI_result = buffer_conn.recv()
         probe_RI_result = probe_conn.recv()
 
-        exclusion_height_analysis_object.all_exclusion_RI_steps.append(pd.DataFrame(data={'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result}))
+        exclusion_height_analysis_object.all_exclusion_RI_steps[result_step_index] = pd.DataFrame(data={'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
 
-        # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_height_results
-        # TODO: Base this on matlab intersection code for finding the exclusion height
+        # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_results
+        for height_ind in range(len(exclusion_height_analysis_object.height_steps)):
+            if buffer_RI_result[height_ind] < probe_RI_result[height_ind]:
 
+                buffer_RI_zoom_range = np.linspace(buffer_RI_result[height_ind - 1], buffer_RI_result[height_ind], 200)
+                probe_RI_zoom_range = np.linspace(probe_RI_result[height_ind - 1], probe_RI_result[height_ind], 200)
+                height_zoom_range = np.linspace(exclusion_height_analysis_object.height_steps[height_ind - 1], exclusion_height_analysis_object.height_steps[height_ind], 200)
+
+                # Zoom in on the intersection
+                for index in range(200):
+                    if buffer_RI_zoom_range[index] < probe_RI_zoom_range[index]:
+                        exclusion_height_analysis_object.all_exclusion_results[result_step_index] = (height_zoom_range[index], buffer_RI_zoom_range[index])
+                        break
+
+                # Stop looping through height steps
+                break
+
+        result_step_index += 1
 
 
 def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
