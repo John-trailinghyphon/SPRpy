@@ -3204,7 +3204,7 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure'),
         dash.Output('exclusion-height-reflectivity-graph', 'figure'),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure'),
-        # I think only these inputs should be allowed for this callback
+        # I think only these inputs should be allowed for this background callback
         dash.Input('exclusion-height-run-button', 'n_clicks'),
         dash.Input('exclusion-height-check-button', 'n_clicks'),
         dash.State('exclusion-height-option-lowerbound', 'value'),
@@ -3239,7 +3239,7 @@ if __name__ == '__main__':
             current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
 
 
-            return
+            return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
             # TODO: First check that the necessary settings have been set. Otherwise open an error modal to inform the user that they need to fix the amount of points.
