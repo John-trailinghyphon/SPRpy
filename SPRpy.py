@@ -3253,6 +3253,7 @@ if __name__ == '__main__':
             # Run exclusion height calculations
             process_all_exclusion_heights(current_exclusion_height_analysis)
 
+
             # Wait/check for progress
             while len(current_exclusion_height_analysis.all_exclusion_results) < len(current_exclusion_height_analysis.injection_points):
                 # set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
@@ -3264,6 +3265,10 @@ if __name__ == '__main__':
             # Calculate mean exclusion height and RI, along with standard deviation (as a tuple)
             current_exclusion_height_analysis.mean_exclusion_height_result = (np.mean(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])))
             current_exclusion_height_analysis.mean_exclusion_RI_result = (np.mean(np.array([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.array([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])))
+
+            # TODO: Getting list index out of range error, but all results are in, so it is something down the line from here I htink
+            # TODO: It is the probe_dn_pair_dfs that is empty, so it is something in the d_n_pair calculations
+
 
             mean_result = 'Mean exclusion height: {res_h_mean} (std: {res_h_std}) \n' \
                           'Mean exclusion RI: {res_ri_mean} (std: {res_ri_std})'.format(
