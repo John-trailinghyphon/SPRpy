@@ -1993,7 +1993,7 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-sensor-label', 'children'),
         dash.Output('exclusion-height-fresnel-analysis-label', 'children'),
         dash.Output('exclusion-height-analysis-option-collapse', 'is_open'),
-        dash.Output('exclusion-height-progress-collapse', 'is_open'),
+        dash.Output('exclusion-height-progress-collapse', 'is_open', allow_duplicate=True),
         dash.Output('exclusion-height-sensorgram-collapse', 'is_open'),
         dash.Output('exclusion-height-result-collapse', 'is_open', allow_duplicate=True),
         dash.Output('exclusion-height-result-mean', 'children', allow_duplicate=True),
@@ -2069,6 +2069,10 @@ if __name__ == '__main__':
             new_point_index = int(clickData['points'][0]['pointIndex'])
             new_point_time = float(clickData['points'][0]['x'])
             new_point_angle = float(clickData['points'][0]['y'])
+
+            # If the user clicks on the first 30 points but the time is larger than 5 minutes, it is probably a marker click mistake
+            if new_point_index < 30 and new_point_time > 5:
+                raise dash.exceptions.PreventUpdate
 
             match action_selected:
                 case 1:  # Offset data
@@ -2967,15 +2971,25 @@ if __name__ == '__main__':
                 n_clicks=0) for exclusion_id in current_session.exclusion_height_analysis_instances]
 
             # Update results text
-            if current_exclusion_height_analysis.mean_exclusion_result is not None:
-                mean_result = 'Mean exclusion height: {res}'.format(res=round(current_exclusion_height_analysis.mean_exclusion_result, 4))
+            if current_exclusion_height_analysis.mean_exclusion_height_result is not None:
+                mean_result = 'Mean exclusion height: {res_h_mean} (std: {res_h_std}) \n' \
+                          'Mean exclusion RI: {res_ri_mean} (std: {res_ri_std})'.format(
+                res_h_mean=round(current_exclusion_height_analysis.mean_exclusion_height_result[0], 2),
+                res_h_std=round(current_exclusion_height_analysis.mean_exclusion_height_result[1], 2),
+                res_ri_mean=round(current_exclusion_height_analysis.mean_exclusion_RI_result[0], 4),
+                res_ri_std=round(current_exclusion_height_analysis.mean_exclusion_RI_result[1], 4))
+
             else:
-                mean_result = 'Mean exclusion height: None'
+                mean_result = 'Mean exclusion height: None \n' \
+                              'Mean exclusion RI: None'
 
             if current_exclusion_height_analysis.all_exclusion_result is not None:
-                all_result = 'All exclusion height: {res}'.format(res=current_exclusion_height_analysis.all_exclusion_result)
+                all_result = 'All exclusion heights: {res_h} \n' \
+                             'All exclusion RI: {res_RI}'.format(res_h=[result[0] for result in current_exclusion_height_analysis.all_exclusion_results],
+                                                                 res_RI=[result[1] for result in current_exclusion_height_analysis.all_exclusion_results])
             else:
-                all_result = 'All exclusion height: None'
+                all_result = 'All exclusion heights: None \n' \
+                             'All exclusion RI: None'
 
             # Update sensorgram figure to new current exclusion height object sensorgram data
             if current_data_path != current_exclusion_height_analysis.initial_data_path:
@@ -3242,16 +3256,108 @@ if __name__ == '__main__':
             set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
 
             # Calculate mean exclusion height and RI, along with standard deviation (as a tuple)
-            current_exclusion_height_analysis.mean_exclusion_height_result = (np.mean(np.ndarray([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.ndarray([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])))
-            current_exclusion_height_analysis.mean_exclusion_RI_result = (np.mean(np.ndarray([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.ndarray([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])))
+            current_exclusion_height_analysis.mean_exclusion_height_result = (np.mean(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])))
+            current_exclusion_height_analysis.mean_exclusion_RI_result = (np.mean(np.array([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.array([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])))
+
+            mean_result = 'Mean exclusion height: {res_h_mean} (std: {res_h_std}) \n' \
+                          'Mean exclusion RI: {res_ri_mean} (std: {res_ri_std})'.format(
+                res_h_mean=round(current_exclusion_height_analysis.mean_exclusion_height_result[0], 2),
+                res_h_std=round(current_exclusion_height_analysis.mean_exclusion_height_result[1], 2),
+                res_ri_mean=round(current_exclusion_height_analysis.mean_exclusion_RI_result[0], 4),
+                res_ri_std=round(current_exclusion_height_analysis.mean_exclusion_RI_result[1], 4))
+
+            all_result = 'All exclusion heights: {res_h} \n' \
+                         'All exclusion RI: {res_RI}'.format(
+                res_h=[result[0] for result in current_exclusion_height_analysis.all_exclusion_results],
+                res_RI=[result[1] for result in current_exclusion_height_analysis.all_exclusion_results])
 
             # Save session
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
             current_session.save_session()
 
-            # TODO: Makes sure to return the correct output based on the results
+            # Update result figures
+            SPRvsTIR_figure = go.Figure(go.Scatter(x=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['TIR angles'],
+                                                   y=current_exclusion_height_analysis.SPR_vs_TIR_dfs[0]['SPR angles'],
+                                                   mode='lines',
+                                                   showlegend=False,
+                                                   line_color='#636EFA'
+                                                   ))
+            SPRvsTIR_figure.update_layout(xaxis_title=r'$\large{\text{TIR angle [ }^{\circ}\text{ ]}}$',
+                                            yaxis_title=r'$\large{\text{SPR angle [ }^{\circ}\text{ ]}}$',
+                                            font_family='Balto',
+                                            font_size=19,
+                                            margin_r=25,
+                                            margin_l=60,
+                                            margin_t=40,
+                                            template='simple_white',
+                                            uirevision=True)
+            SPRvsTIR_figure.update_xaxes(mirror=True,
+                                            showline=True)
+            SPRvsTIR_figure.update_yaxes(mirror=True,
+                                            showline=True)
 
-            return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            mean_reflectivity_figure = go.Figure(
+                go.Scatter(x=current_exclusion_height_analysis.buffer_reflectivity_dfs[0]['angles'],
+                           y=current_exclusion_height_analysis.buffer_reflectivity_dfs[0]['reflectivity'],
+                           mode='lines',
+                           name='Buffer',
+                           showlegend=True,
+                           line_color='#636EFA'
+                           ))
+            mean_reflectivity_figure.add_trace(
+                go.Scatter(x=current_exclusion_height_analysis.probe_reflectivity_dfs[0]['angles'],
+                           y=current_exclusion_height_analysis.probe_reflectivity_dfs[0]['reflectivity'],
+                           mode='lines',
+                           name='Probe',
+                           showlegend=True,
+                           line_color='#EF553B'
+                           ))
+            mean_reflectivity_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                                   yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                                   font_family='Balto',
+                                                   font_size=19,
+                                                   margin_r=25,
+                                                   margin_l=60,
+                                                   margin_t=40,
+                                                   template='simple_white',
+                                                   uirevision=True)
+            mean_reflectivity_figure.update_xaxes(mirror=True,
+                                                  showline=True)
+            mean_reflectivity_figure.update_yaxes(mirror=True,
+                                                  showline=True)
+
+            d_n_pair_figure = go.Figure(go.Scatter(
+                x=current_exclusion_height_analysis.buffer_d_n_pair_dfs[0]['thickness'],
+                y=current_exclusion_height_analysis.buffer_d_n_pair_dfs[0]['refractive index'],
+                mode='lines+markers',
+                name='Buffer',
+                showlegend=True,
+                line_color='#636EFA'
+            ))
+            d_n_pair_figure.add_trace(go.Scatter(
+                x=current_exclusion_height_analysis.probe_d_n_pair_dfs[0]['thickness'],
+                y=current_exclusion_height_analysis.probe_d_n_pair_dfs[0]['refractive index'],
+                mode='lines+markers',
+                name='Probe',
+                showlegend=True,
+                line_color='#EF553B'
+            ))
+            d_n_pair_figure.update_layout(
+                xaxis_title=r'$\large{\text{Height [nm]}}$',
+                yaxis_title=r'$\large{\text{Refractive index}}$',
+                font_family='Balto',
+                font_size=19,
+                margin_r=25,
+                margin_l=60,
+                margin_t=40,
+                template='simple_white',
+                uirevision=True)
+            d_n_pair_figure.update_xaxes(mirror=True,
+                                         showline=True)
+            d_n_pair_figure.update_yaxes(mirror=True,
+                                         showline=True)
+
+            return True, mean_result, all_result, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure
 
         elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
 
@@ -3264,7 +3370,7 @@ if __name__ == '__main__':
             return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     @dash.callback(
-        dash.Output('exclusion-height-result-collapse', 'is_open'),
+        dash.Output('exclusion-height-progress-collapse', 'is_open'),
         dash.Input('exclusion-height-abort-button', 'n_clicks'),
         prevent_initial_call=True)
     def abort_exclusion_height_backend_calculations(abort_button):
