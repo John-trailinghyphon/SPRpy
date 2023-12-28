@@ -633,60 +633,64 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
     buffer_index = 0
     probe_index = 0
     process_step = 0
-    while process_step < min(len(exclusion_height_analysis_object.injection_points) / 2, multiprocessing.cpu_count()-2):
+    required_processes = len(exclusion_height_analysis_object.injection_points) + len(exclusion_height_analysis_object.injection_points) / 2
+    while process_step < min(required_processes, multiprocessing.cpu_count()-2):
+
         # Setup buffer process
         buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
         buffer_connections.append(buffer_parent_conn)
         buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
         buffer_processes.append(buffer_process)
+        buffer_process.start()
         buffer_index += 1
+        process_step += 1
 
         # Setup probe process
-        probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
-        probe_connections.append(probe_parent_conn)
-        probe_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
-        probe_processes.append(probe_process)
-        probe_index += 1
-
-        # Start processes
-        buffer_process.start()
-        probe_process.start()
-
-        # Update step
-        process_step += 2
-
-    # If there are more steps than cpu cores, wait for the next two processes to finish and start new processes for the remaining steps
-    if process_step < len(exclusion_height_analysis_object.injection_points) / 2:
-        for process_index in range(len(exclusion_height_analysis_object.injection_points) / 2 - (multiprocessing.cpu_count()-2)):
-            buffer_processes[process_index].join()
-            probe_processes[process_index].join()
-
-            # Setup buffer process
-            buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
-            buffer_connections.append(buffer_parent_conn)
-            buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
-            buffer_processes.append(buffer_process)
-            buffer_index += 1
-
-            # Setup probe process
+        if buffer_index % 2 == 0:
             probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
             probe_connections.append(probe_parent_conn)
             probe_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
             probe_processes.append(probe_process)
-            probe_index += 1
-
-            # Start processes
-            buffer_process.start()
             probe_process.start()
+            probe_index += 1
+            process_step += 1
+
+    # If there are remaining processes, wait for the next two processes to finish and start new processes for the remaining steps
+    if process_step < required_processes:
+        for process_index in range(required_processes - (multiprocessing.cpu_count()-2)):
+            buffer_processes[process_index].join()
+
+            # Setup buffer process
+            buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
+            buffer_connections.append(buffer_parent_conn)
+            buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(
+            copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
+            buffer_processes.append(buffer_process)
+            buffer_process.start()
+            buffer_index += 1
+            process_step += 1
+
+            if buffer_index % 2 == 0:
+                probe_processes[int(process_index/2)].join()
+
+                # Setup probe process
+                probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
+                probe_connections.append(probe_parent_conn)
+                probe_process = multiprocessing.Process(target=exclusion_height_process, args=(
+                copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
+                probe_processes.append(probe_process)
+                probe_process.start()
+                probe_index += 1
+                process_step += 1
 
     # Wait for each process to finish and collect and record results
-    result_step_index = 0
-    for buffer_process, probe_process, buffer_conn, probe_conn in zip(buffer_processes, probe_processes, buffer_connections, probe_connections):
+    for process_index in range(len(buffer_processes)):
 
         # Check if user has aborted the analysis
         if exclusion_height_analysis_object.abort_flag:
-            for buffer_process, probe_process in zip(buffer_processes, probe_processes):
+            for buffer_process in buffer_processes:
                 buffer_process.terminate()
+            for probe_process in probe_processes:
                 probe_process.terminate()
 
             exclusion_height_analysis_object.abort_flag = False
@@ -694,13 +698,14 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
             return
 
         # Wait for processes to finish and collect results
-        buffer_process.join()
-        probe_process.join()
+        buffer_processes[process_index].join()
+        buffer_RI_result = buffer_connections[process_index].recv()
 
-        buffer_RI_result = buffer_conn.recv()
-        probe_RI_result = probe_conn.recv()
+        if process_index % 2 == 0:
+            probe_processes[int(process_index/2)].join()
+            probe_RI_result = probe_connections[int(process_index/2)].recv()
 
-        exclusion_height_analysis_object.all_exclusion_RI_steps[result_step_index] = pd.DataFrame(data={'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
+        exclusion_height_analysis_object.all_exclusion_RI_steps[process_index] = pd.DataFrame(data={'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
 
         # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_results
         for height_ind in range(len(exclusion_height_analysis_object.height_steps)):
@@ -713,13 +718,11 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
                 # Zoom in on the intersection
                 for index in range(200):
                     if buffer_RI_zoom_range[index] < probe_RI_zoom_range[index]:
-                        exclusion_height_analysis_object.all_exclusion_results[result_step_index] = (height_zoom_range[index], buffer_RI_zoom_range[index])
+                        exclusion_height_analysis_object.all_exclusion_results[process_index] = (height_zoom_range[index], buffer_RI_zoom_range[index])
                         break
 
                 # Stop looping through height steps
                 break
-
-        result_step_index += 1
 
     return
 
