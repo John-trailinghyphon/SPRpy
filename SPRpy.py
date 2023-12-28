@@ -154,7 +154,7 @@ if __name__ == '__main__':
         current_exclusion_height_analysis = None
 
     # Dash app
-    app = dash.Dash(name='SPRpy', title='SPRpy', external_stylesheets=[dash_app_theme], background_callback_manager=background_callback_manager)
+    app = dash.Dash(name='SPRpy', title='SPRpy', external_stylesheets=[dash_app_theme])
     app._favicon = 'icon.ico'
 
     # Dash figures
@@ -2103,7 +2103,7 @@ if __name__ == '__main__':
                                                             marker_size=14,
                                                             marker_symbol='arrow',
                                                             marker_color='black',
-                                                            marker_angle=-20,
+                                                            marker_angle=180,
                                                             showlegend=True))
 
                     if len(current_exclusion_height_analysis.buffer_points) > 0:
@@ -2116,7 +2116,6 @@ if __name__ == '__main__':
                                                             mode='markers',
                                                             marker_size=14,
                                                             marker_symbol='arrow',
-                                                            marker_angle=20,
                                                             showlegend=True))
 
                     if len(current_exclusion_height_analysis.probe_points) > 0:
@@ -2180,7 +2179,7 @@ if __name__ == '__main__':
                                                 marker_size=14,
                                                 marker_symbol='arrow',
                                                 marker_color='black',
-                                                marker_angle=-20,
+                                                marker_angle=180,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=buffer_points_time,
@@ -2189,7 +2188,6 @@ if __name__ == '__main__':
                                                 mode='markers',
                                                 marker_size=14,
                                                 marker_symbol='arrow',
-                                                marker_angle=20,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=probe_points_time,
@@ -2275,7 +2273,7 @@ if __name__ == '__main__':
                                                 marker_size=14,
                                                 marker_symbol='arrow',
                                                 marker_color='black',
-                                                marker_angle=-20,
+                                                marker_angle=180,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=buffer_points_time,
@@ -2284,7 +2282,6 @@ if __name__ == '__main__':
                                                 mode='markers',
                                                 marker_size=14,
                                                 marker_symbol='arrow',
-                                                marker_angle=20,
                                                 showlegend=True))
 
             updated_figure.add_trace(go.Scatter(x=probe_points_time,
@@ -2502,15 +2499,26 @@ if __name__ == '__main__':
                     n_clicks=0) for exclusion_id in current_session.exclusion_height_analysis_instances]
 
                 # Update results text
-                if current_exclusion_height_analysis.mean_exclusion_result is not None:
-                    mean_result = 'Mean exclusion height: {res}'.format(res=round(current_exclusion_height_analysis.mean_exclusion_result, 4))
-                else:
-                    mean_result = 'Mean exclusion height: None'
+                if current_exclusion_height_analysis.mean_exclusion_height_result is not None:
+                    mean_result = 'Mean exclusion height: {res_h_mean} (std: {res_h_std}) \n' \
+                                  'Mean exclusion RI: {res_ri_mean} (std: {res_ri_std})'.format(
+                        res_h_mean=round(current_exclusion_height_analysis.mean_exclusion_height_result[0], 2),
+                        res_h_std=round(current_exclusion_height_analysis.mean_exclusion_height_result[1], 2),
+                        res_ri_mean=round(current_exclusion_height_analysis.mean_exclusion_RI_result[0], 4),
+                        res_ri_std=round(current_exclusion_height_analysis.mean_exclusion_RI_result[1], 4))
 
-                if current_exclusion_height_analysis.all_exclusion_result is not None:
-                    all_result = 'All exclusion height: {res}'.format(res=round(current_exclusion_height_analysis.all_exclusion_result, 4))
                 else:
-                    all_result = 'All exclusion height: None'
+                    mean_result = 'Mean exclusion height: None \n' \
+                                  'Mean exclusion RI: None'
+
+                if current_exclusion_height_analysis.all_exclusion_results is not None:
+                    all_result = 'All exclusion heights: {res_h} \n' \
+                                 'All exclusion RI: {res_RI}'.format(
+                        res_h=[result[0] for result in current_exclusion_height_analysis.all_exclusion_results],
+                        res_RI=[result[1] for result in current_exclusion_height_analysis.all_exclusion_results])
+                else:
+                    all_result = 'All exclusion heights: None \n' \
+                                 'All exclusion RI: None'
 
                 # Update sensorgram figure to new current exclusion height object sensorgram data, also update points labels
                 if current_data_path != current_exclusion_height_analysis.initial_data_path:
@@ -2546,7 +2554,7 @@ if __name__ == '__main__':
                                                             marker_size=14,
                                                             marker_symbol='arrow',
                                                             marker_color='black',
-                                                            marker_angle=-20)
+                                                            marker_angle=180)
                                                  )
                     injection_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.injection_points]
                     injection_time_string = '{length} selected injection points: {points}'.format(
@@ -2559,8 +2567,7 @@ if __name__ == '__main__':
                                                             name='Buffer points',
                                                             mode='markers',
                                                             marker_size=14,
-                                                            marker_symbol='arrow',
-                                                            marker_angle=20,)
+                                                            marker_symbol='arrow')
                                                  )
                     buffer_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.buffer_points]
                     buffer_time_string = '{length} selected buffer points: {points}'.format(length=len(buffer_points_time),
@@ -2983,7 +2990,7 @@ if __name__ == '__main__':
                 mean_result = 'Mean exclusion height: None \n' \
                               'Mean exclusion RI: None'
 
-            if current_exclusion_height_analysis.all_exclusion_result is not None:
+            if current_exclusion_height_analysis.all_exclusion_results is not None:
                 all_result = 'All exclusion heights: {res_h} \n' \
                              'All exclusion RI: {res_RI}'.format(res_h=[result[0] for result in current_exclusion_height_analysis.all_exclusion_results],
                                                                  res_RI=[result[1] for result in current_exclusion_height_analysis.all_exclusion_results])
@@ -3026,7 +3033,7 @@ if __name__ == '__main__':
                                                         marker_size=14,
                                                         marker_symbol='arrow',
                                                         marker_color='black',
-                                                        marker_angle=-20)
+                                                        marker_angle=180)
                                              )
                 injection_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.injection_points]
                 injection_time_string = '{length} selected injection points: {points}'.format(
@@ -3039,8 +3046,7 @@ if __name__ == '__main__':
                                                         name='Buffer points',
                                                         mode='markers',
                                                         marker_size=14,
-                                                        marker_symbol='arrow',
-                                                        marker_angle=20)
+                                                        marker_symbol='arrow')
                                              )
                 buffer_points_time = [round(item[1], 2) for item in current_exclusion_height_analysis.buffer_points]
                 buffer_time_string = '{length} selected buffer points: {points}'.format(length=len(buffer_points_time),
@@ -3195,23 +3201,23 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure'),
         dash.Output('exclusion-height-reflectivity-graph', 'figure'),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure'),
-        # I think only these inputs should be allowed for this background callback
         dash.Input('exclusion-height-run-button', 'n_clicks'),
         dash.Input('exclusion-height-check-button', 'n_clicks'),
         dash.State('exclusion-height-option-lowerbound', 'value'),
         dash.State('exclusion-height-option-upperbound', 'value'),
         dash.State('exclusion-height-option-resolution', 'value'),
         prevent_initial_call=True,
-        background=True,
-        running=[
-            (dash.Output('exclusion-height-run-button', 'disabled'), True, False),
-            (dash.Output('exclusion-height-check-button', 'disabled'), True, False),
-            (dash.Output('exclusion-height-abort-button', 'disabled'), False, True)
-        ],
-        cancel=[dash.Input('exclusion-height-abort-button', 'n_clicks')],
-        progress=[dash.Output('exclusion-height-progressbar', 'value'), dash.Output('exclusion-height-progressbar', 'max')]
+        # background=False,
+        # manager=background_callback_manager,
+        # running=[
+        #     (dash.Output('exclusion-height-run-button', 'disabled'), True, False),
+        #     (dash.Output('exclusion-height-check-button', 'disabled'), True, False),
+        #     (dash.Output('exclusion-height-abort-button', 'disabled'), False, True)
+        # ],
+        # cancel=[dash.Input('exclusion-height-abort-button', 'n_clicks')],
+        # progress=[dash.Output('exclusion-height-progressbar', 'value'), dash.Output('exclusion-height-progressbar', 'max')]
     )
-    def run_exclusion_height_calculations(set_progress, run_button, check_button, abort_button, lower_bound, upper_bound, resolution):
+    def run_exclusion_height_calculations(run_button, check_button, lower_bound, upper_bound, resolution):
         """
         This callback runs the exclusion height calculations in the background. It is triggered by the run button, and
         updates the progress bar. It also updates the result figures when the calculations are done.
@@ -3238,22 +3244,22 @@ if __name__ == '__main__':
             current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
 
             # Overwrite previous results
-            injection_steps = len(current_exclusion_height_analysis.injection_points) / 2
-            current_exclusion_height_analysis.all_exclusion_results = [0] * injection_steps
-            current_exclusion_height_analysis.all_exclusion_RI_steps = [0] * injection_steps
+
+            current_exclusion_height_analysis.all_exclusion_results = [0] * len(current_exclusion_height_analysis.injection_points)
+            current_exclusion_height_analysis.all_exclusion_RI_steps = [0] * len(current_exclusion_height_analysis.injection_points)
             current_exclusion_height_analysis.mean_exclusion_height_result = (None, None)
             current_exclusion_height_analysis.mean_exclusion_RI_result = (None, None)
 
             # Run exclusion height calculations
             process_all_exclusion_heights(current_exclusion_height_analysis)
 
-            # Check for progress
-            while len(current_exclusion_height_analysis.all_exclusion_results) < injection_steps:
-                set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
+            # Wait/check for progress
+            while len(current_exclusion_height_analysis.all_exclusion_results) < len(current_exclusion_height_analysis.injection_points):
+                # set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
                 time.sleep(1)
 
             # Set progress to 100% when done
-            set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
+            # set_progress((len(current_exclusion_height_analysis.all_exclusion_results), injection_steps))
 
             # Calculate mean exclusion height and RI, along with standard deviation (as a tuple)
             current_exclusion_height_analysis.mean_exclusion_height_result = (np.mean(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])))
