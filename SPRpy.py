@@ -608,7 +608,7 @@ if __name__ == '__main__':
                                            figure=reflectivity_fig,
                                            mathjax=True),
                             dbc.ButtonGroup([
-                                dbc.Button('Run modelling',  # TODO: Add spinner to button
+                                dbc.Button('Run modelling',
                                            id='fresnel-reflectivity-run-model',
                                            n_clicks=0,
                                            color='success',
@@ -780,9 +780,9 @@ if __name__ == '__main__':
                                 ], id='exclusion-height-fit-options-form'),
                                 dbc.Collapse([
                                     dash.html.Div([
-                                        dbc.Progress(id='exclusion-height-progressbar', value=0, color='primary', animated=True, striped=True, style={'height': '35px'}),
                                         dbc.ButtonGroup([
-                                            dbc.Button('Run full calculation', id='exclusion-height-run-button',  # TODO: Add spinner to button
+                                            dbc.Spinner(size='md', color='primary', type='border', id='exclusion-height-spinner', spinner_style={'visibility': 'hidden'}),  # TODO: Make spinner size and style  work properly
+                                            dbc.Button('Run full calculation', id='exclusion-height-run-button',
                                                        color='success',
                                                        n_clicks=0,
                                                        size='lg',
@@ -2956,7 +2956,7 @@ if __name__ == '__main__':
                 # Update number of injection steps in pagination of result page
                 num_injection_steps = len(current_exclusion_height_analysis.probe_points)
 
-                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, True, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, num_injection_steps, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, num_injection_steps, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
             else:
                 if len(current_exclusion_height_analysis.injection_points) % 2 != 0:
@@ -3211,6 +3211,7 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-SPRvsTIR-graph', 'figure'),
         dash.Output('exclusion-height-reflectivity-graph', 'figure'),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure'),
+        dash.Output('exclusion-height-spinner', 'spinner_style', allow_duplicate=True),
         dash.Input('exclusion-height-run-button', 'n_clicks'),
         dash.Input('exclusion-height-check-button', 'n_clicks'),
         dash.State('exclusion-height-option-lowerbound', 'value'),
@@ -3357,17 +3358,25 @@ if __name__ == '__main__':
             d_n_pair_figure.update_yaxes(mirror=True,
                                          showline=True)
 
-            return True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure
 
-        elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
+            return True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, {'visibility': 'hidden'}
 
-            # Set resolution and height steps
-            current_exclusion_height_analysis.d_n_pair_resolution = resolution
-            current_exclusion_height_analysis.height_bounds[0] = lower_bound
-            current_exclusion_height_analysis.height_bounds[1] = upper_bound
-            current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
+        # elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
+        #
+        #     # Set resolution and height steps
+        #     current_exclusion_height_analysis.d_n_pair_resolution = resolution
+        #     current_exclusion_height_analysis.height_bounds[0] = lower_bound
+        #     current_exclusion_height_analysis.height_bounds[1] = upper_bound
+        #     current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
+        #
+        #     return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-            return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+    @dash.callback(
+        dash.Output('exclusion-height-spinner', 'spinner_style'),
+        dash.Input('exclusion-height-run-button', 'n_clicks'),
+        prevent_initial_call=True)
+    def exclusion_calculation_activate_spinner(run_button):
+        return {'visibility': 'visible'}
 
     @dash.callback(
         dash.Output('exclusion-height-progress-collapse', 'is_open'),
