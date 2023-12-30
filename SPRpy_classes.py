@@ -441,9 +441,7 @@ class ExclusionHeight:
         self.buffer_bulk_RIs = []  # Calculated from TIR angle of each reflectivity DF
         self.probe_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe) for indexing
         self.probe_bulk_RIs = []  # Calculated from TIR angle of each reflectivity DF
-        self.buffer_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
-        self.probe_d_n_pair_dfs = []  # Use labels 'buffer thickness' and 'buffer refractive index' (and likewise probe) for indexing
-        self.all_exclusion_RI_steps = []
+        self.d_n_pair_dfs = []  # Use labels 'height' and 'buffer RI' and 'probe RI' for indexing
         self.all_exclusion_results = []
         self.mean_exclusion_height_result = None  # Tuple of mean value of exclusion height from all injection steps, and standard deviation
         self.mean_exclusion_RI_result = None  # Tuple of mean value of exclusion RI from all injection steps, and standard deviation
@@ -705,7 +703,7 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
             probe_processes[int(process_index/2)].join()
             probe_RI_result = probe_connections[int(process_index/2)].recv()
 
-        exclusion_height_analysis_object.all_exclusion_RI_steps[process_index] = pd.DataFrame(data={'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
+        exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
 
         # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_results
         for height_ind in range(len(exclusion_height_analysis_object.height_steps)):
