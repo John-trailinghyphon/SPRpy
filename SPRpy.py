@@ -2842,16 +2842,16 @@ if __name__ == '__main__':
 
             if (len(current_exclusion_height_analysis.d_n_pair_dfs) > 0) and not any([isinstance(obj, int) for obj in current_exclusion_height_analysis.d_n_pair_dfs]):
                 d_n_pair_figure = go.Figure(go.Scatter(
-                    x=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer RI'],
-                    y=current_exclusion_height_analysis.d_n_pair_dfs[0]['height'],
+                    x=current_exclusion_height_analysis.d_n_pair_dfs[active_page-1]['buffer RI'],
+                    y=current_exclusion_height_analysis.d_n_pair_dfs[active_page-1]['height'],
                     mode='lines',
                     name='Buffer',
                     showlegend=True,
                     line_color='#636EFA'
                 ))
                 d_n_pair_figure.add_trace(go.Scatter(
-                    x=current_exclusion_height_analysis.d_n_pair_dfs[0]['probe RI'],
-                    y=current_exclusion_height_analysis.d_n_pair_dfs[0]['height'],
+                    x=current_exclusion_height_analysis.d_n_pair_dfs[active_page-1]['probe RI'],
+                    y=current_exclusion_height_analysis.d_n_pair_dfs[active_page-1]['height'],
                     mode='lines',
                     name='Probe',
                     showlegend=True,
