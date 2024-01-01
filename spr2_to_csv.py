@@ -96,9 +96,6 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
         except:
             print('WARNING: Angle ', str(angle), ' was not calibrated')
             continue
-    #  TODO: Change the calibration procedure to instead of looking for each value, find the starting and stopping steps in
-    #   the calibration step array, then divide this into blocks where all angles between two blocks are calibrated
-    #   against the same calibration values
 
     #  Add time values as first column
     time_values_np = np.array(time_values)

@@ -32,14 +32,11 @@
 
 import time
 import types
-
 import dash
 import dash_bootstrap_components as dbc
-import diskcache
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-import math
 from SPRpy_classes import *
 
 # Configuration parameters
@@ -49,14 +46,6 @@ ask_for_previous_session = True
 default_data_folder = r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR'
 dash_app_theme = dbc.themes.SPACELAB  # Options: CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX,
 # MATERIA, MINTY, MORPH, PULSE, QUARTZ, SANDSTONE, SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, VAPOR, YETI, ZEPHYR.
-
-# Background callback cache configuration
-cache = diskcache.Cache("./cache")
-background_callback_manager = dash.DiskcacheManager(cache)
-# fresnel_cache = diskcache.Cache("./fresnel_cache")
-# fresnel_background_callback_manager = dash.DiskcacheManager(fresnel_cache)
-# exclusion_cache = diskcache.Cache("./exclusion_cache")
-# exclusion_background_callback_manager = dash.DiskcacheManager(exclusion_cache)
 
 if __name__ == '__main__':
 
@@ -787,11 +776,6 @@ if __name__ == '__main__':
                                                        n_clicks=0,
                                                        size='lg',
                                                        disabled=False),
-                                            # dbc.Button('Check first', id='exclusion-height-check-button',
-                                            #            color='info',
-                                            #            n_clicks=0,
-                                            #            size='lg',
-                                            #            disabled=False),
                                             dbc.Button('Abort', id='exclusion-height-abort-button',
                                                        color='danger',
                                                        n_clicks=0,
@@ -3218,12 +3202,11 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-spinner', 'spinner_style', allow_duplicate=True),
         dash.Output('exclusion-height-abort-button', 'disabled', allow_duplicate=True),
         dash.Input('exclusion-height-run-button', 'n_clicks'),
-        dash.Input('exclusion-height-check-button', 'n_clicks'),
         dash.State('exclusion-height-option-lowerbound', 'value'),
         dash.State('exclusion-height-option-upperbound', 'value'),
         dash.State('exclusion-height-option-resolution', 'value'),
         prevent_initial_call=True)
-    def run_exclusion_height_calculations(run_button, check_button, lower_bound, upper_bound, resolution):
+    def run_exclusion_height_calculations(run_button, lower_bound, upper_bound, resolution):
         """
         This callback runs the exclusion height calculations in the background. It is triggered by the run button, and
         updates the progress bar. It also updates the result figures when the calculations are done.
@@ -3367,16 +3350,6 @@ if __name__ == '__main__':
                                          showline=True)
 
             return True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
-
-        # elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
-        #
-        #     # Set resolution and height steps
-        #     current_exclusion_height_analysis.d_n_pair_resolution = resolution
-        #     current_exclusion_height_analysis.height_bounds[0] = lower_bound
-        #     current_exclusion_height_analysis.height_bounds[1] = upper_bound
-        #     current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
-        #
-        #     return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     @dash.callback(
         dash.Output('exclusion-height-spinner', 'spinner_style'),
