@@ -654,32 +654,32 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
             process_step += 1
 
     # If there are remaining processes, wait for the next two processes to finish and start new processes for the remaining steps
-    if process_step < required_processes:
-        for process_index in range(required_processes - (multiprocessing.cpu_count()-2)):
-            buffer_processes[process_index].join()
+    process_index = 0
+    while process_step < required_processes:
+        buffer_processes[process_index].join()
 
-            # Setup buffer process
-            buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
-            buffer_connections.append(buffer_parent_conn)
-            buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(
-            copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
-            buffer_processes.append(buffer_process)
-            buffer_process.start()
-            buffer_index += 1
+        # Setup buffer process
+        buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
+        buffer_connections.append(buffer_parent_conn)
+        buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
+        buffer_processes.append(buffer_process)
+        buffer_process.start()
+        buffer_index += 1
+        process_step += 1
+
+        if buffer_index % 2 == 0:
+            probe_processes[int(process_index/2)].join()
+
+            # Setup probe process
+            probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
+            probe_connections.append(probe_parent_conn)
+            probe_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
+            probe_processes.append(probe_process)
+            probe_process.start()
+            probe_index += 1
             process_step += 1
 
-            if buffer_index % 2 == 0:
-                probe_processes[int(process_index/2)].join()
-
-                # Setup probe process
-                probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
-                probe_connections.append(probe_parent_conn)
-                probe_process = multiprocessing.Process(target=exclusion_height_process, args=(
-                copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
-                probe_processes.append(probe_process)
-                probe_process.start()
-                probe_index += 1
-                process_step += 1
+        process_index += 1
 
     # Wait for each process to finish and collect and record results
     for process_index in range(len(buffer_processes)):
