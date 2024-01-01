@@ -71,8 +71,11 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
     ydata = ydata.to_numpy()
 
     # Calculating SPR and TIR angles
-    sensorgram_SPR_angles = np.empty(len(ydata)) * np.nan
-    sensorgram_TIR_angles = np.empty(len(ydata)) * np.nan
+    sensorgram_SPR_angles = np.empty(len(ydata))
+    sensorgram_SPR_angles.fill(np.nan)
+    sensorgram_TIR_angles = np.empty(len(ydata))
+    sensorgram_TIR_angles.fill(np.nan)
+
     for ind, val in enumerate(time):
         reflectivity_spectrum = ydata[ind-1, :]
         min_index = np.argmin(reflectivity_spectrum)

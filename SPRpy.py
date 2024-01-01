@@ -781,17 +781,17 @@ if __name__ == '__main__':
                                 dbc.Collapse([
                                     dash.html.Div([
                                         dbc.ButtonGroup([
-                                            dbc.Spinner(size='md', color='primary', type='border', id='exclusion-height-spinner', spinner_style={'visibility': 'hidden'}),  # TODO: Make spinner size and style  work properly
+                                            dbc.Spinner(color='success', type='border', id='exclusion-height-spinner', spinner_style={'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}),
                                             dbc.Button('Run full calculation', id='exclusion-height-run-button',
                                                        color='success',
                                                        n_clicks=0,
                                                        size='lg',
                                                        disabled=False),
-                                            dbc.Button('Check first', id='exclusion-height-check-button',
-                                                       color='info',
-                                                       n_clicks=0,
-                                                       size='lg',
-                                                       disabled=False),
+                                            # dbc.Button('Check first', id='exclusion-height-check-button',
+                                            #            color='info',
+                                            #            n_clicks=0,
+                                            #            size='lg',
+                                            #            disabled=False),
                                             dbc.Button('Abort', id='exclusion-height-abort-button',
                                                        color='danger',
                                                        n_clicks=0,
@@ -2335,9 +2335,13 @@ if __name__ == '__main__':
 
         elif 'exclusion-height-d-n-pair-graph' == dash.ctx.triggered_id:
 
-            # Catch the case where the user clicks on the d_n_pair graph before any analysis has been performed
+            # Catch the case where the user clicks on the d_n_pair graph before active_page_state has updated
             if isinstance(active_page_state, types.NoneType):
                 active_page_state = 1
+
+            # Do not do anything if the d_n_pair_df list contains integers (i.e. is not complete)
+            if any([isinstance(obj, int) for obj in current_exclusion_height_analysis.d_n_pair_dfs]):
+                raise dash.exceptions.PreventUpdate
 
             # Calculate fresnel trace for hover data points
             buffer_angles_inj_step = current_exclusion_height_analysis.buffer_reflectivity_dfs[active_page_state-1]['angles'].to_numpy()
@@ -2677,7 +2681,7 @@ if __name__ == '__main__':
                 mean_reflectivity_figure.update_yaxes(mirror=True,
                                              showline=True)
 
-                if len(current_exclusion_height_analysis.d_n_pair_dfs) > 0:
+                if (len(current_exclusion_height_analysis.d_n_pair_dfs) > 0) and not any([isinstance(obj, int) for obj in current_exclusion_height_analysis.d_n_pair_dfs]):
 
                     d_n_pair_figure = go.Figure(go.Scatter(
                         x=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer RI'],
@@ -2852,7 +2856,7 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                                   showline=True)
 
-            if len(current_exclusion_height_analysis.d_n_pair_dfs) > 0:
+            if (len(current_exclusion_height_analysis.d_n_pair_dfs) > 0) and not any([isinstance(obj, int) for obj in current_exclusion_height_analysis.d_n_pair_dfs]):
                 d_n_pair_figure = go.Figure(go.Scatter(
                     x=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer RI'],
                     y=current_exclusion_height_analysis.d_n_pair_dfs[0]['height'],
@@ -3154,7 +3158,7 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                          showline=True)
 
-            if len(current_exclusion_height_analysis.d_n_pair_dfs) > 0:
+            if (len(current_exclusion_height_analysis.d_n_pair_dfs) > 0) and not any([isinstance(obj, int) for obj in current_exclusion_height_analysis.d_n_pair_dfs]):
 
                 d_n_pair_figure = go.Figure(go.Scatter(
                     x=current_exclusion_height_analysis.d_n_pair_dfs[0]['buffer RI'],
@@ -3212,6 +3216,7 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-reflectivity-graph', 'figure'),
         dash.Output('exclusion-height-d-n-pair-graph', 'figure'),
         dash.Output('exclusion-height-spinner', 'spinner_style', allow_duplicate=True),
+        dash.Output('exclusion-height-abort-button', 'disabled', allow_duplicate=True),
         dash.Input('exclusion-height-run-button', 'n_clicks'),
         dash.Input('exclusion-height-check-button', 'n_clicks'),
         dash.State('exclusion-height-option-lowerbound', 'value'),
@@ -3237,6 +3242,9 @@ if __name__ == '__main__':
         global current_exclusion_height_analysis
 
         if 'exclusion-height-run-button' == dash.ctx.triggered_id:
+
+            # Reset abort flag
+            current_exclusion_height_analysis.abort_flag = False
 
             # Set resolution and height steps
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
@@ -3358,8 +3366,7 @@ if __name__ == '__main__':
             d_n_pair_figure.update_yaxes(mirror=True,
                                          showline=True)
 
-
-            return True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, {'visibility': 'hidden'}
+            return True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
 
         # elif 'exclusion-height-check-button' == dash.ctx.triggered_id:
         #
@@ -3373,21 +3380,19 @@ if __name__ == '__main__':
 
     @dash.callback(
         dash.Output('exclusion-height-spinner', 'spinner_style'),
+        dash.Output('exclusion-height-abort-button', 'disabled'),
         dash.Input('exclusion-height-run-button', 'n_clicks'),
-        prevent_initial_call=True)
-    def exclusion_calculation_activate_spinner(run_button):
-        return {'visibility': 'visible'}
-
-    @dash.callback(
-        dash.Output('exclusion-height-progress-collapse', 'is_open'),
         dash.Input('exclusion-height-abort-button', 'n_clicks'),
         prevent_initial_call=True)
-    def abort_exclusion_height_backend_calculations(abort_button):
+    def exclusion_calculation_activate_spinner(run_button, abort_button):
         global current_exclusion_height_analysis
 
-        current_exclusion_height_analysis.abort_flag = True
-        time.sleep(2)  # Wait a bit for the other callback before aborting
+        if 'exclusion-height-run-button' == dash.ctx.triggered_id:
+            return {'visibility': 'visible', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, False
 
-        return dash.no_update
+        elif 'exclusion-height-abort-button' == dash.ctx.triggered_id:
+            current_exclusion_height_analysis.abort_flag = True
+
+            return {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
 
     app.run(debug=True, use_reloader=False, host='127.0.0.1', port=8050)
