@@ -631,7 +631,7 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
     buffer_index = 0
     probe_index = 0
     process_step = 0
-    required_processes = len(exclusion_height_analysis_object.injection_points) + len(exclusion_height_analysis_object.injection_points) / 2
+    required_processes = int(len(exclusion_height_analysis_object.injection_points) + len(exclusion_height_analysis_object.injection_points) / 2)
     while process_step < min(required_processes, multiprocessing.cpu_count()-2):
 
         # Setup buffer process
