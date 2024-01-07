@@ -1,0 +1,7 @@
+# Configuration parameters for SPRpy_run.py
+
+default_data_folder = 'C:\\Users\\anjohn\\OneDrive - Chalmers\\Dahlin group\\Data\\SPR'
+TIR_range_water_or_long_measurement = [60.8, 63]
+TIR_range_air_or_few_scans = [40.9, 41.8]
+ask_for_previous_session = true
+
