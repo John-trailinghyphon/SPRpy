@@ -1,7 +1,4 @@
-# This is the main file where the webapp is initiated and further selections are made. It should ask for a datafile and
-# either load .csv files directly or run conversion of .spr2 files using 'spr2_to_csv.py' in a separate thread
-# (preferably showing a progress bar if possible)
-
+# This is the main file where the webapp is initiated and further selections are made.
 
 # TODO: Add an analysis section with de Feijter surface coverage analysis. The idea is that one could select different
 #  parts of the response curve and calculate the surface coverage based on provided constants
@@ -31,6 +28,7 @@
 # 10 '#FECB52'
 
 import time
+import tomllib
 import types
 import dash
 import dash_bootstrap_components as dbc
@@ -39,15 +37,21 @@ import plotly.express as px
 import plotly.graph_objects as go
 from SPRpy_classes import *
 
-# Configuration parameters
-TIR_range_water_or_long_measurement = (60.8, 63)  # TIR range for water --> Automatically used for 50 or more scans per file
-TIR_range_air_or_few_scans = (40.9, 41.8)  # TIR range for dry scans --> Automatically used for less than 50 scans per file
-ask_for_previous_session = True
-default_data_folder = r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Data\SPR'
+# Dash app theme
 dash_app_theme = dbc.themes.SPACELAB  # Options: CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX,
 # MATERIA, MINTY, MORPH, PULSE, QUARTZ, SANDSTONE, SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, VAPOR, YETI, ZEPHYR.
 
 if __name__ == '__main__':
+
+    # Read configuration parameters
+    with open('config.toml', 'r') as f:
+        config = tomllib.loads(f.read())
+
+    # Access individual parameters as variables
+    TIR_range_water_or_long_measurement = config["TIR_range_water_or_long_measurement"]  # TIR range for water --> Automatically used for 50 or more scans per file
+    TIR_range_air_or_few_scans = config["TIR_range_air_or_few_scans"]  # TIR range for dry scans --> Automatically used for less than 50 scans per file
+    ask_for_previous_session = config["ask_for_previous_session"]
+    default_data_folder = config["default_data_folder"]
 
     load_session_flag = False
     if ask_for_previous_session is True:

@@ -1,4 +1,4 @@
-# Contains fresnel function for the transfer-matrix method and curve fitting
+# Contains fresnel functions for the transfer-matrix method and curve fitting and TIR angle determination
 
 import numpy as np
 import pandas as pd

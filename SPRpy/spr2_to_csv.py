@@ -5,6 +5,9 @@ import tkinter
 import multiprocessing as mp
 from tkinter.filedialog import askopenfilename, askopenfilenames
 
+# Default .csv file for step vs angle polynomial coefficents (see "SPR_poly_coefficients_generator.py)
+poly_file = r'SPR_poly_coeff_22-01-29.csv'
+
 
 def extract_parameters(content):
 
@@ -126,8 +129,6 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
 
     try:
         #  Read default polynomial file
-        poly_file = r'C:\Users\anjohn\OneDrive - Chalmers\Dahlin group\Python\PhD-Projects\SPR_poly_coeff_22-01-29.csv'
-
         with open(poly_file, 'r') as p_file:
             polycoeffs = [0]*4
             for p_ind in range(4):
@@ -167,10 +168,7 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
         for ind in range(4):
             angle_offsets[ind] = np.polyval(polycoeffs[ind], TIR_steps[ind]) - TIR_theoretical[ind]
 
-        # extract_spectra(content, 0, polycoeffs[0], angle_offsets[0], start_pos, 10, time_value_list, sp2_file)
-
         #  Extract and calibrate spectra for each laser
-       
         jobs = []
         for i in range(4):
             pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], angle_offsets[i], start_pos, scan_speed, time_value_list, spr2_file))

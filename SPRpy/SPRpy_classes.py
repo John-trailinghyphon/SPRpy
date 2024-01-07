@@ -1,3 +1,5 @@
+# This file contains all SPRpy classes and methods and functions that depend on the class objects
+
 import datetime
 import os
 import scipy
@@ -35,8 +37,7 @@ class Session:
         self.exclusion_height_analysis_ID_count = 0
         self.current_data_path = current_data_path
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to SPRpy!' \
-            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.' \
-            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'You can import previous results under "File and session controls".'
+            + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.'
 
     def remove_sensor(self, sensor_object_id):
         """

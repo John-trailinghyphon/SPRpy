@@ -1,20 +1,11 @@
+# This file contains utility functions
+
 import numpy as np
 import tkinter
 from tkinter.filedialog import askopenfilename, askdirectory
 import pandas as pd
 import re
 from fresnel_transfer_matrix import TIR_determination
-
-
-# def generate_id():
-#     """
-#     Each time this function is called within an object it can return a new ID.
-#     :yield:
-#     """
-#     new_id = 0
-#     while True:
-#         yield new_id
-#         new_id += 1
 
 
 def select_folder(prompt, prompt_folder=None):
