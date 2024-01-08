@@ -1,4 +1,4 @@
-# Configuration parameters for SPRpy_run.py
+# Configuration parameters for SPRpy.py
 
 default_data_folder = 'C:\\Users\\anjohn\\OneDrive - Chalmers\\Dahlin group\\Data\\SPR'
 TIR_range_water_or_long_measurement = [60.8, 63]
