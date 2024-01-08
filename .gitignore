@@ -4,3 +4,4 @@ venv
 venv_laptop
 SPRpy/pyproject.toml
 dist
+pyproject.toml
