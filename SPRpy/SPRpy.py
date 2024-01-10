@@ -2530,11 +2530,9 @@ if __name__ == '__main__':
 
                 if current_exclusion_height_analysis.all_exclusion_results is not None:
                     all_result_heights = 'All exclusion heights: {res_h}'.format(
-                        res_h=[round(result[0], 2) for result in
-                               current_exclusion_height_analysis.all_exclusion_results])
+                        res_h=np.round(current_exclusion_height_analysis.all_exclusion_results[0, :], decimals=2))
                     all_result_RI = 'All exclusion RI: {res_RI}'.format(
-                        res_RI=[round(result[1], 4) for result in
-                                current_exclusion_height_analysis.all_exclusion_results])
+                        res_RI=np.round(current_exclusion_height_analysis.all_exclusion_results[1, :], decimals=4))
                 else:
                     all_result_heights = 'All exclusion heights: None'
                     all_result_RI = 'All exclusion RI: None'
@@ -3009,9 +3007,9 @@ if __name__ == '__main__':
 
             if current_exclusion_height_analysis.all_exclusion_results is not None:
                 all_result_heights = 'All exclusion heights: {res_h}'.format(
-                    res_h=[round(result[0], 2) for result in current_exclusion_height_analysis.all_exclusion_results])
+                    res_h=np.round(current_exclusion_height_analysis.all_exclusion_results[0, :], decimals=2))
                 all_result_RI = 'All exclusion RI: {res_RI}'.format(
-                    res_RI=[round(result[1], 4) for result in current_exclusion_height_analysis.all_exclusion_results])
+                    res_RI=np.round(current_exclusion_height_analysis.all_exclusion_results[1, :], decimals=4))
             else:
                 all_result_heights = 'All exclusion heights: None'
                 all_result_RI = 'All exclusion RI: None'
@@ -3280,8 +3278,8 @@ if __name__ == '__main__':
                 res_ri_mean=round(current_exclusion_height_analysis.mean_exclusion_RI_result[0], 4),
                 res_ri_std=round(current_exclusion_height_analysis.mean_exclusion_RI_result[1], 4))
 
-            all_result_heights = 'All exclusion heights: {res_h}'.format(res_h=[round(result[0], 2) for result in current_exclusion_height_analysis.all_exclusion_results])
-            all_result_RI = 'All exclusion RI: {res_RI}'.format(res_RI=[round(result[1], 4) for result in current_exclusion_height_analysis.all_exclusion_results])
+            all_result_heights = 'All exclusion heights: {res_h}'.format(res_h=np.round(current_exclusion_height_analysis.all_exclusion_results[0, :], decimals=2))
+            all_result_RI = 'All exclusion RI: {res_RI}'.format(res_RI=np.round(current_exclusion_height_analysis.all_exclusion_results[1, :], decimals=4))
 
             # Save session
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
