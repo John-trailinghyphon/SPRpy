@@ -36,6 +36,7 @@ import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 from SPRpy_classes import *
+from __about__ import version
 
 # Dash app theme
 dash_app_theme = dbc.themes.SPACELAB  # Options: CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX,
@@ -52,6 +53,7 @@ if __name__ == '__main__':
     TIR_range_air_or_few_scans = config["TIR_range_air_or_few_scans"]  # TIR range for dry scans --> Automatically used for less than 50 scans per file
     ask_for_previous_session = config["ask_for_previous_session"]
     default_data_folder = config["default_data_folder"]
+    session_host = config["session_host"]
 
     load_session_flag = False
     if ask_for_previous_session is True:
@@ -59,13 +61,22 @@ if __name__ == '__main__':
         session_prompt = str(input(
             r'Would you like to load a previous session? Type "y" for yes, or simply skip by pressing enter.'))
 
-        if session_prompt == 'y' or session_prompt == '"y"' or session_prompt == '\'y\'':
+        if session_prompt == 'y' or session_prompt == 'Y' or session_prompt == '"y"' or session_prompt == '\'y\'':
 
+            print('Loading previous session, please wait...')
             load_session_flag = True
             session_file = select_file(prompt=r'Choose a previous session file', prompt_folder=os.getcwd())
 
             with open(session_file, 'rb') as file:
                 current_session = pickle.load(file)
+
+            # Assert that the session file is of the same version as the current SPRpy version
+            if current_session.version != version:
+                print('WARNING: The session file was created with a different version of SPRpy than the current one. '
+                      'This WILL cause errors for differing X and MAY cause errors for differing Y in version X.Y.Z'
+                      'The session file version was ' + current_session.version + ' and the '
+                      'currently used SPRpy version is ' + version + '.')
+                print('In case of errors, consider pip installing the version of SPRpy (python -m pip install SPRpy==' + current_session.version + ') that was used to create the session file in a separate virtual environment and run SPRpy from there instead.')
 
             # Make sure the location of the session file is updated
             current_session.location = os.path.dirname(session_file)
@@ -113,10 +124,11 @@ if __name__ == '__main__':
     if (ask_for_previous_session is False) or (load_session_flag is False):
 
         # Prompt user for initial measurement data
+        print('Please wait...')
         current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
 
         # Create initial session
-        current_session = Session(current_data_path=current_data_path)
+        current_session = Session(version, current_data_path=current_data_path)
 
         # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
         if ydata_df.shape[0] > 50:
@@ -203,6 +215,7 @@ if __name__ == '__main__':
                 ),
                 dash.dcc.Markdown('''
                 # **#SPRpy#**
+                ### ** v ''' + version + '''**
                 ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
                 dbc.Card(
                     [
@@ -219,7 +232,7 @@ if __name__ == '__main__':
             ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
         ),
 
-        # TODO: Add an Interval component that updates the session log once per minute (when starting to add log messages)
+        # TODO: Add an Interval component that updates the session log once per minute (when/if starting to add automatic log messages)
         # Session log div
         dash.html.Div([
             dash.html.H3("Session log", className='dash-bootstrap'),
@@ -2069,8 +2082,8 @@ if __name__ == '__main__':
             new_point_time = float(clickData['points'][0]['x'])
             new_point_angle = float(clickData['points'][0]['y'])
 
-            # If the user clicks on the first 30 points but the time is larger than 5 minutes, it is probably a marker click mistake
-            if new_point_index < 30 and new_point_time > 5:
+            # If the user clicks on the first 20 points but the time is larger than 3 minutes, it is probably a marker click mistake
+            if new_point_index < 20 and new_point_time > 3:
                 raise dash.exceptions.PreventUpdate
 
             match action_selected:
@@ -3372,4 +3385,4 @@ if __name__ == '__main__':
 
             return {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
 
-    app.run(debug=True, use_reloader=False, host='127.0.0.1', port=8050)
+    app.run(debug=True, use_reloader=False, host=session_host, port=8050)

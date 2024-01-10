@@ -18,7 +18,8 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, name='Session', directory=os.getcwd(), current_data_path=None):
+    def __init__(self, version, name='Session', directory=os.getcwd(), current_data_path=None):
+        self.version = version
         self.name = datetime.datetime.now().__str__()[0:16].replace(':', '_') + ' ' + name
         if not os.path.exists(directory + r'\SPRpy sessions'):
             os.mkdir(directory + r'\SPRpy sessions')
@@ -38,6 +39,18 @@ class Session:
         self.current_data_path = current_data_path
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to SPRpy!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.'
+
+    def update_name_and_location(self, new_name):
+        """
+        Updates the name and location of the session.
+        :param new_name: string
+        :return:
+        """
+
+        self.name = new_name
+        os.rename(self.location, self.location.replace(self.location.split('\\')[-1], new_name))
+        self.location = self.location.replace(self.location.split('\\')[-1], new_name)
+        return
 
     def remove_sensor(self, sensor_object_id):
         """
@@ -82,7 +95,7 @@ class Session:
         """
 
         # Save session object
-        with open(self.location + r'\Session file.pickle', 'wb') as save_file:
+        with open(self.location + r'\Session file (v{version_}).pickle'.format(version_=self.version.replace('.', '_')), 'wb') as save_file:
             pickle.dump(self, save_file)
 
         # Save sensor instances
@@ -105,7 +118,7 @@ class Session:
     def save_session(self):
 
         # Save session object
-        with open(self.location + r'\Session file.pickle', 'wb') as save_file:
+        with open(self.location + r'\Session file (v{version_}).pickle'.format(version_=self.version.replace('.', '_')), 'wb') as save_file:
             pickle.dump(self, save_file)
 
         return
