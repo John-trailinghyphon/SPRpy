@@ -3257,7 +3257,7 @@ if __name__ == '__main__':
             current_exclusion_height_analysis.height_steps = np.linspace(lower_bound, upper_bound, resolution)
 
             # Overwrite previous results
-            current_exclusion_height_analysis.all_exclusion_results = [0] * len(current_exclusion_height_analysis.injection_points)
+            current_exclusion_height_analysis.all_exclusion_results = np.zeros((2, len(current_exclusion_height_analysis.injection_points)))
             current_exclusion_height_analysis.d_n_pair_dfs = [0] * len(current_exclusion_height_analysis.injection_points)
             current_exclusion_height_analysis.mean_exclusion_height_result = (None, None)
             current_exclusion_height_analysis.mean_exclusion_RI_result = (None, None)
@@ -3266,12 +3266,12 @@ if __name__ == '__main__':
             process_all_exclusion_heights(current_exclusion_height_analysis)
 
             # Wait for all results to be in
-            while current_exclusion_height_analysis.all_exclusion_results[-1] == 0:
+            while 0 in current_exclusion_height_analysis.all_exclusion_results:
                 time.sleep(3)
 
             # Calculate mean exclusion height and RI, along with standard deviation (as a tuple)
-            current_exclusion_height_analysis.mean_exclusion_height_result = (np.mean(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.array([ind[0]for ind in current_exclusion_height_analysis.all_exclusion_results])))
-            current_exclusion_height_analysis.mean_exclusion_RI_result = (np.mean(np.array([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])), np.std(np.array([ind[1]for ind in current_exclusion_height_analysis.all_exclusion_results])))
+            current_exclusion_height_analysis.mean_exclusion_height_result = (np.nanmean(current_exclusion_height_analysis.all_exclusion_results[0, :]), np.nanstd(current_exclusion_height_analysis.all_exclusion_results[0, :]))
+            current_exclusion_height_analysis.mean_exclusion_RI_result = (np.nanmean(current_exclusion_height_analysis.all_exclusion_results[1, :]), np.nanstd(current_exclusion_height_analysis.all_exclusion_results[1, :]))
 
             mean_result_height = 'Mean exclusion height: {res_h_mean} (std: {res_h_std})'.format(
                 res_h_mean=round(current_exclusion_height_analysis.mean_exclusion_height_result[0], 2),

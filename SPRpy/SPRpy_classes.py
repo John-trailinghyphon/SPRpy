@@ -736,6 +736,9 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
                 # Stop looping through height steps
                 break
 
+    # Replace zeros with NaNs for non-intersecting results
+    exclusion_height_analysis_object.all_exclusion_results = [np.NaN if result == 0 else result for result in exclusion_height_analysis_object.all_exclusion_results]
+
     return
 
 
