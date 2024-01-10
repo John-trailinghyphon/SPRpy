@@ -944,7 +944,7 @@ if __name__ == '__main__':
                         ['Summary'],
                         id='summary-tab-content')
                 ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
-            ], id='analysis-tabs', active_tab='exclusion-height-tab'),
+            ], id='analysis-tabs', active_tab='quantification-tab'),
         ], style={'margin-left': '2%', 'margin-right': '2%'})
     ])
 

@@ -730,14 +730,15 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
                 # Zoom in on the intersection
                 for index in range(200):
                     if buffer_RI_zoom_range[index] < probe_RI_zoom_range[index]:
-                        exclusion_height_analysis_object.all_exclusion_results[process_index] = (height_zoom_range[index], buffer_RI_zoom_range[index])
+                        exclusion_height_analysis_object.all_exclusion_results[0, process_index] = height_zoom_range[index]
+                        exclusion_height_analysis_object.all_exclusion_results[1, process_index] = buffer_RI_zoom_range[index]
                         break
 
                 # Stop looping through height steps
                 break
 
     # Replace zeros with NaNs for non-intersecting results
-    exclusion_height_analysis_object.all_exclusion_results = [np.NaN if result == 0 else result for result in exclusion_height_analysis_object.all_exclusion_results]
+    exclusion_height_analysis_object.all_exclusion_results = np.where(exclusion_height_analysis_object.all_exclusion_results == 0, np.NaN, exclusion_height_analysis_object.all_exclusion_results)
 
     return
 
