@@ -213,10 +213,14 @@ if __name__ == '__main__':
                         # dbc.CardBody([dash.html.H4('Fresnel modelling', className='card-title')])
                     ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
                 ),
-                dash.dcc.Markdown('''
-                # **#SPRpy#**
-                ### ** v ''' + version + '''**
-                ''', className='dash-bootstrap', style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
+                dash.html.Div([
+                    dash.dcc.Markdown('''
+                    # **#SPRpy#**
+                    ''', className='dash-bootstrap'),
+                    dash.dcc.Markdown('''
+                        #### **v ''' + version + '''**
+                        ''', className='dash-bootstrap', style={'display': 'flex', 'justify-content': 'center', 'margin-right': '10px'}),
+                    ], style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
                 dbc.Card(
                     [
                         dbc.CardImg(src='static/images/SPR_angular_spectrum.svg', top=True),
