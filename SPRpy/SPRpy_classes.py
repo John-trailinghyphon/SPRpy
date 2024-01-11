@@ -48,8 +48,8 @@ class Session:
         """
 
         self.name = new_name
-        os.rename(self.location, self.location.replace(self.location.split('\\')[-1], new_name))
-        self.location = self.location.replace(self.location.split('\\')[-1], new_name)
+        os.rename(self.location, self.location.replace(self.location.split('/')[-1], new_name))
+        self.location = self.location.replace(self.location.split('/')[-1], new_name)
         return
 
     def remove_sensor(self, sensor_object_id):
