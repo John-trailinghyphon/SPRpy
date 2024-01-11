@@ -179,8 +179,8 @@ if __name__ == '__main__':
     sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
     d_n_pair_fig = go.Figure(go.Scatter(
-                x=0,
-                y=0,
+                x=[0],
+                y=[0],
                 mode='lines',
                 name='Buffer',
                 showlegend=False,
