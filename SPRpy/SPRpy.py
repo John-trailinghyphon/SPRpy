@@ -1,19 +1,5 @@
-# This is the main file where the webapp is initiated and further selections are made.
-
-# TODO: Add an analysis section with de Feijter surface coverage analysis. The idea is that one could select different
-#  parts of the response curve and calculate the surface coverage based on provided constants
-
-# TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
-#          the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
-#          fails the user is prompted to select the new path for the file.
-
-# Regarding the dash app below
-
-# TODO: "Main control DIV". Need buttons for controlling a lot of things:
-#  - Session control (this should be done lasts, as it requires to figure out how to reinitiate the whole Dash interface with new values)
-#     * removing sensor objects and analysis objects from the active session
-#  - Exporting the finished analysis as a HTML file with retained interactivity (omitting control DIV elements). This
-#  can then be added to obsidian notes for instance, allowing straight forward result documentation.
+# This is the main file where SPRpy is initiated. It is run by executing the file in a Python interpreter.
+# The webapp is built using Dash (https://dash.plotly.com/), which is a Python framework for building webapps.
 
 # Plotly default discrete colors
 # 1 '#636EFA',
@@ -274,7 +260,7 @@ if __name__ == '__main__':
             dbc.InputGroup(
                 [
                     dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
-                    dbc.Button('Rename session', id='rename-session-button', n_clicks=0, color='success'),
+                    dbc.Button('Rename session', id='rename-session-button', n_clicks=0, color='warning'),
                     dbc.Input(id='test-input', value='', type='text', style={'margin-right': '2%'})
                 ]
             )
@@ -294,11 +280,12 @@ if __name__ == '__main__':
                            color='primary',
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
                 dash.dcc.Store(id='loaded-new-measurement', storage_type='session'),
-                dbc.Button('Import result',
-                           id='import-from-session',
-                           n_clicks=0,
-                           color='primary',
-                           title='Use this to import previous results from another session'),
+                # TODO: Add functionality for this button
+                # dbc.Button('Import result',
+                #            id='import-from-session',
+                #            n_clicks=0,
+                #            color='primary',
+                #            title='Use this to import previous results from another session'),
                 dbc.DropdownMenu(
                     id='create-new-sensor-dropdown',
                     label='Add new sensor',

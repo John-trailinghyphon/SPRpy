@@ -1,7 +1,5 @@
-fresnel_transfer_matrix_manual_conversion(likely incorrect).py
 SPRpy/SPRpy sessions/
 venv
 venv_laptop
-SPRpy/pyproject.toml
 dist
 pyproject.toml

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "SPRpy"
-version = "0.1.6"
+version = "0.1.0"
 description = 'SPRpy is an open-source project developing GUI data analysis tools for multi-parameter surface plasmon resonance measurements.  '
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,10 +39,10 @@ Issues = "https://github.com/John-trailinghyphon/SPRpy/issues"
 Source = "https://github.com/John-trailinghyphon/SPRpy"
 
 [project.scripts]
-SPRpy-create-desktop = "SPRpy.create_desktop_shortcut:create_shortcut"
+SPRpy-desktop-shortcut = "SPRpy.create_desktop_shortcut:create_shortcut"
 
 [project.gui-scripts]
-SPRpy-create-desktop = "SPRpy.create_desktop_shortcut:create_shortcut"
+SPRpy-desktop-shortcut = "SPRpy.create_desktop_shortcut:create_shortcut"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -53,6 +53,7 @@ include = [
   "SPRpy/SPR_poly_coeff_22-01-29.csv",
   "SPRpy/assets",
   "SPRpy/static",
+  "SPRpy/example data",
 ]
 exclude = [
   "SPRpy/SPRpy sessions"
@@ -67,6 +68,7 @@ include = [
   "SPRpy/SPR_poly_coeff_22-01-29.csv",
   "SPRpy/assets",
   "SPRpy/static",
+  "SPRpy/example data",
 ]
 exclude = [
   "SPRpy/SPRpy sessions"
