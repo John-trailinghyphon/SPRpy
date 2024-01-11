@@ -1,6 +1,6 @@
 # Configuration parameters for SPRpy.py
 
-default_data_folder = 'C:\\Users\\anjohn\\OneDrive - Chalmers\\Dahlin group\\Data\\SPR'  # Default folder for loading data files
+default_data_folder = 'C:\Users\EXAMPLE USER'  # Default folder for loading data files
 TIR_range_water_or_long_measurement = [60.8, 63]  # TIR range for water --> Automatically used for 50 or more scans per file
 TIR_range_air_or_few_scans = [40.9, 41.8]  # TIR range for air --> Automatically used for less than 50 scans per file
 ask_for_previous_session = true  # Set to 'false' if you don't want to be asked for a previous session
