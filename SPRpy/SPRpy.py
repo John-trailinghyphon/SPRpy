@@ -78,12 +78,9 @@ if __name__ == '__main__':
                       'currently used SPRpy version is ' + version + '.')
                 print('In case of errors, consider pip installing the version of SPRpy (python -m pip install SPRpy==' + current_session.version + ') that was used to create the session file in a separate virtual environment and run SPRpy from there instead.')
 
-            # Make sure the location of the session file is updated
+            # Make sure the location and name of the session file is updated
             current_session.location = os.path.dirname(session_file)
-            if not os.path.exists(current_session.location + r'\Sensors'):
-                os.mkdir(current_session.location + r'\Sensors')
-            if not os.path.exists(current_session.location + r'\Analysis instances'):
-                os.mkdir(current_session.location + r'\Analysis instances')
+            current_session.name = current_session.location.split('/')[-1]
 
             # Load measurement data
             current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(
@@ -195,6 +192,27 @@ if __name__ == '__main__':
     sensorgram_fig.update_xaxes(mirror=True, showline=True)
     sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
+    d_n_pair_fig = go.Figure(go.Scatter(
+                x=0,
+                y=0,
+                mode='lines',
+                name='Buffer',
+                showlegend=False,
+                line_color='#636EFA'
+            ))
+    d_n_pair_fig.update_layout(
+        xaxis_title=r'$\large{\text{Refractive index}}$',
+        yaxis_title=r'$\large{\text{Height [nm]}}$',
+        font_family='Balto',
+        font_size=19,
+        margin_r=25,
+        margin_l=60,
+        margin_t=40,
+        template='simple_white',
+        uirevision=True)
+    d_n_pair_fig.update_xaxes(mirror=True, showline=True)
+    d_n_pair_fig.update_yaxes(mirror=True, showline=True)
+
     # Dash webapp layout
     app.layout = dash.html.Div([
 
@@ -239,7 +257,9 @@ if __name__ == '__main__':
         # TODO: Add an Interval component that updates the session log once per minute (when/if starting to add automatic log messages)
         # Session log div
         dash.html.Div([
-            dash.html.H3("Session log", className='dash-bootstrap'),
+            dash.html.H3('{name_} - Session log'.format(name_=current_session.name),
+                         className='dash-bootstrap',
+                         id='session-title'),
             dash.dcc.Textarea(
                 id='console',
                 value=current_session.log,
@@ -254,6 +274,7 @@ if __name__ == '__main__':
             dbc.InputGroup(
                 [
                     dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
+                    dbc.Button('Rename session', id='rename-session-button', n_clicks=0, color='success'),
                     dbc.Input(id='test-input', value='', type='text', style={'margin-right': '2%'})
                 ]
             )
@@ -261,7 +282,7 @@ if __name__ == '__main__':
         ], style={'margin-left': '2%'}),
 
         # File and session control
-        dash.html.H3("File and session controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
+        dash.html.H3("File and sensor controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
         dash.html.Div(['Current measurement file:    ', current_data_path.split('/')[-1]],
                       id='datapath-textfield',
                       style={'margin-right': '10px', 'textAlign': 'center'}),
@@ -912,7 +933,7 @@ if __name__ == '__main__':
                                     ], style={'width': '33%'}),
                                     dash.html.Div([
                                         dash.dcc.Graph(id='exclusion-height-d-n-pair-graph',
-                                                       figure=reflectivity_fig,
+                                                       figure=d_n_pair_fig,
                                                        mathjax=True),
                                         dbc.ButtonGroup([
                                             dbc.DropdownMenu(
@@ -951,18 +972,33 @@ if __name__ == '__main__':
     # Adding note to session log
     @dash.callback(
         dash.Output('console', 'value'),
+        dash.Output('session-title', 'children'),
+        dash.Output('test-input', 'value'),
         dash.Input('submit-button', 'n_clicks'),
+        dash.Input('rename-session-button', 'n_clicks'),
         dash.State('test-input', 'value'),
         prevent_initial_call=True)
-    def update_session_log(input1, state2):
+    def update_session_log(input1, input2, state1):
 
         global current_session
 
-        new_message = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state2
-        current_session.log = new_message
-        current_session.save_session()
+        if 'submit-button' == dash.ctx.triggered_id:
 
-        return new_message
+            new_message = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state1
+            current_session.log = new_message
+            current_session.save_session()
+
+            return new_message, dash.no_update, ''
+
+        elif 'rename-session-button' == dash.ctx.triggered_id:
+
+            current_session.update_name_and_location(state1)
+            current_session.save_session()
+            new_name = '{name_} - Session log'.format(name_=current_session.name)
+
+            return dash.no_update, new_name, ''
+
+
 
     # Load in new measurement data and send a Store signal to other callbacks to update appropriately
     @dash.callback(
