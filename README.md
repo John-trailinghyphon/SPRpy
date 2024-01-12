@@ -8,7 +8,7 @@ by [Andreas Dahlin](https://www.adahlin.com/matlab-programs). The GUI elements a
 
 ## Installation
 
-Version 0.1.0 of SPRpy is written in Python 3.11 and should be compatible with the latest Python 3 release [here](https://www.python.org/downloads/). It is recommended to make sure the python installation is added to the PATH variable during installation (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)).
+Version 0.1 of SPRpy is written in Python 3.11. As of 2024-01-12 it is not yet compatible with python 3.12 (dependency on package [bottleneck](https://pypi.org/project/Bottleneck/) <= python 3.11), and has not yet been tested on earlier versions (in that case clone it from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy) instead). Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to avoid the need to set up your own environment.
 
 SPRpy is available on [PyPI](https://pypi.org/project/SPRpy/) and can be installed using pip:
 

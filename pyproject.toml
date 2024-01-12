@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "SPRpy"
-version = "0.1.1"
+version = "0.1.2"
 description = 'SPRpy is an open-source project developing GUI data analysis tools for multi-parameter surface plasmon resonance measurements.  '
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "3.11"
 license = "MIT"
 keywords = []
 authors = [
@@ -17,7 +17,6 @@ authors = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
@@ -30,7 +29,7 @@ dependencies = [
   "plotly >= 5.16.1",
   "scipy >= 1.11.2",
   "kaleido == 0.1.0.post1",
-  "Bottleneck >= 1.3.7",
+  "Bottleneck >= 1.3.7",  # As of 2024-01-12, latest version of bottleneck 1.3.7 only works with latest python 3.11.7
   "pywin32"]
 
 [project.urls]
