@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "SPRpy"
-version = "0.1.2"
+version = "0.2.0"
 description = 'SPRpy is an open-source project developing GUI data analysis tools for multi-parameter surface plasmon resonance measurements.  '
 readme = "README.md"
-requires-python = "3.11"
+requires-python = "==3.11"
 license = "MIT"
 keywords = []
 authors = [
@@ -19,6 +19,9 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 
 dependencies = [

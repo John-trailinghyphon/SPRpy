@@ -40,6 +40,7 @@ if __name__ == '__main__':
     ask_for_previous_session = config["ask_for_previous_session"]
     default_data_folder = config["default_data_folder"]
     session_host = config["session_host"]
+    default_sensor_values = config["default_sensor_values"]
 
     load_session_flag = False
     if ask_for_previous_session is True:
@@ -406,16 +407,7 @@ if __name__ == '__main__':
                     dbc.Card(
                         dbc.CardBody(
                             dbc.Table.from_dataframe(pd.DataFrame(
-                                {
-                                    "Layer": ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt', 'PEG', 'Protein', 'DNA'],
-                                    "d[nm]": ['', '2', '50', '14', '20', '20', '~2 or ~8.5 (2 or 20 kDa)', '4', '?'],
-                                    "n (670)": ['1.5202', '3.3105', '0.2238', '1.4628', '2.2500', '2.4687', '1.456', '1.53', '1.58'],
-                                    "n (785)": ['1.5162', '3.3225', '0.2580', '1.4610', '2.5467', '?', '1.456', '1.53', '1.58'],
-                                    "n (980)": ['1.5130', '3.4052', '0.2800', '1.4592', '3.0331', '?', '1.456', '1.53', '1.58'],
-                                    "k (670)": ['0', '3.4556', '3.9259', '0', '4.6000', '5.2774', '0', '0', '0'],
-                                    "k (785)": ['0', '3.6148', '4.8800', '0', '5.1250', '?', '0', '0', '0'],
-                                    "k (980)": ['0', '3.5678', '6.7406', '0', '6.7406', '?', '0', '0', '0'],
-                                }
+                                default_sensor_values,
                             ), size='sm', striped=True, bordered=True, hover=True)
                         ), style={'width': '650px'}),
                     id='default-values-collapse',
