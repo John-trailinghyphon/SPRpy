@@ -21,15 +21,15 @@ class Session:
     def __init__(self, version, name='Session', directory=os.getcwd(), current_data_path=None):
         self.version = version
         self.name = datetime.datetime.now().__str__()[0:16].replace(':', '_') + ' ' + name
-        if not os.path.exists(directory + r'\SPRpy sessions'):
-            os.mkdir(directory + r'\SPRpy sessions')
-        self.location = directory + r'\SPRpy sessions' + r'\{name_}'.format(name_=self.name)
+        if not os.path.exists(directory + r'/SPRpy sessions'):
+            os.mkdir(directory + r'/SPRpy sessions')
+        self.location = directory + r'/SPRpy sessions' + r'/{name_}'.format(name_=self.name)
         if not os.path.exists(self.location):
             os.mkdir(self.location)
-        if not os.path.exists(self.location + r'\Sensors'):
-            os.mkdir(self.location + r'\Sensors')
-        if not os.path.exists(self.location + r'\Analysis instances'):
-            os.mkdir(self.location + r'\Analysis instances')
+        if not os.path.exists(self.location + r'/Sensors'):
+            os.mkdir(self.location + r'/Sensors')
+        if not os.path.exists(self.location + r'/Analysis instances'):
+            os.mkdir(self.location + r'/Analysis instances')
         self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
         self.sensor_ID_count = 0
         self.fresnel_analysis_instances = {}
@@ -48,6 +48,7 @@ class Session:
         """
 
         self.name = new_name
+        # old_location = self.location
         os.rename(self.location, self.location.replace(self.location.split('/')[-1], new_name))
         self.location = self.location.replace(self.location.split('/')[-1], new_name)
         return
