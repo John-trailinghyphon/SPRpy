@@ -986,7 +986,6 @@ if __name__ == '__main__':
             return dash.no_update, new_name, ''
 
 
-
     # Load in new measurement data and send a Store signal to other callbacks to update appropriately
     @dash.callback(
         dash.Output('loaded-new-measurement', 'data'),
