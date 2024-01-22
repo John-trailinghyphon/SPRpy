@@ -15,11 +15,17 @@ SPRpy is available on [PyPI](https://pypi.org/project/SPRpy/) and can be install
 Windows:
 ```python -m pip install SPRpy```
 
-Linux/Mac:
+Linux/Mac (always remove "python -m"):
 ```pip install SPRpy```
 
 To add a shortcut to the SPRpy folder to the desktop after installation, run the following command in the command prompt (windows only):
 ```SPRpy-desktop-shortcut```
+
+To install a newer version of SPRpy`and uninstall the previously installed version, run the following command:
+```python -m pip install --no-cache-dir --upgrade SPRpy```
+
+To install a specific version (change X.Y.Z) of SPRpy, run the following command:
+```python -m pip install SPRpy==X.Y.Z```
 
 ## Usage
 
