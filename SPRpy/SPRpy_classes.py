@@ -489,7 +489,10 @@ class ExclusionHeight:
             mean_buffer_reflectivity = sliced_buffer_reflectivity_spectras.mean(axis=0).squeeze()
 
             # Calculate TIR and bulk RI for each mean spectra
-            buffer_TIR_angle, _, _ = TIR_determination(background_angles.to_numpy(), mean_buffer_reflectivity.to_numpy(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            try:
+                buffer_TIR_angle, _, _ = TIR_determination(background_angles.to_numpy(), mean_buffer_reflectivity.to_numpy(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            except TypeError:
+                raise TypeError('Something went wrong when selecting buffer points. Please clear and reselect them and avoid clicking other point markers.')
             self.buffer_bulk_RIs.append(self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * buffer_TIR_angle))
 
             # Calculate appropriate range selection
@@ -508,7 +511,10 @@ class ExclusionHeight:
             mean_probe_reflectivity = sliced_probe_reflectivity_spectras.mean(axis=0).squeeze()
 
             # Calculate TIR and bulk RI for each mean spectra
-            probe_TIR_angle, _, _ = TIR_determination(background_angles.to_numpy(), mean_probe_reflectivity.to_numpy(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            try:
+                probe_TIR_angle, _, _ = TIR_determination(background_angles.to_numpy(), mean_probe_reflectivity.to_numpy(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+            except TypeError:
+                raise TypeError('Something went wrong when selecting probe points. Please clear and reselect them and avoid clicking other point markers.')
             self.probe_bulk_RIs.append(self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * probe_TIR_angle))
 
             # Calculate appropriate range selection
