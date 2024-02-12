@@ -22,7 +22,7 @@ To add a shortcut to the SPRpy folder to the desktop after installation, run the
 ```SPRpy-desktop-shortcut```
 
 To install a newer version of SPRpy`and uninstall the previously installed version, run the following command:
-```python -m pip install --no-cache-dir --upgrade SPRpy```
+```python -m pip --no-cache-dir install --upgrade SPRpy```
 
 To install a specific version (change X.Y.Z) of SPRpy, run the following command:
 ```python -m pip install SPRpy==X.Y.Z```
