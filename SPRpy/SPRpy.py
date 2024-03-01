@@ -624,7 +624,7 @@ if __name__ == '__main__':
                                            color='success',
                                            title='Run the fresnel model',
                                            disabled=False),
-                                dash.dcc.Store(id='fresnel-reflectivity-run-finished', storage_type='session'),
+                                dash.dcc.Store(id='fresnel-reflectivity-run-finished', storage_type='session'), # TODO: Fix this, it doesn't work anymore (maybe can't set it to session?)
                                 dbc.DropdownMenu(
                                     id='fresnel-save-dropdown',
                                     label='Save as...',
@@ -652,7 +652,8 @@ if __name__ == '__main__':
                                                        id='add-exclusion-height-analysis-button',
                                                        n_clicks=0,
                                                        color='primary',
-                                                       title='Add a new exclusion analysis object for the current sensor.'),
+                                                       title='Add a new exclusion analysis object for the current sensor.'
+                                            ),
                                             dash.dcc.Store(id='add-exclusion-height-analysis-signal', storage_type='session'),
                                             dbc.Modal([
                                                 dbc.ModalHeader(dbc.ModalTitle('New exclusion height analysis object')),
@@ -940,9 +941,38 @@ if __name__ == '__main__':
 
                 # Result summary tab
                 dbc.Tab([
-                    dash.html.Div(
-                        ['Summary'],
-                        id='summary-tab-content')
+                    dash.html.Div([
+                        #TODO: Use a form to create an initial window containing the different options to choose from,
+                        # first one should select what type of plot maybe? Then dropdowns containing checklists to
+                        # select which model objects to pull results from (default all?). Also buttons for different
+                        # plot styling options and what kind of statistics (STD, SE, Confidence interval etc). Barplot
+                        # option to make stacked barplots or grouped barplots. Should be dynamic added options that
+                        # are adding dropdowns to select from? Or how to do this conveniently... Maybe I can add some of
+                        # the more common options, and then one that is fully customisable?
+                        # To make persistent editable axis and titles -> https://community.plotly.com/t/allowing-users-to-edit-graph-properties-without-code-changes/72031'
+                        # (but I would create an object for the summary maybe {or saved in the session object}? at least give that option so everything is saved.
+
+                        dash.html.Div([
+                            dash.html.Div([
+                                dash.html.H3(['Settings']),
+
+                            ], style={'margin-top': '1.9rem', 'width': '65%'}),
+                            dash.html.Div([
+                                dash.dcc.Graph(id='barplot-reflectivity-graph',
+                                               figure=go.Figure(go.Scatter()),
+                                               mathjax=True),
+                                dbc.DropdownMenu(
+                                    id='barplot-save-dropdown',
+                                    label='Save as...',
+                                    color='info',
+                                    children=[
+                                        dbc.DropdownMenuItem('.PNG', id='barplot-save-png', n_clicks=0),
+                                        dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
+                                        dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0)],
+                                    style={'margin-left': '-5px'})
+                            ], style={'margin-left': '30%'}),
+                        ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
+                    ], id='summary-tab-content')
                 ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
             ], id='analysis-tabs', active_tab='quantification-tab'),
         ], style={'margin-left': '2%', 'margin-right': '2%'})
