@@ -24,7 +24,7 @@ To add a shortcut to the SPRpy folder to the desktop after installation, run the
 To install a newer version of SPRpy`and uninstall the previously installed version, run the following command:
 ```python -m pip --no-cache-dir install --upgrade SPRpy```
 
-To install a specific version (change X.Y.Z) of SPRpy, run the following command:
+To install an additional copy of a specific version (change X.Y.Z) of SPRpy, run the following command:
 ```python -m pip install SPRpy==X.Y.Z```
 
 ## Usage
@@ -97,19 +97,16 @@ The non-interacting probe method have the following requirements:
 
 Below follows the principle of the technique.
 
-#### Experimental (Text WIP)
+#### Experimental
 
-1) Measure a reference sample (clean sensor) in air or the solvent of interest and acquire the optical parameters that 
+1) (Optional) Measure a reference sample (clean sensor) in air or the solvent of interest and acquire the optical parameters that 
 will be used as a background for the analysis. For best accuracy, this should ideally have been treated as similarly 
-to your sample as possible without containing the layer(s) of interest.
+to your sample as possible without containing the layer(s) of interest. Skipping this will typically give an additional uncertainty of +- < 1 nm in the end result because of sensor-to-sensor variations.
 
-2) Take a dry scan of the sensor with the polymer layer. The height of 
-the dry layer can later be modelled and used as a lower bound when determining the exclusion height. 
-
-3) Measure the SPR/TIR response from a surface containing your layer of interest while making 2-3 repeated injections of 
+2) Measure the SPR/TIR response from a surface containing your layer of interest while making 2-3 repeated injections of 
 the probing particles for 5-10 minutes each. High contrast between the response with and without the probe is required 
 for accurate determination of the exclusion height. For protein or polymer probes, 10-20 g/L is typically used.
-Verify that the baseline returns to the same level prior to probe injections (within ~ 10 millidegrees).
+Verify that the baseline returns to the same level prior to probe injections (within approx. < 10-15 millidegrees).
 
 #### Modelling (Text WIP)
 
