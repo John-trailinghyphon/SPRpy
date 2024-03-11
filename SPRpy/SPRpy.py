@@ -280,7 +280,7 @@ if __name__ == '__main__':
                            n_clicks=0,
                            color='primary',
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
-                dash.dcc.Store(id='loaded-new-measurement', storage_type='session'),
+                dash.dcc.Store(id='loaded-new-measurement', storage_type='memory'),
                 # TODO: Add functionality for this button
                 # dbc.Button('Import result',
                 #            id='import-from-session',
