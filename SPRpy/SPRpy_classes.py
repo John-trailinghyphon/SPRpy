@@ -363,8 +363,7 @@ class FresnelModel:
         self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
         # Add extinction correction to fitted surface layer extinction value
-        extinction_corrected = self.sensor_object.extinction_coefficients
-        extinction_corrected[0] += self.extinction_correction  # Correct Prism layer extinction
+        self.sensor_object.extinction_coefficients[0] += self.extinction_correction  # Correct Prism layer extinction
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
@@ -380,7 +379,7 @@ class FresnelModel:
                                                           'wavelength': self.sensor_object.wavelength,
                                                           'layer_thicknesses': self.sensor_object.layer_thicknesses,
                                                           'n_re': self.sensor_object.refractive_indices,
-                                                          'n_im': extinction_corrected,
+                                                          'n_im': self.sensor_object.extinction_coefficients,
                                                           'angles': selection_xdata_,
                                                           'ydata': selection_ydata_,
                                                           'ydata_type': self.sensor_object.data_type,
@@ -394,7 +393,7 @@ class FresnelModel:
                                                        wavelength=self.sensor_object.wavelength,
                                                        layer_thicknesses=self.sensor_object.layer_thicknesses,
                                                        n_re=self.sensor_object.refractive_indices,
-                                                       n_im=extinction_corrected,
+                                                       n_im=self.sensor_object.extinction_coefficients,
                                                        ydata=None,
                                                        ydata_type='R',
                                                        polarization=1
