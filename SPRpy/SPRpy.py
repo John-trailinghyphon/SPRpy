@@ -1731,8 +1731,9 @@ if __name__ == '__main__':
             # Run calculations and modelling
             fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
 
-            # Update current sensor object with the fit result
+            # Update current sensor object with the fit result and prism extinction value
             current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(current_fresnel_analysis.fitted_result, 4)
+            current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
 
             # Save session and analysis object
             current_session.save_session()
