@@ -561,23 +561,52 @@ if __name__ == '__main__':
                                         dbc.Modal([
                                             dbc.ModalHeader(dbc.ModalTitle('Start automatic batch fresnel modelling')),
                                             dbc.ModalBody(['Prerequisites:\n - All files must be in the same folder.\n - All files must have the same layer structure (provide examples below).',
-                                                           dbc.Button('Choose measurement files',
-                                                                      id='batch-fresnel-analysis-choose-files',
-                                                                      n_clicks=0),
                                                            dbc.ButtonGroup([
+                                                               dbc.Button('Choose measurement files',
+                                                                          id='batch-fresnel-analysis-choose-files',
+                                                                          n_clicks=0),
                                                                dbc.DropdownMenu(id='batch-fresnel-analysis-example-sensor-dropdown',
-                                                                                label='Example sensor',
-                                                                                children=[]),
-                                                                dbc.DropdownMenu(id='batch-fresnel-analysis-example-analysis-dropdown',
-                                                                                 label='Example analysis',
-                                                                                 children=[]),
+                                                                                label='Select example sensor',
+                                                                                children=[dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
+                                                                                                               id={'type': 'sensor-list', 'index': sensor_id},
+                                                                                                               n_clicks=0) for sensor_id in current_session.sensor_instances]),
+                                                               dbc.DropdownMenu(id='batch-fresnel-analysis-example-analysis-dropdown',
+                                                                                label='Select example analysis',
+                                                                                children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                                                                                               id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                                                                                               n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
                                                            ]),
                                                            dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
-                                                                                        {'label': 'Select individual backgrounds', 'value': 1}],
-                                                                               inline=True,
+                                                                                        {'label': 'Add new layer and select individual backgrounds', 'value': 1}],
+                                                                               value=0,
                                                                                id='batch-fresnel-analysis-radio-selection'),
+                                                           dbc.Row([
+                                                               dbc.Label('New layer parameters:', width='auto'),
+                                                               dbc.Col([
+                                                                   dbc.InputGroup([
+                                                                       dbc.Input(
+                                                                           id='batch-fresnel-analysis-newlayer-label',
+                                                                           placeholder='Label',
+                                                                           type='text'),
+                                                                       dbc.Input(
+                                                                           id='batch-fresnel-analysis-newlayer-thickness',
+                                                                           placeholder='Thickness [nm]',
+                                                                           type='number'),
+                                                                       dbc.Input(
+                                                                           id='batch-fresnel-analysis-newlayer-n',
+                                                                           placeholder='n',
+                                                                           type='number'),
+                                                                       dbc.Input(
+                                                                           id='batch-fresnel-analysis-newlayer-k',
+                                                                           placeholder='k',
+                                                                           type='number')
+                                                                   ])
+                                                               ])
                                                            ],
-                                                          ),
+                                                            id='batch-fresnel-analysis-newlayer-row',
+                                                            style={'visibility': 'hidden'}
+                                                           ),
+                                            ]),
                                             dbc.ModalFooter(
                                                 dbc.ButtonGroup([
                                                     dbc.Button('Confirm', id='batch-fresnel-analysis-confirm',
