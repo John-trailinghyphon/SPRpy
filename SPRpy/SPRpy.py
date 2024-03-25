@@ -510,6 +510,25 @@ if __name__ == '__main__':
                                                          children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
                                                                    id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                                                                    n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
+                                        dbc.Button('Rename analysis',
+                                                   id='rename-fresnel-analysis-button',
+                                                   n_clicks=0,
+                                                   color='warning',
+                                                   title='Rename the current fresnel analysis object.'),
+                                        dbc.Modal([
+                                            dbc.ModalHeader(dbc.ModalTitle('Rename fresnel analysis')),
+                                            dbc.ModalBody(
+                                                dbc.Input(id='rename-fresnel-analysis-input', placeholder='Give a name...',
+                                                          type='text')),
+                                            dbc.ModalFooter(
+                                                dbc.Button('Confirm', id='rename-fresnel-analysis-confirm', color='success',
+                                                           n_clicks=0))
+                                        ],
+                                            id='rename-fresnel-analysis-modal',
+                                            size='sm',
+                                            is_open=False,
+                                            backdrop='static',
+                                            keyboard=False),
                                         dbc.Button('Remove analysis',
                                                    id='remove-fresnel-analysis-button',
                                                    n_clicks=0,
@@ -524,6 +543,47 @@ if __name__ == '__main__':
                                                                color='success',
                                                                n_clicks=0),
                                                     dbc.Button('Cancel', id='remove-fresnel-analysis-cancel',
+                                                               color='danger',
+                                                               n_clicks=0)
+                                                ])
+                                            )
+                                        ],
+                                            id='remove-fresnel-analysis-modal',
+                                            size='sm',
+                                            is_open=False,
+                                            backdrop='static',
+                                            keyboard=False),
+                                        dbc.Button('Batch analysis',
+                                                   id='batch-fresnel-analysis-button',
+                                                   n_clicks=0,
+                                                   color='primary',
+                                                   title='Perform automatic batch fresnel modelling on several similar measurement files based on a selected example sensor and example analysis.'),
+                                        dbc.Modal([
+                                            dbc.ModalHeader(dbc.ModalTitle('Start automatic batch fresnel modelling')),
+                                            dbc.ModalBody(['Prerequisites:\n - All files must be in the same folder.\n - All files must have the same layer structure (provide examples below).',
+                                                           dbc.Button('Choose measurement files',
+                                                                      id='batch-fresnel-analysis-choose-files',
+                                                                      n_clicks=0),
+                                                           dbc.ButtonGroup([
+                                                               dbc.DropdownMenu(id='batch-fresnel-analysis-example-sensor-dropdown',
+                                                                                label='Example sensor',
+                                                                                children=[]),
+                                                                dbc.DropdownMenu(id='batch-fresnel-analysis-example-analysis-dropdown',
+                                                                                 label='Example analysis',
+                                                                                 children=[]),
+                                                           ]),
+                                                           dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
+                                                                                        {'label': 'Select individual backgrounds', 'value': 1}],
+                                                                               inline=True,
+                                                                               id='batch-fresnel-analysis-radio-selection'),
+                                                           ],
+                                                          ),
+                                            dbc.ModalFooter(
+                                                dbc.ButtonGroup([
+                                                    dbc.Button('Confirm', id='batch-fresnel-analysis-confirm',
+                                                               color='success',
+                                                               n_clicks=0),
+                                                    dbc.Button('Cancel', id='batch-fresnel-analysis-cancel',
                                                                color='danger',
                                                                n_clicks=0)
                                                 ])
