@@ -618,7 +618,7 @@ if __name__ == '__main__':
                                                 ])
                                             )
                                         ],
-                                            id='remove-fresnel-analysis-modal',
+                                            id='batch-fresnel-analysis-modal',
                                             size='sm',
                                             is_open=False,
                                             backdrop='static',
