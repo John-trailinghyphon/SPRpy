@@ -560,7 +560,9 @@ if __name__ == '__main__':
                                                    title='Perform automatic batch fresnel modelling on several similar measurement files based on a selected example sensor and example analysis.'),
                                         dbc.Modal([
                                             dbc.ModalHeader(dbc.ModalTitle('Start automatic batch fresnel modelling')),
-                                            dbc.ModalBody(['Prerequisites:\n - All files must be in the same folder.\n - All files must have the same layer structure (provide examples below).',
+                                            dbc.ModalBody([dash.html.Div(['Prerequisites:']),
+                                                           dash.html.Div([' - All files must be in the same folder.']),
+                                                           dash.html.Div([' - All files must have the same layer structure (provide examples below).']),
                                                            dbc.ButtonGroup([
                                                                dbc.Button('Choose measurement files',
                                                                           id='batch-fresnel-analysis-choose-files',
@@ -568,12 +570,12 @@ if __name__ == '__main__':
                                                                dbc.DropdownMenu(id='batch-fresnel-analysis-example-sensor-dropdown',
                                                                                 label='Select example sensor',
                                                                                 children=[dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
-                                                                                                               id={'type': 'sensor-list', 'index': sensor_id},
+                                                                                                               id={'type': 'batch-sensor-list', 'index': sensor_id},
                                                                                                                n_clicks=0) for sensor_id in current_session.sensor_instances]),
                                                                dbc.DropdownMenu(id='batch-fresnel-analysis-example-analysis-dropdown',
                                                                                 label='Select example analysis',
                                                                                 children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
-                                                                                                               id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                                                                                               id={'type': 'batch-fresnel-analysis-list', 'index': fresnel_id},
                                                                                                                n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
                                                            ]),
                                                            dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
@@ -619,7 +621,7 @@ if __name__ == '__main__':
                                             )
                                         ],
                                             id='batch-fresnel-analysis-modal',
-                                            size='sm',
+                                            size='xl',
                                             is_open=False,
                                             backdrop='static',
                                             keyboard=False),
@@ -1719,6 +1721,8 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-option-rangeslider', 'min'),
         dash.Output('fresnel-fit-option-rangeslider', 'max'),
         dash.Output('fresnel-fit-datapath', 'children'),
+        dash.Output('batch-fresnel-analysis-modal', 'is_open'),
+        dash.Output('rename-fresnel-analysis-modal', 'is_open'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1730,6 +1734,10 @@ if __name__ == '__main__':
         dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
+        dash.Input('rename-fresnel-analysis-button', 'n_clicks'),
+        dash.Input('rename-fresnel-analysis-confirm', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-button', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-confirm', 'n_clicks'),
         dash.State('fresnel-analysis-name-input', 'value'),
         dash.State('fresnel-reflectivity-graph', 'figure'),
         dash.State('fresnel-fit-option-rangeslider', 'value'),
@@ -1737,11 +1745,12 @@ if __name__ == '__main__':
         dash.State('fresnel-fit-option-lowerbound', 'value'),
         dash.State('fresnel-fit-option-upperbound', 'value'),
         dash.State('fresnel-fit-option-extinctionslider', 'value'),
+        dash.State('rename-fresnel-analysis-input', 'value'),
         prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
-                                          selected_fresnel_object, save_png, save_svg, save_html, analysis_name, figure_JSON, rangeslider_state, ini_guess,
+                                          selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_button, batch_confirm, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction):
+                                          extinction_correction, analysis_name_):
 
         global current_fresnel_analysis
         global current_data_path
@@ -1806,7 +1815,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
@@ -1873,10 +1882,10 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
@@ -1949,10 +1958,30 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path
+                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+
+        elif 'rename-fresnel-analysis-button' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
+
+        elif 'rename-fresnel-analysis-confirm' == dash.ctx.triggered_id:
+
+            # First remove previous fresnel analysis pickle object file
+            old_path = current_session.location + r'\Analysis instances\FM{id} {name}.pickle'.format(id=current_fresnel_analysis.object_id, name=current_fresnel_analysis.name)
+            os.remove(old_path)
+
+            # Change fresnel analysis name and save new fresnel analysis pickle file and session
+            current_fresnel_analysis.name = analysis_name_
+            current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+            current_session.save_session()
+
+            analysis_options = [dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                                     id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
+
+            return dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.fresnel_analysis_instances) > 1:
@@ -2036,7 +2065,7 @@ if __name__ == '__main__':
 
                 return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                     current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path
+                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
 
             # If deleting the last fresnel analysis object
             else:
@@ -2047,10 +2076,20 @@ if __name__ == '__main__':
                 current_fresnel_analysis = None
                 current_session.save_session()
 
-                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update. dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'batch-fresnel-analysis-button' == dash.ctx.triggered_id:
+            # TODO: Update Select example sensor and Select example analysis dropdowns with current_session.analysis_instances
+            # TODO: Add outputs in this callback for the dropdowns
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update
+
+        elif 'batch-fresnel-analysis-confirm' == dash.ctx.triggered_id:
+            # TODO: Implement batch analysis. It needs to create new analysis objects and run analysis for each data file in the batch.
+
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -2130,9 +2169,17 @@ if __name__ == '__main__':
                                     showline=True)
 
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-                current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path
+                current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
 
+    @dash.callback(
+        dash.Output('batch-fresnel-analysis-newlayer-row', 'style'),
+        dash.Input('batch-fresnel-analysis-radio-selection', 'value'),
+        prevent_initial_call=True)
+    def show_batch_fresnel_analysis_new_layer(radio_value):
+        if radio_value == 0:
+            return {'visibility': 'hidden'}
+        elif radio_value == 1:
+            return {'visibility': 'visible'}
 
     @dash.callback(
         dash.Output('exclusion-height-sensorgram-graph', 'figure'),
