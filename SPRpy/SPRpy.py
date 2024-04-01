@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
             print('Loading previous session, please wait...')
             load_session_flag = True
-            session_file = select_file(prompt=r'Choose a previous session file', prompt_folder=os.getcwd())
+            session_file = select_file(r'Choose a previous session file', prompt_folder=os.getcwd())
 
             with open(session_file, 'rb') as file:
                 current_session = pickle.load(file)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
             # Load measurement data
             current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(
-                path=current_session.current_data_path)
+                path=current_session.current_data_path, default_data_folder=default_data_folder)
 
             # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
             if ydata_df.shape[0] > 50:
@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
         # Prompt user for initial measurement data
         print('Please wait...')
-        current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
+        current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
 
         # Create initial session
         current_session = Session(version, current_data_path=current_data_path)
@@ -201,608 +201,441 @@ if __name__ == '__main__':
     d_n_pair_fig.update_yaxes(mirror=True, showline=True)
 
     # Dash webapp layout
-    app.layout = dash.html.Div([
+    # Adding note to session log
 
-        # Heading for page
-        dbc.Container(
-            [
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/SPR_principle.svg', top=True),
-                        # dbc.CardBody([dash.html.H4('Surface plasmon resonance (SPR)', className='card-title')])
-                    ], style={'width': '22rem'}
-                ),
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/fresnel_material.svg', top=True),
-                        # dbc.CardBody([dash.html.H4('Fresnel modelling', className='card-title')])
-                    ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
-                ),
-                dash.html.Div([
-                    dash.dcc.Markdown('''
+    @dash.callback(
+        dash.Output('console', 'value'),
+        dash.Output('session-title', 'children'),
+        dash.Output('test-input', 'value'),
+        dash.Input('submit-button', 'n_clicks'),
+        dash.Input('rename-session-button', 'n_clicks'),
+        dash.State('test-input', 'value'),
+        prevent_initial_call=True)
+    def update_session_log(input1, input2, state1):
+
+        global current_session
+        app.layout = dash.html.Div([
+
+            # Heading for page
+            dbc.Container(
+                [
+                    dbc.Card(
+                        [
+                            dbc.CardImg(src='static/images/SPR_principle.svg', top=True),
+                            # dbc.CardBody([dash.html.H4('Surface plasmon resonance (SPR)', className='card-title')])
+                        ], style={'width': '22rem'}
+                    ),
+                    dbc.Card(
+                        [
+                            dbc.CardImg(src='static/images/fresnel_material.svg', top=True),
+                            # dbc.CardBody([dash.html.H4('Fresnel modelling', className='card-title')])
+                        ], style={'width': '19rem', 'padding-top': '30px', 'margin-left': '2rem'}
+                    ),
+                    dash.html.Div([
+                        dash.dcc.Markdown('''
                     # **#SPRpy#**
                     ''', className='dash-bootstrap'),
-                    dash.dcc.Markdown('''
+                        dash.dcc.Markdown('''
                         #### **v ''' + version + '''**
                         ''', className='dash-bootstrap', style={'display': 'flex', 'justify-content': 'center', 'margin-right': '10px'}),
                     ], style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/SPR_angular_spectrum.svg', top=True),
-                        # dbc.CardBody([dash.html.H4('SPR sensor', className='card-title')])
-                    ], style={'width': '23rem', 'padding-top': '18px', 'margin-right': '2rem'}
-                ),
-                dbc.Card(
-                    [
-                        dbc.CardImg(src='static/images/non-interacting_height_probe.PNG', top=True),
-                        # dbc.CardBody([dash.html.H4('Non-interacting height probing', className='card-title')])
-                    ], style={'width': '17rem', 'padding-top': '20px'}
-                ),
-            ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
-        ),
+                    dbc.Card(
+                        [
+                            dbc.CardImg(src='static/images/SPR_angular_spectrum.svg', top=True),
+                            # dbc.CardBody([dash.html.H4('SPR sensor', className='card-title')])
+                        ], style={'width': '23rem', 'padding-top': '18px', 'margin-right': '2rem'}
+                    ),
+                    dbc.Card(
+                        [
+                            dbc.CardImg(src='static/images/non-interacting_height_probe.PNG', top=True),
+                            # dbc.CardBody([dash.html.H4('Non-interacting height probing', className='card-title')])
+                        ], style={'width': '17rem', 'padding-top': '20px'}
+                    ),
+                ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
+            ),
 
-        # TODO: Add an Interval component that updates the session log once per minute (when/if starting to add automatic log messages)
-        # Session log div
-        dash.html.Div([
-            dash.html.H3('{name_} - Session log'.format(name_=current_session.name),
-                         className='dash-bootstrap',
-                         id='session-title'),
-            dash.dcc.Textarea(
-                id='console',
-                value=current_session.log,
-                readOnly=True,
-                className='dash-bootstrap',
-                style={'width': '98%', 'height': '150px', 'margin-right': '2%'}
-            )
-        ], style={'margin-top': '40px', 'margin-left': '2%', 'text-align': 'left'}),
-
-        # Button for adding note to session log
-        dash.html.Div([
-            dbc.InputGroup(
-                [
-                    dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
-                    dbc.Button('Rename session', id='rename-session-button', n_clicks=0, color='warning'),
-                    dbc.Input(id='test-input', value='', type='text', style={'margin-right': '2%'})
-                ]
-            )
-
-        ], style={'margin-left': '2%'}),
-
-        # File and session control
-        dash.html.H3("File and sensor controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
-        dash.html.Div(['Current measurement file:    ', current_data_path.split('/')[-1]],
-                      id='datapath-textfield',
-                      style={'margin-right': '10px', 'textAlign': 'center'}),
-        dbc.Container([
-            dbc.ButtonGroup([
-                dbc.Button('Load new data',
-                           id='load-data',
-                           n_clicks=0,
-                           color='primary',
-                           title='Load data from another measurement. Analysis is always performed on this active measurement'),
-                dash.dcc.Store(id='loaded-new-measurement', storage_type='memory'),
-                # TODO: Add functionality for this button
-                # dbc.Button('Import result',
-                #            id='import-from-session',
-                #            n_clicks=0,
-                #            color='primary',
-                #            title='Use this to import previous results from another session'),
-                dbc.DropdownMenu(
-                    id='create-new-sensor-dropdown',
-                    label='Add new sensor',
-                    color='primary',
-                    children=[dbc.DropdownMenuItem('Gold', id='new-sensor-gold', n_clicks=0),
-                              dbc.DropdownMenuItem('Glass', id='new-sensor-glass', n_clicks=0),
-                              dbc.DropdownMenuItem('Palladium', id='new-sensor-palladium', n_clicks=0),
-                              dbc.DropdownMenuItem('Platinum', id='new-sensor-platinum', n_clicks=0)], style={'margin-left': '-5px'}),
-                dbc.Button('Copy current sensor',
-                           id='copy-sensor',
-                           n_clicks=0,
-                           color='primary',
-                           title='Use this to copy a sensor table\'s values into a new sensor'),
-                dbc.Button('Remove current sensor',
-                           id='remove-sensor-button',
-                           n_clicks=0,
-                           color='primary',
-                           title='Removes the currently selected sensor from the session.'),
-                dbc.Modal([
-                    dbc.ModalHeader(dbc.ModalTitle('Removing sensor object')),
-                    dbc.ModalBody('Are you sure you want to delete the currently selected sensor?\n(at least one remaining required)'),
-                    dbc.ModalFooter(
-                        dbc.ButtonGroup([
-                            dbc.Button('Confirm', id='remove-sensor-confirm',
-                                       color='success',
-                                       n_clicks=0),
-                            dbc.Button('Cancel', id='remove-sensor-cancel',
-                                       color='danger',
-                                       n_clicks=0)
-                        ])
-                    )
-                ],
-                    id='remove-sensor-modal',
-                    size='sm',
-                    is_open=False,
-                    backdrop='static',
-                    keyboard=False),
-                dbc.DropdownMenu(
-                    id='chosen-sensor-dropdown',
-                    label='Sensors',
-                    color='primary',
-                    children=[
-                        dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, id={'type': 'sensor-list', 'index': sensor_id},
-                                             n_clicks=0) for sensor_id in current_session.sensor_instances], style={'margin-left': '-5px'})
-            ])
-        ], style={'margin-bottom': '20px', 'display': 'flex', 'justify-content': 'center'}),
-
-        # Sensor datatable
-        dash.html.Div([
+            # TODO: Add an Interval component that updates the session log once per minute (when/if starting to add automatic log messages)
+            # Session log div
             dash.html.Div([
-                dash.html.H4(['S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                    sensor_number=current_sensor.object_id,
-                    sensor_name=current_sensor.name,
-                    channel=current_sensor.channel,
-                    fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                    fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
-                              ], id='sensor-table-title', style={'text-align': 'center'}),
-                dash.html.Div([
-                    dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
-                                              columns=[{'name': 'Layers', 'id': 'Layers', 'type': 'text'},
-                                                       {'name': 'd [nm]', 'id': 'd [nm]', 'type': 'numeric'},
-                                                       {'name': 'n', 'id': 'n', 'type': 'numeric'},
-                                                       {'name': 'k', 'id': 'k', 'type': 'numeric'}],
-                                              editable=True,
-                                              row_deletable=True,
-                                              cell_selectable=True,
-                                              id='sensor-table',
-                                              style_header={
-                                                  'backgroundColor': '#446e9b',
-                                                  'color': 'white',
-                                                  'fontWeight': 'bold'
-                                              },
-                                              style_cell={'textAlign': 'center'}),
-                ], style={'margin-left': '6px'}),
+                dash.html.H3('{name_} - Session log'.format(name_=current_session.name),
+                             className='dash-bootstrap',
+                             id='session-title'),
+                dash.dcc.Textarea(
+                    id='console',
+                    value=current_session.log,
+                    readOnly=True,
+                    className='dash-bootstrap',
+                    style={'width': '98%', 'height': '150px', 'margin-right': '2%'}
+                )
+            ], style={'margin-top': '40px', 'margin-left': '2%', 'text-align': 'left'}),
+
+            # Button for adding note to session log
+            dash.html.Div([
+                dbc.InputGroup(
+                    [
+                        dbc.Button('Add note to log', id='submit-button', n_clicks=0, color='info'),
+                        dbc.Button('Rename session', id='rename-session-button', n_clicks=0, color='warning'),
+                        dbc.Input(id='test-input', value='', type='text', style={'margin-right': '2%'})
+                    ]
+                )
+
+            ], style={'margin-left': '2%'}),
+
+            # File and session control
+            dash.html.H3("File and sensor controls", className='dash-bootstrap', style={'margin-top': '20px', 'text-align': 'center'}),
+            dash.html.Div(['Current measurement file:    ', current_data_path.split('/')[-1]],
+                          id='datapath-textfield',
+                          style={'margin-right': '10px', 'textAlign': 'center'}),
+            dbc.Container([
                 dbc.ButtonGroup([
-                    dbc.Button('Add layer',
-                               id='add-table-layer',
+                    dbc.Button('Load new data',
+                               id='load-data',
                                n_clicks=0,
                                color='primary',
-                               title='Add a new layer on the sensor surface'),
-                    dbc.Button('Save edited values',
-                               id='table-update-values',
+                               title='Load data from another measurement. Analysis is always performed on this active measurement'),
+                    dash.dcc.Store(id='loaded-new-measurement', storage_type='memory'),
+                    # TODO: Add functionality for this button
+                    # dbc.Button('Import result',
+                    #            id='import-from-session',
+                    #            n_clicks=0,
+                    #            color='primary',
+                    #            title='Use this to import previous results from another session'),
+                    dbc.DropdownMenu(
+                        id='create-new-sensor-dropdown',
+                        label='Add new sensor',
+                        color='primary',
+                        children=[dbc.DropdownMenuItem('Gold', id='new-sensor-gold', n_clicks=0),
+                                  dbc.DropdownMenuItem('Glass', id='new-sensor-glass', n_clicks=0),
+                                  dbc.DropdownMenuItem('Palladium', id='new-sensor-palladium', n_clicks=0),
+                                  dbc.DropdownMenuItem('Platinum', id='new-sensor-platinum', n_clicks=0)], style={'margin-left': '-5px'}),
+                    dbc.Button('Copy current sensor',
+                               id='copy-sensor',
                                n_clicks=0,
-                               color='danger',
-                               title='Save the displayed values to sensor after editing'),
-                    dbc.Button('Select variable to fit',
-                               id='table-select-fitted',
+                               color='primary',
+                               title='Use this to copy a sensor table\'s values into a new sensor'),
+                    dbc.Button('Remove current sensor',
+                               id='remove-sensor-button',
                                n_clicks=0,
-                               color='success',
-                               title='Click this button after selecting a different parameter to fit by clicking it such'
-                                     ' that it is marked in red. NOTE: First click "Save edited values" if new layers were added.'),
-                    dbc.Button('Rename sensor',
-                               id='rename-sensor-button',
-                               n_clicks=0,
-                               color='warning',
-                               title='Rename the current sensor'),
+                               color='primary',
+                               title='Removes the currently selected sensor from the session.'),
                     dbc.Modal([
-                        dbc.ModalHeader(dbc.ModalTitle('Rename sensor')),
-                        dbc.ModalBody(dbc.Input(id='rename-sensor-input', placeholder='Give a name...', type='text')),
-                        dbc.ModalFooter(dbc.Button('Confirm', id='rename-sensor-confirm', color='success', n_clicks=0))
-                        ],
-                        id='rename-sensor-modal',
+                        dbc.ModalHeader(dbc.ModalTitle('Removing sensor object')),
+                        dbc.ModalBody('Are you sure you want to delete the currently selected sensor?\n(at least one remaining required)'),
+                        dbc.ModalFooter(
+                            dbc.ButtonGroup([
+                                dbc.Button('Confirm', id='remove-sensor-confirm',
+                                           color='success',
+                                           n_clicks=0),
+                                dbc.Button('Cancel', id='remove-sensor-cancel',
+                                           color='danger',
+                                           n_clicks=0)
+                            ])
+                        )
+                    ],
+                        id='remove-sensor-modal',
                         size='sm',
                         is_open=False,
                         backdrop='static',
                         keyboard=False),
-                    dbc.Button(
-                        "Show default values",
-                        id="show-default-param-button",
-                        color="secondary",
-                        n_clicks=0,
-                        title='CTRL+Z not supported for table. Check default values here if needed.'
-                    ),
-                ], style={'width': '672px', 'margin-left': '4px', 'margin-top': '5px', 'margin-bottom': '20px'}),
-            ], style={'width': '675px'}),
+                    dbc.DropdownMenu(
+                        id='chosen-sensor-dropdown',
+                        label='Sensors',
+                        color='primary',
+                        children=[
+                            dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, id={'type': 'sensor-list', 'index': sensor_id},
+                                                 n_clicks=0) for sensor_id in current_session.sensor_instances], style={'margin-left': '-5px'})
+                ])
+            ], style={'margin-bottom': '20px', 'display': 'flex', 'justify-content': 'center'}),
+
+            # Sensor datatable
             dash.html.Div([
-                dbc.Collapse(
-                    dbc.Card(
-                        dbc.CardBody(
-                            dbc.Table.from_dataframe(pd.DataFrame(
-                                default_sensor_values,
-                            ), size='sm', striped=True, bordered=True, hover=True)
-                        ), style={'width': '650px'}),
-                    id='default-values-collapse',
-                    is_open=False)
-            ], style={'margin-top': '40px', 'margin-left': '10px'}),
-        ], style={'display': 'flex', 'justify-content': 'center'}),
-
-        # Analysis tabs
-        dash.html.Div([
-            dash.html.H1(['Analysis options']),
-            dbc.Tabs([
-
-                # Response quantification tab
-                dbc.Tab([
+                dash.html.Div([
+                    dash.html.H4(['S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                        sensor_number=current_sensor.object_id,
+                        sensor_name=current_sensor.name,
+                        channel=current_sensor.channel,
+                        fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                        fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+                    ], id='sensor-table-title', style={'text-align': 'center'}),
                     dash.html.Div([
+                        dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
+                                                  columns=[{'name': 'Layers', 'id': 'Layers', 'type': 'text'},
+                                                           {'name': 'd [nm]', 'id': 'd [nm]', 'type': 'numeric'},
+                                                           {'name': 'n', 'id': 'n', 'type': 'numeric'},
+                                                           {'name': 'k', 'id': 'k', 'type': 'numeric'}],
+                                                  editable=True,
+                                                  row_deletable=True,
+                                                  cell_selectable=True,
+                                                  id='sensor-table',
+                                                  style_header={
+                                                      'backgroundColor': '#446e9b',
+                                                      'color': 'white',
+                                                      'fontWeight': 'bold'
+                                                  },
+                                                  style_cell={'textAlign': 'center'}),
+                    ], style={'margin-left': '6px'}),
+                    dbc.ButtonGroup([
+                        dbc.Button('Add layer',
+                                   id='add-table-layer',
+                                   n_clicks=0,
+                                   color='primary',
+                                   title='Add a new layer on the sensor surface'),
+                        dbc.Button('Save edited values',
+                                   id='table-update-values',
+                                   n_clicks=0,
+                                   color='danger',
+                                   title='Save the displayed values to sensor after editing'),
+                        dbc.Button('Select variable to fit',
+                                   id='table-select-fitted',
+                                   n_clicks=0,
+                                   color='success',
+                                   title='Click this button after selecting a different parameter to fit by clicking it such'
+                                         ' that it is marked in red. NOTE: First click "Save edited values" if new layers were added.'),
+                        dbc.Button('Rename sensor',
+                                   id='rename-sensor-button',
+                                   n_clicks=0,
+                                   color='warning',
+                                   title='Rename the current sensor'),
+                        dbc.Modal([
+                            dbc.ModalHeader(dbc.ModalTitle('Rename sensor')),
+                            dbc.ModalBody(dbc.Input(id='rename-sensor-input', placeholder='Give a name...', type='text')),
+                            dbc.ModalFooter(dbc.Button('Confirm', id='rename-sensor-confirm', color='success', n_clicks=0))
+                        ],
+                            id='rename-sensor-modal',
+                            size='sm',
+                            is_open=False,
+                            backdrop='static',
+                            keyboard=False),
+                        dbc.Button(
+                            "Show default values",
+                            id="show-default-param-button",
+                            color="secondary",
+                            n_clicks=0,
+                            title='CTRL+Z not supported for table. Check default values here if needed.'
+                        ),
+                    ], style={'width': '672px', 'margin-left': '4px', 'margin-top': '5px', 'margin-bottom': '20px'}),
+                ], style={'width': '675px'}),
+                dash.html.Div([
+                    dbc.Collapse(
+                        dbc.Card(
+                            dbc.CardBody(
+                                dbc.Table.from_dataframe(pd.DataFrame(
+                                    default_sensor_values,
+                                ), size='sm', striped=True, bordered=True, hover=True)
+                            ), style={'width': '650px'}),
+                        id='default-values-collapse',
+                        is_open=False)
+                ], style={'margin-top': '40px', 'margin-left': '10px'}),
+            ], style={'display': 'flex', 'justify-content': 'center'}),
+
+            # Analysis tabs
+            dash.html.Div([
+                dash.html.H1(['Analysis options']),
+                dbc.Tabs([
+
+                    # Response quantification tab
+                    dbc.Tab([
                         dash.html.Div([
-                            dash.dcc.Graph(id='quantification-reflectivity-graph',
-                                           figure=reflectivity_fig,
-                                           mathjax=True),
-                            dbc.ButtonGroup([
-                                dbc.Button('Add data trace',
-                                           id='quantification-reflectivity-add-data-trace',
-                                           n_clicks=0,
-                                           color='danger',
-                                           title='Add a measurement trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
-                                dbc.Button('Add fresnel trace',
-                                           id='quantification-reflectivity-add-fresnel-trace',
-                                           n_clicks=0,
-                                           color='success',
-                                           title='Add a fresnel calculation trace to the figure based on current sensor values.'),
-                                dbc.Button('Clear traces',
-                                           id='quantification-reflectivity-clear-traces',
-                                           n_clicks=0,
-                                           color='warning',
-                                           title='Clear added traces (required to regain sensorgram hover data selection).'),
-                                dbc.DropdownMenu(
-                                    id='reflectivity-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[
-                                        dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
-                                        dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0)],
+                            dash.html.Div([
+                                dash.dcc.Graph(id='quantification-reflectivity-graph',
+                                               figure=reflectivity_fig,
+                                               mathjax=True),
+                                dbc.ButtonGroup([
+                                    dbc.Button('Add data trace',
+                                               id='quantification-reflectivity-add-data-trace',
+                                               n_clicks=0,
+                                               color='danger',
+                                               title='Add a measurement trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
+                                    dbc.Button('Add fresnel trace',
+                                               id='quantification-reflectivity-add-fresnel-trace',
+                                               n_clicks=0,
+                                               color='success',
+                                               title='Add a fresnel calculation trace to the figure based on current sensor values.'),
+                                    dbc.Button('Clear traces',
+                                               id='quantification-reflectivity-clear-traces',
+                                               n_clicks=0,
+                                               color='warning',
+                                               title='Clear added traces (required to regain sensorgram hover data selection).'),
+                                    dbc.DropdownMenu(
+                                        id='reflectivity-save-dropdown',
+                                        label='Save as...',
+                                        color='info',
+                                        children=[
+                                            dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
+                                            dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
+                                            dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0)],
                                     )
-                            ], style={'margin-left': '13%'}),
-                        ], style={'width': '35%'}),
-                        dash.html.Div([
-                            dash.dcc.Graph(id='quantification-sensorgram-graph',
-                                           figure=sensorgram_fig,
-                                           mathjax=True),
-                            dbc.ButtonGroup([
-                                dbc.Switch(
-                                    id='hover-selection-switch',
-                                    label='Lock hover selection',
-                                    value=False),
-                                dbc.DropdownMenu(
-                                    id='sensorgram-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[dbc.DropdownMenuItem('.PNG', id='quantification-sensorgram-save-png', n_clicks=0),
-                                              dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
-                                              dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0)],
-                                    style={'margin-left': '100%'}),
+                                ], style={'margin-left': '13%'}),
+                            ], style={'width': '35%'}),
+                            dash.html.Div([
+                                dash.dcc.Graph(id='quantification-sensorgram-graph',
+                                               figure=sensorgram_fig,
+                                               mathjax=True),
+                                dbc.ButtonGroup([
+                                    dbc.Switch(
+                                        id='hover-selection-switch',
+                                        label='Lock hover selection',
+                                        value=False),
+                                    dbc.DropdownMenu(
+                                        id='sensorgram-save-dropdown',
+                                        label='Save as...',
+                                        color='info',
+                                        children=[dbc.DropdownMenuItem('.PNG', id='quantification-sensorgram-save-png', n_clicks=0),
+                                                  dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
+                                                  dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0)],
+                                        style={'margin-left': '100%'}),
                                 ], style={'margin-left': '27.5%'}),
-                        ], style={'width': '60%'})
-                    ], id='quantification-tab-content', style={'display': 'flex', 'justify-content': 'center'})
-                ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
+                            ], style={'width': '60%'})
+                        ], id='quantification-tab-content', style={'display': 'flex', 'justify-content': 'center'})
+                    ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
 
-                # Fresnel modelling tab
-                # TODO: Add a rename analysis object button
-                dbc.Tab([
-                    dash.html.Div([
-                        dash.html.Div([
-                            dash.html.H3(['Settings']),
-                            dbc.Form([
-                                dash.html.Div([
-                                    dbc.ButtonGroup([
-                                        dbc.Button('Add new fresnel analysis',
-                                                   id='add-fresnel-analysis-button',
-                                                   n_clicks=0,
-                                                   color='primary',
-                                                   title='Add a new fresnel analysis object for the current sensor.'),
-                                        dash.dcc.Store(id='add-fresnel-analysis-signal', storage_type='session'),
-                                        dbc.Modal([
-                                            dbc.ModalHeader(dbc.ModalTitle('New fresnel analysis object')),
-                                            dbc.ModalBody(
-                                                dbc.Input(id='fresnel-analysis-name-input', placeholder='Give a name...', type='text')),
-                                            dbc.ModalFooter(
-                                                dbc.Button('Confirm', id='add-fresnel-analysis-confirm', color='success',
-                                                           n_clicks=0))
-                                        ],
-                                            id='add-fresnel-analysis-modal',
-                                            size='sm',
-                                            is_open=False,
-                                            backdrop='static',
-                                            keyboard=False),
-                                        dbc.DropdownMenu(id='fresnel-analysis-dropdown',
-                                                         label='Choose analysis',
-                                                         color='primary',
-                                                         children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
-                                                                   id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
-                                                                   n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
-                                        dbc.Button('Rename analysis',
-                                                   id='rename-fresnel-analysis-button',
-                                                   n_clicks=0,
-                                                   color='warning',
-                                                   title='Rename the current fresnel analysis object.'),
-                                        dbc.Modal([
-                                            dbc.ModalHeader(dbc.ModalTitle('Rename fresnel analysis')),
-                                            dbc.ModalBody(
-                                                dbc.Input(id='rename-fresnel-analysis-input', placeholder='Give a name...',
-                                                          type='text')),
-                                            dbc.ModalFooter(
-                                                dbc.Button('Confirm', id='rename-fresnel-analysis-confirm', color='success',
-                                                           n_clicks=0))
-                                        ],
-                                            id='rename-fresnel-analysis-modal',
-                                            size='sm',
-                                            is_open=False,
-                                            backdrop='static',
-                                            keyboard=False),
-                                        dbc.Button('Remove analysis',
-                                                   id='remove-fresnel-analysis-button',
-                                                   n_clicks=0,
-                                                   color='primary',
-                                                   title='Remove the currently selected analysis.'),
-                                        dbc.Modal([
-                                            dbc.ModalHeader(dbc.ModalTitle('Removing fresnel analysis object')),
-                                            dbc.ModalBody('Are you sure you want to delete the currently selected analysis?'),
-                                            dbc.ModalFooter(
-                                                dbc.ButtonGroup([
-                                                    dbc.Button('Confirm', id='remove-fresnel-analysis-confirm',
-                                                               color='success',
-                                                               n_clicks=0),
-                                                    dbc.Button('Cancel', id='remove-fresnel-analysis-cancel',
-                                                               color='danger',
-                                                               n_clicks=0)
-                                                ])
-                                            )
-                                        ],
-                                            id='remove-fresnel-analysis-modal',
-                                            size='sm',
-                                            is_open=False,
-                                            backdrop='static',
-                                            keyboard=False),
-                                        dbc.Button('Batch analysis',
-                                                   id='batch-fresnel-analysis-button',
-                                                   n_clicks=0,
-                                                   color='primary',
-                                                   title='Perform automatic batch fresnel modelling on several similar measurement files based on a selected example sensor and example analysis.'),
-                                        dbc.Modal([
-                                            dbc.ModalHeader(dbc.ModalTitle('Start automatic batch fresnel modelling')),
-                                            dbc.ModalBody([dash.html.Div(['Prerequisites:']),
-                                                           dash.html.Div([' - All files must be in the same folder.']),
-                                                           dash.html.Div([' - All files must have the same layer structure (provide examples below).']),
-                                                           dbc.ButtonGroup([
-                                                               dbc.Button('Choose measurement files',
-                                                                          id='batch-fresnel-analysis-choose-files',
-                                                                          n_clicks=0),
-                                                               dbc.DropdownMenu(id='batch-fresnel-analysis-example-sensor-dropdown',
-                                                                                label='Select example sensor',
-                                                                                children=[dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
-                                                                                                               id={'type': 'batch-sensor-list', 'index': sensor_id},
-                                                                                                               n_clicks=0) for sensor_id in current_session.sensor_instances]),
-                                                               dbc.DropdownMenu(id='batch-fresnel-analysis-example-analysis-dropdown',
-                                                                                label='Select example analysis',
-                                                                                children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
-                                                                                                               id={'type': 'batch-fresnel-analysis-list', 'index': fresnel_id},
-                                                                                                               n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
-                                                           ]),
-                                                           dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
-                                                                                        {'label': 'Add new layer and select individual backgrounds', 'value': 1}],
-                                                                               value=0,
-                                                                               id='batch-fresnel-analysis-radio-selection'),
-                                                           dbc.Row([
-                                                               dbc.Label('New layer parameters:', width='auto'),
-                                                               dbc.Col([
-                                                                   dbc.InputGroup([
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-label',
-                                                                           placeholder='Label',
-                                                                           type='text'),
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-thickness',
-                                                                           placeholder='Thickness [nm]',
-                                                                           type='number'),
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-n',
-                                                                           placeholder='n',
-                                                                           type='number'),
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-k',
-                                                                           placeholder='k',
-                                                                           type='number')
-                                                                   ])
-                                                               ])
-                                                           ],
-                                                            id='batch-fresnel-analysis-newlayer-row',
-                                                            style={'visibility': 'hidden'}
-                                                           ),
-                                            ]),
-                                            dbc.ModalFooter(
-                                                dbc.ButtonGroup([
-                                                    dbc.Button('Confirm', id='batch-fresnel-analysis-confirm',
-                                                               color='success',
-                                                               n_clicks=0),
-                                                    dbc.Button('Cancel', id='batch-fresnel-analysis-cancel',
-                                                               color='danger',
-                                                               n_clicks=0)
-                                                ])
-                                            )
-                                        ],
-                                            id='batch-fresnel-analysis-modal',
-                                            size='xl',
-                                            is_open=False,
-                                            backdrop='static',
-                                            keyboard=False),
-                                    ])
-                                ]),
-                                dash.html.Div([
-                                    dbc.Collapse(
-                                        dbc.Card(
-                                            dbc.CardBody(
-                                                dbc.Form([
-                                                    dbc.Row([
-                                                        dbc.Label(
-                                                            'Data path: \n' + current_data_path.split('/')[-1],
-                                                            id='fresnel-fit-datapath')
-                                                    ], style={'margin-bottom': '10px'}),
-                                                    dbc.Row([
-                                                        dbc.Label(
-                                                            'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                                                                sensor_number=current_sensor.object_id,
-                                                                sensor_name=current_sensor.name,
-                                                                channel=current_sensor.channel,
-                                                                fitted_layer=current_sensor.optical_parameters.iloc[
-                                                                    current_sensor.fitted_layer_index[0], 0],
-                                                                fitted_param=current_sensor.optical_parameters.columns[
-                                                                    current_sensor.fitted_layer_index[1]]),
-                                                            id='fresnel-fit-sensor')
-                                                    ], style={'margin-bottom': '10px'}),
-                                                    dbc.Row([
-                                                        dbc.Label('Initial guess', width='auto'),
-                                                        dbc.Col([
-                                                            dbc.Input(id='fresnel-fit-option-iniguess',
-                                                                      value=current_sensor.fitted_var, type='number')
-                                                        ], width=2),
-                                                        dbc.Label('Bounds', width='auto'),
-                                                        dbc.Col([
-                                                            dbc.InputGroup([
-                                                                dbc.Input(id='fresnel-fit-option-lowerbound',
-                                                                          value=float(current_sensor.fitted_var) - float(current_sensor.fitted_var) / 2,
-                                                                          type='number'),
-                                                                dbc.Input(id='fresnel-fit-option-upperbound',
-                                                                          value=float(current_sensor.fitted_var) + float(current_sensor.fitted_var) / 2,
-                                                                          type='number')
-                                                            ])
-                                                        ], width=4)
-                                                    ], style={'margin-bottom': '10px'}),
-                                                    dbc.Row([
-                                                        dbc.Label('Angle range', width='auto'),
-                                                        dbc.Col([
-                                                            dash.dcc.RangeSlider(reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1],
-                                                                                 marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
-                                                                                 step=0.005,
-                                                                                 allowCross=False,
-                                                                                 tooltip={"placement": "top",
-                                                                                          "always_visible": True},
-                                                                                 id='fresnel-fit-option-rangeslider')
-                                                        ])
-                                                    ], style={'margin-bottom': '10px'}),
-                                                    dbc.Row([
-                                                        dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),
-                                                        dbc.Col([
-                                                            dash.dcc.Slider(min=-0.0005, max=0.0005,
-                                                                            step=0.00005,
-                                                                            marks={-0.0005: '-5', -0.0004: '-4',
-                                                                                   -0.0003: '-3', -0.0002: '-2',
-                                                                                   -0.0001: '-1', 0: '0',
-                                                                                   0.0001: '1', 0.0002: '2',
-                                                                                   0.0003: '3', 0.0004: '4',
-                                                                                   0.0005: '5'},
-                                                                            tooltip={"placement": "top",
-                                                                                     "always_visible": True},
-                                                                            id='fresnel-fit-option-extinctionslider')
-                                                        ])
-                                                    ], style={'margin-bottom': '10px'}),
-                                                    dbc.Row([
-                                                        dbc.Label('Fit result: ', id='fresnel-fit-result')
-                                                    ], style={'margin-bottom': '10px'})
-                                                ])
-                                            )
-                                        ), id='fresnel-analysis-option-collapse', is_open=False)
-                                ])
-                            ], id='fresnel-fit-options-form')
-                        ], style={'margin-top': '1.9rem', 'width': '65%'}),
-                        dash.html.Div([
-                            dash.dcc.Graph(id='fresnel-reflectivity-graph',
-                                           figure=reflectivity_fig,
-                                           mathjax=True),
-                            dbc.ButtonGroup([
-                                dbc.Button('Run modelling',
-                                           id='fresnel-reflectivity-run-model',
-                                           n_clicks=0,
-                                           color='success',
-                                           title='Run the fresnel model',
-                                           disabled=False),
-                                dash.dcc.Store(id='fresnel-reflectivity-run-finished', storage_type='session'), # TODO: Fix this, it doesn't work anymore (maybe can't set it to session?)
-                                dbc.DropdownMenu(
-                                    id='fresnel-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[
-                                        dbc.DropdownMenuItem('.PNG', id='fresnel-reflectivity-save-png', n_clicks=0),
-                                        dbc.DropdownMenuItem('.SVG', id='fresnel-reflectivity-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='fresnel-reflectivity-save-html', n_clicks=0)],
-                                    style={'margin-left': '-5px'})
-                            ], style={'margin-left': '30%'}),
-                        ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
-                    ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
-                ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
-
-                # Exclusion height determination tab
-                dbc.Tab([
-                    dash.html.Div([
+                    # Fresnel modelling tab
+                    # TODO: Add a rename analysis object button
+                    dbc.Tab([
                         dash.html.Div([
                             dash.html.Div([
                                 dash.html.H3(['Settings']),
                                 dbc.Form([
                                     dash.html.Div([
                                         dbc.ButtonGroup([
-                                            dbc.Button('Add new exclusion height analysis',
-                                                       id='add-exclusion-height-analysis-button',
+                                            dbc.Button('Add new fresnel analysis',
+                                                       id='add-fresnel-analysis-button',
                                                        n_clicks=0,
                                                        color='primary',
-                                                       title='Add a new exclusion analysis object for the current sensor.'
-                                            ),
-                                            dash.dcc.Store(id='add-exclusion-height-analysis-signal', storage_type='session'),
+                                                       title='Add a new fresnel analysis object for the current sensor.'),
+                                            dash.dcc.Store(id='add-fresnel-analysis-signal', storage_type='session'),
                                             dbc.Modal([
-                                                dbc.ModalHeader(dbc.ModalTitle('New exclusion height analysis object')),
-                                                dbc.ModalBody([
-                                                    dash.dcc.Dropdown(id='exclusion-choose-background-dropdown',
-                                                                      placeholder='Choose background...',
-                                                                      options=[{'label': 'FM' + str(fresnel_id) + ' ' +
-                                                                                         current_session.fresnel_analysis_instances[
-                                                                                             fresnel_id].name,
-                                                                                'value': fresnel_id} for fresnel_id in
-                                                                               current_session.fresnel_analysis_instances]),
-                                                    dbc.Input(id='exclusion-height-analysis-name-input',
-                                                              placeholder='Give a name...', type='text')
-                                                ]),
+                                                dbc.ModalHeader(dbc.ModalTitle('New fresnel analysis object')),
+                                                dbc.ModalBody(
+                                                    dbc.Input(id='fresnel-analysis-name-input', placeholder='Give a name...', type='text')),
                                                 dbc.ModalFooter(
-                                                    dbc.Button('Confirm', id='add-exclusion-height-analysis-confirm',
-                                                               color='success',
-                                                               n_clicks=0)
-                                                )
+                                                    dbc.Button('Confirm', id='add-fresnel-analysis-confirm', color='success',
+                                                               n_clicks=0))
                                             ],
-                                                id='add-exclusion-height-analysis-modal',
+                                                id='add-fresnel-analysis-modal',
                                                 size='sm',
                                                 is_open=False,
                                                 backdrop='static',
                                                 keyboard=False),
-                                            dbc.DropdownMenu(id='exclusion-height-analysis-dropdown',
+                                            dbc.DropdownMenu(id='fresnel-analysis-dropdown',
                                                              label='Choose analysis',
                                                              color='primary',
-                                                             children=[dbc.DropdownMenuItem(
-                                                                 'EH' + str(exclusion_id) + ' ' +
-                                                                 current_session.exclusion_height_analysis_instances[
-                                                                     exclusion_id].name,
-                                                                 id={'type': 'exclusion-analysis-list',
-                                                                     'index': exclusion_id},
-                                                                 n_clicks=0) for exclusion_id in
-                                                                       current_session.exclusion_height_analysis_instances]),
+                                                             children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                                                                            id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                                                                            n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
+                                            dbc.Button('Rename analysis',
+                                                       id='rename-fresnel-analysis-button',
+                                                       n_clicks=0,
+                                                       color='warning',
+                                                       title='Rename the current fresnel analysis object.'),
+                                            dbc.Modal([
+                                                dbc.ModalHeader(dbc.ModalTitle('Rename fresnel analysis')),
+                                                dbc.ModalBody(
+                                                    dbc.Input(id='rename-fresnel-analysis-input', placeholder='Give a name...',
+                                                              type='text')),
+                                                dbc.ModalFooter(
+                                                    dbc.Button('Confirm', id='rename-fresnel-analysis-confirm', color='success',
+                                                               n_clicks=0))
+                                            ],
+                                                id='rename-fresnel-analysis-modal',
+                                                size='sm',
+                                                is_open=False,
+                                                backdrop='static',
+                                                keyboard=False),
                                             dbc.Button('Remove analysis',
-                                                       id='remove-exclusion-height-analysis-button',
+                                                       id='remove-fresnel-analysis-button',
                                                        n_clicks=0,
                                                        color='primary',
                                                        title='Remove the currently selected analysis.'),
                                             dbc.Modal([
-                                                dbc.ModalHeader(dbc.ModalTitle('Removing exclusion-height analysis object')),
-                                                dbc.ModalBody(
-                                                    'Are you sure you want to delete the currently selected analysis?'),
+                                                dbc.ModalHeader(dbc.ModalTitle('Removing fresnel analysis object')),
+                                                dbc.ModalBody('Are you sure you want to delete the currently selected analysis?'),
                                                 dbc.ModalFooter(
                                                     dbc.ButtonGroup([
-                                                        dbc.Button('Confirm', id='remove-exclusion-height-analysis-confirm',
+                                                        dbc.Button('Confirm', id='remove-fresnel-analysis-confirm',
                                                                    color='success',
                                                                    n_clicks=0),
-                                                        dbc.Button('Cancel', id='remove-exclusion-height-analysis-cancel',
+                                                        dbc.Button('Cancel', id='remove-fresnel-analysis-cancel',
                                                                    color='danger',
                                                                    n_clicks=0)
                                                     ])
                                                 )
                                             ],
-                                                id='remove-exclusion-height-analysis-modal',
+                                                id='remove-fresnel-analysis-modal',
                                                 size='sm',
+                                                is_open=False,
+                                                backdrop='static',
+                                                keyboard=False),
+                                            dbc.Button('Batch analysis',
+                                                       id='batch-fresnel-analysis-button',
+                                                       n_clicks=0,
+                                                       color='primary',
+                                                       title='Perform automatic batch fresnel modelling on several similar measurement files based on a selected example sensor and example analysis.'),
+                                            dbc.Modal([
+                                                dbc.ModalHeader(dbc.ModalTitle('Start automatic batch fresnel modelling')),
+                                                dbc.ModalBody([dash.html.Div(['Prerequisites:']),
+                                                               dash.html.Div([' - All files must be in the same folder.']),
+                                                               dash.html.Div([' - All files must have the same layer structure (provide examples below).']),
+                                                               dbc.ButtonGroup([
+                                                                   dbc.Button('Choose measurement files',
+                                                                              id='batch-fresnel-analysis-choose-files',
+                                                                              n_clicks=0),
+                                                                   dash.dcc.Store(id='batch-fresnel-analysis-files', storage_type='session'),
+                                                                   dbc.DropdownMenu(id='batch-fresnel-analysis-example-sensor-dropdown',
+                                                                                    label='Select example sensor',
+                                                                                    children=[dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
+                                                                                                                   id={'type': 'batch-sensor-list', 'index': sensor_id},
+                                                                                                                   n_clicks=0) for sensor_id in current_session.sensor_instances]),
+                                                                   dbc.DropdownMenu(id='batch-fresnel-analysis-example-analysis-dropdown',
+                                                                                    label='Select example analysis',
+                                                                                    children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                                                                                                   id={'type': 'batch-fresnel-analysis-list', 'index': fresnel_id},
+                                                                                                                   n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
+                                                               ]),
+                                                               dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
+                                                                                            {'label': 'Add new layer and select individual backgrounds', 'value': 1}],
+                                                                                   value=0,
+                                                                                   id='batch-fresnel-analysis-radio-selection'),
+                                                               dbc.Row([
+                                                                   dbc.Label('New layer parameters:', width='auto'),
+                                                                   dbc.Col([
+                                                                       dbc.InputGroup([
+                                                                           dbc.Input(
+                                                                               id='batch-fresnel-analysis-newlayer-label',
+                                                                               placeholder='Label',
+                                                                               type='text'),
+                                                                           dbc.Input(
+                                                                               id='batch-fresnel-analysis-newlayer-thickness',
+                                                                               placeholder='Thickness [nm]',
+                                                                               type='number'),
+                                                                           dbc.Input(
+                                                                               id='batch-fresnel-analysis-newlayer-n',
+                                                                               placeholder='n',
+                                                                               type='number'),
+                                                                           dbc.Input(
+                                                                               id='batch-fresnel-analysis-newlayer-k',
+                                                                               placeholder='k',
+                                                                               type='number')
+                                                                       ])
+                                                                   ])
+                                                               ],
+                                                                   id='batch-fresnel-analysis-newlayer-row',
+                                                                   style={'visibility': 'hidden'}
+                                                               ),
+                                                               ]),
+                                                dbc.ModalFooter(
+                                                    dbc.ButtonGroup([
+                                                        dbc.Button('Confirm', id='batch-fresnel-analysis-confirm',
+                                                                   color='success',
+                                                                   n_clicks=0),
+                                                        dbc.Button('Cancel', id='batch-fresnel-analysis-cancel',
+                                                                   color='danger',
+                                                                   n_clicks=0)
+                                                    ])
+                                                )
+                                            ],
+                                                id='batch-fresnel-analysis-modal',
+                                                size='xl',
                                                 is_open=False,
                                                 backdrop='static',
                                                 keyboard=False),
@@ -815,272 +648,440 @@ if __name__ == '__main__':
                                                     dbc.Form([
                                                         dbc.Row([
                                                             dbc.Label(
+                                                                'Data path: \n' + current_data_path.split('/')[-1],
+                                                                id='fresnel-fit-datapath')
+                                                        ], style={'margin-bottom': '10px'}),
+                                                        dbc.Row([
+                                                            dbc.Label(
                                                                 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                                                                     sensor_number=current_sensor.object_id,
                                                                     sensor_name=current_sensor.name,
                                                                     channel=current_sensor.channel,
                                                                     fitted_layer=current_sensor.optical_parameters.iloc[
                                                                         current_sensor.fitted_layer_index[0], 0],
-                                                                    fitted_param=
-                                                                    current_sensor.optical_parameters.columns[
+                                                                    fitted_param=current_sensor.optical_parameters.columns[
                                                                         current_sensor.fitted_layer_index[1]]),
-                                                                id='exclusion-height-sensor-label')
+                                                                id='fresnel-fit-sensor')
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
-                                                            dbc.Label(
-                                                                'Fresnel analysis: FM{analysis_number} {analysis_name}'.format(
-                                                                    analysis_number=1,
-                                                                    analysis_name='Placeholder'),
-                                                                id='exclusion-height-fresnel-analysis-label')
-                                                        ], style={'margin-bottom': '10px'}),
-                                                        dbc.Row([
-                                                            dbc.Label('Height bounds (min, max)', width='auto'),
+                                                            dbc.Label('Initial guess', width='auto'),
+                                                            dbc.Col([
+                                                                dbc.Input(id='fresnel-fit-option-iniguess',
+                                                                          value=current_sensor.fitted_var, type='number')
+                                                            ], width=2),
+                                                            dbc.Label('Bounds', width='auto'),
                                                             dbc.Col([
                                                                 dbc.InputGroup([
-                                                                    dbc.Input(id='exclusion-height-option-lowerbound',
-                                                                              value=float(0),
+                                                                    dbc.Input(id='fresnel-fit-option-lowerbound',
+                                                                              value=float(current_sensor.fitted_var) - float(current_sensor.fitted_var) / 2,
                                                                               type='number'),
-                                                                    dbc.Input(id='exclusion-height-option-upperbound',
-                                                                              value=float(200),
+                                                                    dbc.Input(id='fresnel-fit-option-upperbound',
+                                                                              value=float(current_sensor.fitted_var) + float(current_sensor.fitted_var) / 2,
                                                                               type='number')
                                                                 ])
-                                                            ], width=7)
+                                                            ], width=4)
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
-                                                            dbc.Label('Resolution (#steps)', width='auto'),
+                                                            dbc.Label('Angle range', width='auto'),
                                                             dbc.Col([
-                                                                dbc.InputGroup([
-                                                                    dbc.Input(id='exclusion-height-option-resolution',
-                                                                              value=int(200),
-                                                                              type='number'),
-                                                                ])
-                                                            ], width=3)
+                                                                dash.dcc.RangeSlider(reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1],
+                                                                                     marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
+                                                                                     step=0.005,
+                                                                                     allowCross=False,
+                                                                                     tooltip={"placement": "top",
+                                                                                              "always_visible": True},
+                                                                                     id='fresnel-fit-option-rangeslider')
+                                                            ])
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
-                                                            dbc.Label('Injection points: ', width='auto', id='exclusion-height-settings-injection-points')
-                                                        ]),
-                                                        dbc.Row([
-                                                            dbc.Label('Buffer points: ', width='auto', id='exclusion-height-settings-buffer-points')
-                                                        ]),
-                                                        dbc.Row([
-                                                            dbc.Label('Probe points: ', width='auto', id='exclusion-height-settings-probe-points')
-                                                        ]),
-                                                        dbc.Row([
+                                                            dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),
                                                             dbc.Col([
-                                                                dbc.Button('Initialize model',
-                                                                           id='exclusion-height-initialize-model',
-                                                                           color='primary',
-                                                                           n_clicks=0,
-                                                                           size='lg',
-                                                                           title='Prepare model after selecting all points.')
-                                                            ], width=6)
-                                                        ])
+                                                                dash.dcc.Slider(min=-0.0005, max=0.0005,
+                                                                                step=0.00005,
+                                                                                marks={-0.0005: '-5', -0.0004: '-4',
+                                                                                       -0.0003: '-3', -0.0002: '-2',
+                                                                                       -0.0001: '-1', 0: '0',
+                                                                                       0.0001: '1', 0.0002: '2',
+                                                                                       0.0003: '3', 0.0004: '4',
+                                                                                       0.0005: '5'},
+                                                                                tooltip={"placement": "top",
+                                                                                         "always_visible": True},
+                                                                                id='fresnel-fit-option-extinctionslider')
+                                                            ])
+                                                        ], style={'margin-bottom': '10px'}),
+                                                        dbc.Row([
+                                                            dbc.Label('Fit result: ', id='fresnel-fit-result')
+                                                        ], style={'margin-bottom': '10px'})
                                                     ])
                                                 )
-                                            ), id='exclusion-height-analysis-option-collapse', is_open=False)
+                                            ), id='fresnel-analysis-option-collapse', is_open=False)
                                     ])
-                                ], id='exclusion-height-fit-options-form'),
-                                dbc.Collapse([
-                                    dash.html.Div([
-                                        dbc.ButtonGroup([
-                                            dbc.Spinner(color='success', type='border', id='exclusion-height-spinner', spinner_style={'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}),
-                                            dbc.Button('Run full calculation', id='exclusion-height-run-button',
-                                                       color='success',
-                                                       n_clicks=0,
-                                                       size='lg',
-                                                       disabled=False),
-                                            dbc.Button('Abort', id='exclusion-height-abort-button',
-                                                       color='danger',
-                                                       n_clicks=0,
-                                                       size='lg',
-                                                       disabled=True,
-                                                       title='Cancelling a running calculation. NOTE THAT PREVIOUS PROGRESS IS STILL OVERWRITTEN.'),
-                                        ]),
-                                        dash.dcc.Store(id='exclusion-run-finished', storage_type='session')
-                                    ])
-                                ], id='exclusion-height-progress-collapse', is_open=False, style={'margin-top': '120px'})
-                            ], style={'margin-top': '80px'}),
-                            dbc.Collapse([
-                                dash.html.Div([
-                                    dash.dcc.Graph(id='exclusion-height-sensorgram-graph',
-                                                   figure=sensorgram_fig,
-                                                   mathjax=True),
-                                    dash.html.Div([
-                                        dbc.Label('Click-action selector', style={'margin-left': '5%', 'margin-top': '35px'}),
-                                        dbc.RadioItems(
-                                            options=[
-                                                {"label": "Offset data", "value": 1},
-                                                {"label": "Choose injection points", "value": 2},
-                                                {"label": "Choose buffer points", "value": 3},
-                                                {"label": "Choose probe points", "value": 4}],
-                                            value=1,
-                                            id='exclusion-height-click-action-selector',
-                                            style={'margin-left': '20px'}),
-                                        dbc.Button('Clear selected points', id='exclusion-height-click-action-clear',
-                                                   color='warning',
-                                                   n_clicks=0,
-                                                   style={'margin-left': '20px', 'margin-top': '35px', 'margin-bot': '35px', 'margin-right': '18%', 'line-height': '1.5'}),
-                                        dbc.DropdownMenu(
-                                            id='exclusion-height-sensorgram-save-dropdown',
-                                            label='Save as...',
-                                            color='info',
-                                            children=[dbc.DropdownMenuItem('.PNG', id='exclusion-height-sensorgram-save-png',
-                                                                           n_clicks=0),
-                                                      dbc.DropdownMenuItem('.SVG', id='exclusion-height-sensorgram-save-svg',
-                                                                           n_clicks=0),
-                                                      dbc.DropdownMenuItem('.HTML', id='exclusion-height-sensorgram-save-html',
-                                                                           n_clicks=0)])
-                                    ], style={'display': 'flex', 'justify-content': 'left'}),
-                                ])
-                            ], id='exclusion-height-sensorgram-collapse', is_open=False, style={'width': '60%', 'margin-left': '3%'})
-                        ], style={'display': 'flex', 'justify-content': 'center'}),
-
-                        # Results
-                        dbc.Collapse([
-                            dash.html.Div([
-                                dash.html.H3(['Exclusion height results'], style={'display': 'flex', 'justify-content': 'left'}),
-                                dash.html.Div([
-                                    dbc.Label('Mean exclusion height: None',
-                                              id='exclusion-height-result-mean-height')
-                                ], style={'margin-top': '30px', 'display': 'flex', 'justify-content': 'left'}),
-                                dash.html.Div([
-                                    dbc.Label('Mean exclusion RI: None',
-                                              id='exclusion-height-result-mean-RI')
-                                ], style={'margin-top': '10px', 'display': 'flex', 'justify-content': 'left'}),
-                                dash.html.Div([
-                                    dbc.Label('All exclusion heights: None',
-                                              id='exclusion-height-result-all-heights')
-                                ], style={'margin-top': '10px', 'display': 'flex', 'justify-content': 'left'}),
-                                dash.html.Div([
-                                    dbc.Label('All exclusion RIs: None',
-                                              id='exclusion-height-result-all-RI')
-                                ], style={'margin-top': '10px', 'display': 'flex', 'justify-content': 'left'}),
-                                dbc.Label('Injection step', id='exclusion-height-result-pagination-label',
-                                          style={'display': 'flex', 'justify-content': 'center'}),
-                                dash.html.Div([
-                                            dbc.Pagination(max_value=2, previous_next=True, id='exclusion-height-result-pagination')
-                                ], style={'display': 'flex', 'justify-content': 'center'}),
-                                dash.html.Div([
-                                    dash.html.Div([
-                                        dash.dcc.Graph(id='exclusion-height-SPRvsTIR-graph',
-                                                       figure=reflectivity_fig,
-                                                       mathjax=True),
-                                        dbc.ButtonGroup([
-                                            dbc.DropdownMenu(
-                                                id='exclusion-height-SPRvsTIR-save-dropdown',
-                                                label='Save as...',
-                                                color='info',
-                                                children=[
-                                                    dbc.DropdownMenuItem('.PNG',
-                                                                         id='exclusion-height-SPRvsTIR-save-png',
-                                                                         n_clicks=0),
-                                                    dbc.DropdownMenuItem('.SVG',
-                                                                         id='exclusion-height-SPRvsTIR-save-svg',
-                                                                         n_clicks=0),
-                                                    dbc.DropdownMenuItem('.HTML',
-                                                                         id='exclusion-height-SPRvsTIR-save-html',
-                                                                         n_clicks=0)],
-                                            )
-                                        ], style={'margin-left': '13%'}),
-                                    ], style={'width': '33%'}),
-                                    dash.html.Div([
-                                        dash.dcc.Graph(id='exclusion-height-reflectivity-graph',
-                                                       figure=reflectivity_fig,
-                                                       mathjax=True),
-                                        dbc.ButtonGroup([
-                                            dbc.DropdownMenu(
-                                                id='exclusion-height-reflectivity-save-dropdown',
-                                                label='Save as...',
-                                                color='info',
-                                                children=[
-                                                    dbc.DropdownMenuItem('.PNG', id='exclusion-height-reflectivity-save-png',
-                                                                         n_clicks=0),
-                                                    dbc.DropdownMenuItem('.SVG', id='exclusion-height-reflectivity-save-svg',
-                                                                         n_clicks=0),
-                                                    dbc.DropdownMenuItem('.HTML', id='exclusion-height-reflectivity-save-html',
-                                                                         n_clicks=0)],
-                                            )
-                                        ], style={'margin-left': '13%'}),
-                                    ], style={'width': '33%'}),
-                                    dash.html.Div([
-                                        dash.dcc.Graph(id='exclusion-height-d-n-pair-graph',
-                                                       figure=d_n_pair_fig,
-                                                       mathjax=True),
-                                        dbc.ButtonGroup([
-                                            dbc.DropdownMenu(
-                                                id='exclusion-height-d-n-pair-save-dropdown',
-                                                label='Save as...',
-                                                color='info',
-                                                children=[
-                                                    dbc.DropdownMenuItem('.PNG',
-                                                                         id='exclusion-height-d-n-pair-save-png',
-                                                                         n_clicks=0),
-                                                    dbc.DropdownMenuItem('.SVG',
-                                                                         id='exclusion-height-d-n-pair-save-svg',
-                                                                         n_clicks=0),
-                                                    dbc.DropdownMenuItem('.HTML',
-                                                                         id='exclusion-height-d-n-pair-save-html',
-                                                                         n_clicks=0)],
-                                            )
-                                        ], style={'margin-left': '13%'}),
-                                    ], style={'width': '33%'})
-                                ], style={'display': 'flex', 'justify-content': 'center'})
-                            ], style={'margin-top': '40px'}),
-                        ], id='exclusion-height-result-collapse', is_open=False)
-                    ], id='exclusion-height-tab-content')
-                ], label='Exclusion height determination', tab_id='exclusion-height-tab', style={'margin-top': '10px'}),
-
-                # Result summary tab
-                dbc.Tab([
-                    dash.html.Div([
-                        #TODO: Use a form to create an initial window containing the different options to choose from,
-                        # first one should select what type of plot maybe? Then dropdowns containing checklists to
-                        # select which model objects to pull results from (default all?). Also buttons for different
-                        # plot styling options and what kind of statistics (STD, SE, Confidence interval etc). Barplot
-                        # option to make stacked barplots or grouped barplots. Should be dynamic added options that
-                        # are adding dropdowns to select from? Or how to do this conveniently... Maybe I can add some of
-                        # the more common options, and then one that is fully customisable?
-                        # To make persistent editable axis and titles -> https://community.plotly.com/t/allowing-users-to-edit-graph-properties-without-code-changes/72031'
-                        # (but I would create an object for the summary maybe {or saved in the session object}? at least give that option so everything is saved.
-
-                        dash.html.Div([
-                            dash.html.Div([
-                                dash.html.H3(['Settings']),
-
+                                ], id='fresnel-fit-options-form')
                             ], style={'margin-top': '1.9rem', 'width': '65%'}),
                             dash.html.Div([
-                                dash.dcc.Graph(id='barplot-reflectivity-graph',
-                                               figure=go.Figure(go.Scatter()),
+                                dash.dcc.Graph(id='fresnel-reflectivity-graph',
+                                               figure=reflectivity_fig,
                                                mathjax=True),
-                                dbc.DropdownMenu(
-                                    id='barplot-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[
-                                        dbc.DropdownMenuItem('.PNG', id='barplot-save-png', n_clicks=0),
-                                        dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0)],
-                                    style={'margin-left': '-5px'})
-                            ], style={'margin-left': '30%'}),
-                        ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
-                    ], id='summary-tab-content')
-                ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
-            ], id='analysis-tabs', active_tab='quantification-tab'),
-        ], style={'margin-left': '2%', 'margin-right': '2%'})
-    ])
+                                dbc.ButtonGroup([
+                                    dbc.Button('Run modelling',
+                                               id='fresnel-reflectivity-run-model',
+                                               n_clicks=0,
+                                               color='success',
+                                               title='Run the fresnel model',
+                                               disabled=False),
+                                    dash.dcc.Store(id='fresnel-reflectivity-run-finished', storage_type='session'),
+                                    dbc.DropdownMenu(
+                                        id='fresnel-save-dropdown',
+                                        label='Save as...',
+                                        color='info',
+                                        children=[
+                                            dbc.DropdownMenuItem('.PNG', id='fresnel-reflectivity-save-png', n_clicks=0),
+                                            dbc.DropdownMenuItem('.SVG', id='fresnel-reflectivity-save-svg', n_clicks=0),
+                                            dbc.DropdownMenuItem('.HTML', id='fresnel-reflectivity-save-html', n_clicks=0)],
+                                        style={'margin-left': '-5px'})
+                                ], style={'margin-left': '30%'}),
+                            ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
+                        ], id='fresnel-tab-content', style={'display': 'flex', 'justify-content': 'center'})
+                    ], label='Fresnel modelling', tab_id='fresnel-tab', style={'margin-top': '10px'}),
 
-    # Adding note to session log
-    @dash.callback(
-        dash.Output('console', 'value'),
-        dash.Output('session-title', 'children'),
-        dash.Output('test-input', 'value'),
-        dash.Input('submit-button', 'n_clicks'),
-        dash.Input('rename-session-button', 'n_clicks'),
-        dash.State('test-input', 'value'),
-        prevent_initial_call=True)
-    def update_session_log(input1, input2, state1):
+                    # Exclusion height determination tab
+                    dbc.Tab([
+                        dash.html.Div([
+                            dash.html.Div([
+                                dash.html.Div([
+                                    dash.html.H3(['Settings']),
+                                    dbc.Form([
+                                        dash.html.Div([
+                                            dbc.ButtonGroup([
+                                                dbc.Button('Add new exclusion height analysis',
+                                                           id='add-exclusion-height-analysis-button',
+                                                           n_clicks=0,
+                                                           color='primary',
+                                                           title='Add a new exclusion analysis object for the current sensor.'
+                                                           ),
+                                                dash.dcc.Store(id='add-exclusion-height-analysis-signal', storage_type='session'),
+                                                dbc.Modal([
+                                                    dbc.ModalHeader(dbc.ModalTitle('New exclusion height analysis object')),
+                                                    dbc.ModalBody([
+                                                        dash.dcc.Dropdown(id='exclusion-choose-background-dropdown',
+                                                                          placeholder='Choose background...',
+                                                                          options=[{'label': 'FM' + str(fresnel_id) + ' ' +
+                                                                                             current_session.fresnel_analysis_instances[
+                                                                                                 fresnel_id].name,
+                                                                                    'value': fresnel_id} for fresnel_id in
+                                                                                   current_session.fresnel_analysis_instances]),
+                                                        dbc.Input(id='exclusion-height-analysis-name-input',
+                                                                  placeholder='Give a name...', type='text')
+                                                    ]),
+                                                    dbc.ModalFooter(
+                                                        dbc.Button('Confirm', id='add-exclusion-height-analysis-confirm',
+                                                                   color='success',
+                                                                   n_clicks=0)
+                                                    )
+                                                ],
+                                                    id='add-exclusion-height-analysis-modal',
+                                                    size='sm',
+                                                    is_open=False,
+                                                    backdrop='static',
+                                                    keyboard=False),
+                                                dbc.DropdownMenu(id='exclusion-height-analysis-dropdown',
+                                                                 label='Choose analysis',
+                                                                 color='primary',
+                                                                 children=[dbc.DropdownMenuItem(
+                                                                     'EH' + str(exclusion_id) + ' ' +
+                                                                     current_session.exclusion_height_analysis_instances[
+                                                                         exclusion_id].name,
+                                                                     id={'type': 'exclusion-analysis-list',
+                                                                         'index': exclusion_id},
+                                                                     n_clicks=0) for exclusion_id in
+                                                                     current_session.exclusion_height_analysis_instances]),
+                                                dbc.Button('Remove analysis',
+                                                           id='remove-exclusion-height-analysis-button',
+                                                           n_clicks=0,
+                                                           color='primary',
+                                                           title='Remove the currently selected analysis.'),
+                                                dbc.Modal([
+                                                    dbc.ModalHeader(dbc.ModalTitle('Removing exclusion-height analysis object')),
+                                                    dbc.ModalBody(
+                                                        'Are you sure you want to delete the currently selected analysis?'),
+                                                    dbc.ModalFooter(
+                                                        dbc.ButtonGroup([
+                                                            dbc.Button('Confirm', id='remove-exclusion-height-analysis-confirm',
+                                                                       color='success',
+                                                                       n_clicks=0),
+                                                            dbc.Button('Cancel', id='remove-exclusion-height-analysis-cancel',
+                                                                       color='danger',
+                                                                       n_clicks=0)
+                                                        ])
+                                                    )
+                                                ],
+                                                    id='remove-exclusion-height-analysis-modal',
+                                                    size='sm',
+                                                    is_open=False,
+                                                    backdrop='static',
+                                                    keyboard=False),
+                                            ])
+                                        ]),
+                                        dash.html.Div([
+                                            dbc.Collapse(
+                                                dbc.Card(
+                                                    dbc.CardBody(
+                                                        dbc.Form([
+                                                            dbc.Row([
+                                                                dbc.Label(
+                                                                    'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                                                                        sensor_number=current_sensor.object_id,
+                                                                        sensor_name=current_sensor.name,
+                                                                        channel=current_sensor.channel,
+                                                                        fitted_layer=current_sensor.optical_parameters.iloc[
+                                                                            current_sensor.fitted_layer_index[0], 0],
+                                                                        fitted_param=
+                                                                        current_sensor.optical_parameters.columns[
+                                                                            current_sensor.fitted_layer_index[1]]),
+                                                                    id='exclusion-height-sensor-label')
+                                                            ], style={'margin-bottom': '10px'}),
+                                                            dbc.Row([
+                                                                dbc.Label(
+                                                                    'Fresnel analysis: FM{analysis_number} {analysis_name}'.format(
+                                                                        analysis_number=1,
+                                                                        analysis_name='Placeholder'),
+                                                                    id='exclusion-height-fresnel-analysis-label')
+                                                            ], style={'margin-bottom': '10px'}),
+                                                            dbc.Row([
+                                                                dbc.Label('Height bounds (min, max)', width='auto'),
+                                                                dbc.Col([
+                                                                    dbc.InputGroup([
+                                                                        dbc.Input(id='exclusion-height-option-lowerbound',
+                                                                                  value=float(0),
+                                                                                  type='number'),
+                                                                        dbc.Input(id='exclusion-height-option-upperbound',
+                                                                                  value=float(200),
+                                                                                  type='number')
+                                                                    ])
+                                                                ], width=7)
+                                                            ], style={'margin-bottom': '10px'}),
+                                                            dbc.Row([
+                                                                dbc.Label('Resolution (#steps)', width='auto'),
+                                                                dbc.Col([
+                                                                    dbc.InputGroup([
+                                                                        dbc.Input(id='exclusion-height-option-resolution',
+                                                                                  value=int(200),
+                                                                                  type='number'),
+                                                                    ])
+                                                                ], width=3)
+                                                            ], style={'margin-bottom': '10px'}),
+                                                            dbc.Row([
+                                                                dbc.Label('Injection points: ', width='auto', id='exclusion-height-settings-injection-points')
+                                                            ]),
+                                                            dbc.Row([
+                                                                dbc.Label('Buffer points: ', width='auto', id='exclusion-height-settings-buffer-points')
+                                                            ]),
+                                                            dbc.Row([
+                                                                dbc.Label('Probe points: ', width='auto', id='exclusion-height-settings-probe-points')
+                                                            ]),
+                                                            dbc.Row([
+                                                                dbc.Col([
+                                                                    dbc.Button('Initialize model',
+                                                                               id='exclusion-height-initialize-model',
+                                                                               color='primary',
+                                                                               n_clicks=0,
+                                                                               size='lg',
+                                                                               title='Prepare model after selecting all points.')
+                                                                ], width=6)
+                                                            ])
+                                                        ])
+                                                    )
+                                                ), id='exclusion-height-analysis-option-collapse', is_open=False)
+                                        ])
+                                    ], id='exclusion-height-fit-options-form'),
+                                    dbc.Collapse([
+                                        dash.html.Div([
+                                            dbc.ButtonGroup([
+                                                dbc.Spinner(color='success', type='border', id='exclusion-height-spinner', spinner_style={'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}),
+                                                dbc.Button('Run full calculation', id='exclusion-height-run-button',
+                                                           color='success',
+                                                           n_clicks=0,
+                                                           size='lg',
+                                                           disabled=False),
+                                                dbc.Button('Abort', id='exclusion-height-abort-button',
+                                                           color='danger',
+                                                           n_clicks=0,
+                                                           size='lg',
+                                                           disabled=True,
+                                                           title='Cancelling a running calculation. NOTE THAT PREVIOUS PROGRESS IS STILL OVERWRITTEN.'),
+                                            ]),
+                                            dash.dcc.Store(id='exclusion-run-finished', storage_type='session')
+                                        ])
+                                    ], id='exclusion-height-progress-collapse', is_open=False, style={'margin-top': '120px'})
+                                ], style={'margin-top': '80px'}),
+                                dbc.Collapse([
+                                    dash.html.Div([
+                                        dash.dcc.Graph(id='exclusion-height-sensorgram-graph',
+                                                       figure=sensorgram_fig,
+                                                       mathjax=True),
+                                        dash.html.Div([
+                                            dbc.Label('Click-action selector', style={'margin-left': '5%', 'margin-top': '35px'}),
+                                            dbc.RadioItems(
+                                                options=[
+                                                    {"label": "Offset data", "value": 1},
+                                                    {"label": "Choose injection points", "value": 2},
+                                                    {"label": "Choose buffer points", "value": 3},
+                                                    {"label": "Choose probe points", "value": 4}],
+                                                value=1,
+                                                id='exclusion-height-click-action-selector',
+                                                style={'margin-left': '20px'}),
+                                            dbc.Button('Clear selected points', id='exclusion-height-click-action-clear',
+                                                       color='warning',
+                                                       n_clicks=0,
+                                                       style={'margin-left': '20px', 'margin-top': '35px', 'margin-bot': '35px', 'margin-right': '18%', 'line-height': '1.5'}),
+                                            dbc.DropdownMenu(
+                                                id='exclusion-height-sensorgram-save-dropdown',
+                                                label='Save as...',
+                                                color='info',
+                                                children=[dbc.DropdownMenuItem('.PNG', id='exclusion-height-sensorgram-save-png',
+                                                                               n_clicks=0),
+                                                          dbc.DropdownMenuItem('.SVG', id='exclusion-height-sensorgram-save-svg',
+                                                                               n_clicks=0),
+                                                          dbc.DropdownMenuItem('.HTML', id='exclusion-height-sensorgram-save-html',
+                                                                               n_clicks=0)])
+                                        ], style={'display': 'flex', 'justify-content': 'left'}),
+                                    ])
+                                ], id='exclusion-height-sensorgram-collapse', is_open=False, style={'width': '60%', 'margin-left': '3%'})
+                            ], style={'display': 'flex', 'justify-content': 'center'}),
 
-        global current_session
+                            # Results
+                            dbc.Collapse([
+                                dash.html.Div([
+                                    dash.html.H3(['Exclusion height results'], style={'display': 'flex', 'justify-content': 'left'}),
+                                    dash.html.Div([
+                                        dbc.Label('Mean exclusion height: None',
+                                                  id='exclusion-height-result-mean-height')
+                                    ], style={'margin-top': '30px', 'display': 'flex', 'justify-content': 'left'}),
+                                    dash.html.Div([
+                                        dbc.Label('Mean exclusion RI: None',
+                                                  id='exclusion-height-result-mean-RI')
+                                    ], style={'margin-top': '10px', 'display': 'flex', 'justify-content': 'left'}),
+                                    dash.html.Div([
+                                        dbc.Label('All exclusion heights: None',
+                                                  id='exclusion-height-result-all-heights')
+                                    ], style={'margin-top': '10px', 'display': 'flex', 'justify-content': 'left'}),
+                                    dash.html.Div([
+                                        dbc.Label('All exclusion RIs: None',
+                                                  id='exclusion-height-result-all-RI')
+                                    ], style={'margin-top': '10px', 'display': 'flex', 'justify-content': 'left'}),
+                                    dbc.Label('Injection step', id='exclusion-height-result-pagination-label',
+                                              style={'display': 'flex', 'justify-content': 'center'}),
+                                    dash.html.Div([
+                                        dbc.Pagination(max_value=2, previous_next=True, id='exclusion-height-result-pagination')
+                                    ], style={'display': 'flex', 'justify-content': 'center'}),
+                                    dash.html.Div([
+                                        dash.html.Div([
+                                            dash.dcc.Graph(id='exclusion-height-SPRvsTIR-graph',
+                                                           figure=reflectivity_fig,
+                                                           mathjax=True),
+                                            dbc.ButtonGroup([
+                                                dbc.DropdownMenu(
+                                                    id='exclusion-height-SPRvsTIR-save-dropdown',
+                                                    label='Save as...',
+                                                    color='info',
+                                                    children=[
+                                                        dbc.DropdownMenuItem('.PNG',
+                                                                             id='exclusion-height-SPRvsTIR-save-png',
+                                                                             n_clicks=0),
+                                                        dbc.DropdownMenuItem('.SVG',
+                                                                             id='exclusion-height-SPRvsTIR-save-svg',
+                                                                             n_clicks=0),
+                                                        dbc.DropdownMenuItem('.HTML',
+                                                                             id='exclusion-height-SPRvsTIR-save-html',
+                                                                             n_clicks=0)],
+                                                )
+                                            ], style={'margin-left': '13%'}),
+                                        ], style={'width': '33%'}),
+                                        dash.html.Div([
+                                            dash.dcc.Graph(id='exclusion-height-reflectivity-graph',
+                                                           figure=reflectivity_fig,
+                                                           mathjax=True),
+                                            dbc.ButtonGroup([
+                                                dbc.DropdownMenu(
+                                                    id='exclusion-height-reflectivity-save-dropdown',
+                                                    label='Save as...',
+                                                    color='info',
+                                                    children=[
+                                                        dbc.DropdownMenuItem('.PNG', id='exclusion-height-reflectivity-save-png',
+                                                                             n_clicks=0),
+                                                        dbc.DropdownMenuItem('.SVG', id='exclusion-height-reflectivity-save-svg',
+                                                                             n_clicks=0),
+                                                        dbc.DropdownMenuItem('.HTML', id='exclusion-height-reflectivity-save-html',
+                                                                             n_clicks=0)],
+                                                )
+                                            ], style={'margin-left': '13%'}),
+                                        ], style={'width': '33%'}),
+                                        dash.html.Div([
+                                            dash.dcc.Graph(id='exclusion-height-d-n-pair-graph',
+                                                           figure=d_n_pair_fig,
+                                                           mathjax=True),
+                                            dbc.ButtonGroup([
+                                                dbc.DropdownMenu(
+                                                    id='exclusion-height-d-n-pair-save-dropdown',
+                                                    label='Save as...',
+                                                    color='info',
+                                                    children=[
+                                                        dbc.DropdownMenuItem('.PNG',
+                                                                             id='exclusion-height-d-n-pair-save-png',
+                                                                             n_clicks=0),
+                                                        dbc.DropdownMenuItem('.SVG',
+                                                                             id='exclusion-height-d-n-pair-save-svg',
+                                                                             n_clicks=0),
+                                                        dbc.DropdownMenuItem('.HTML',
+                                                                             id='exclusion-height-d-n-pair-save-html',
+                                                                             n_clicks=0)],
+                                                )
+                                            ], style={'margin-left': '13%'}),
+                                        ], style={'width': '33%'})
+                                    ], style={'display': 'flex', 'justify-content': 'center'})
+                                ], style={'margin-top': '40px'}),
+                            ], id='exclusion-height-result-collapse', is_open=False)
+                        ], id='exclusion-height-tab-content')
+                    ], label='Exclusion height determination', tab_id='exclusion-height-tab', style={'margin-top': '10px'}),
+
+                    # Result summary tab
+                    dbc.Tab([
+                        dash.html.Div([
+                            #TODO: Use a form to create an initial window containing the different options to choose from,
+                            # first one should select what type of plot maybe? Then dropdowns containing checklists to
+                            # select which model objects to pull results from (default all?). Also buttons for different
+                            # plot styling options and what kind of statistics (STD, SE, Confidence interval etc). Barplot
+                            # option to make stacked barplots or grouped barplots. Should be dynamic added options that
+                            # are adding dropdowns to select from? Or how to do this conveniently... Maybe I can add some of
+                            # the more common options, and then one that is fully customisable?
+                            # To make persistent editable axis and titles -> https://community.plotly.com/t/allowing-users-to-edit-graph-properties-without-code-changes/72031'
+                            # (but I would create an object for the summary maybe {or saved in the session object}? at least give that option so everything is saved.
+
+                            dash.html.Div([
+                                dash.html.Div([
+                                    dash.html.H3(['Settings']),
+
+                                ], style={'margin-top': '1.9rem', 'width': '65%'}),
+                                dash.html.Div([
+                                    dash.dcc.Graph(id='barplot-reflectivity-graph',
+                                                   figure=go.Figure(go.Scatter()),
+                                                   mathjax=True),
+                                    dbc.DropdownMenu(
+                                        id='barplot-save-dropdown',
+                                        label='Save as...',
+                                        color='info',
+                                        children=[
+                                            dbc.DropdownMenuItem('.PNG', id='barplot-save-png', n_clicks=0),
+                                            dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
+                                            dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0)],
+                                        style={'margin-left': '-5px'})
+                                ], style={'margin-left': '30%'}),
+                            ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
+                        ], id='summary-tab-content')
+                    ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
+                ], id='analysis-tabs', active_tab='quantification-tab'),
+            ], style={'margin-left': '2%', 'margin-right': '2%'})
+        ])
 
         if 'submit-button' == dash.ctx.triggered_id:
 
@@ -1105,8 +1106,9 @@ if __name__ == '__main__':
         dash.Output('loaded-new-measurement', 'data'),
         dash.Output('datapath-textfield', 'children'),
         dash.Input('load-data', 'n_clicks'),
+        dash.Input('load-data-batch', 'n_clicks'),
         prevent_initial_call=True)
-    def update_measurement_data(load_data):
+    def update_measurement_data(load_data, load_data_batch):
 
         global current_data_path
         global current_session
@@ -1120,28 +1122,34 @@ if __name__ == '__main__':
         global TIR_range_water_or_long_measurement
         global TIR_range_air_or_few_scans
         global TIR_range
+        global default_data_folder
 
-        # Load measurement data and update session current data path
-        current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
-        current_session.current_data_path = current_data_path
-        current_session.save_session()
+        if 'load-data' == dash.ctx.triggered_id:
+            # Load measurement data and update session current data path
+            current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
+            current_session.current_data_path = current_data_path
+            current_session.save_session()
 
-        # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
-        if ydata_df.shape[0] > 50:
-            TIR_range = TIR_range_water_or_long_measurement
-        else:
-            TIR_range = TIR_range_air_or_few_scans
+            # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
+            if ydata_df.shape[0] > 50:
+                TIR_range = TIR_range_water_or_long_measurement
+            else:
+                TIR_range = TIR_range_air_or_few_scans
 
-        sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
-        # Offset to start at 0 degrees at 0 minutes
-        sensorgram_df_selection = sensorgram_df
-        sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
-                                               sensorgram_df_selection['SPR angle'][0]
-        sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
-                                               sensorgram_df_selection['TIR angle'][0]
+            # Offset to start at 0 degrees at 0 minutes
+            sensorgram_df_selection = sensorgram_df
+            sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
+                                                   sensorgram_df_selection['SPR angle'][0]
+            sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
+                                                   sensorgram_df_selection['TIR angle'][0]
 
-        return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
+            return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
+
+        elif 'load-data-batch' == dash.ctx.triggered_id:
+            print('Select the measurement data files (.csv)')
+            batch_data_paths_ = select_files('Select the measurement data files', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
 
     # Updating the sensor table with new values and properties
     @dash.callback(
@@ -1531,7 +1539,7 @@ if __name__ == '__main__':
 
         # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
         elif 'quantification-reflectivity-add-data-trace' == dash.ctx.triggered_id:
-            _, _, _, _, _, trace_reflectivity_df = load_csv_data()
+            _, _, _, _, _, trace_reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
                                                y=trace_reflectivity_df['ydata'],
                                                mode='lines',
@@ -1723,6 +1731,8 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-datapath', 'children'),
         dash.Output('batch-fresnel-analysis-modal', 'is_open'),
         dash.Output('rename-fresnel-analysis-modal', 'is_open'),
+        dash.Output('batch-fresnel-analysis-example-sensor-dropdown', 'options'),
+        dash.Output('batch-fresnel-analysis-example-analysis-dropdown', 'options'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1746,11 +1756,19 @@ if __name__ == '__main__':
         dash.State('fresnel-fit-option-upperbound', 'value'),
         dash.State('fresnel-fit-option-extinctionslider', 'value'),
         dash.State('rename-fresnel-analysis-input', 'value'),
+        dash.State('batch-fresnel-analysis-files', 'data'),
+        dash.State('batch-fresnel-analysis-radio-selection', 'value'),
+        dash.State('batch-fresnel-analysis-newlayer-label', 'value'),
+        dash.State('batch-fresnel-analysis-newlayer-thickness', 'value'),
+        dash.State('batch-fresnel-analysis-newlayer-n', 'value'),
+        dash.State('batch-fresnel-analysis-newlayer-k', 'value'),
+        dash.State('batch-sensor-list', 'index'),
+        dash.State('batch-fresnel-analysis-list', 'index'),
         prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_button, batch_confirm, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction, analysis_name_):
+                                          extinction_correction, analysis_name_, batch_files, batch_radio_selection, batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k, batch_sensor_index, batch_analysis_index):
 
         global current_fresnel_analysis
         global current_data_path
@@ -1815,7 +1833,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
@@ -1882,10 +1900,10 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
@@ -1958,10 +1976,10 @@ if __name__ == '__main__':
 
             return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
             current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'rename-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update
 
         elif 'rename-fresnel-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -1978,10 +1996,10 @@ if __name__ == '__main__':
                                                      id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                                                      n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
-            return dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False
+            return dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.fresnel_analysis_instances) > 1:
@@ -2065,7 +2083,7 @@ if __name__ == '__main__':
 
                 return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
                     current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
             # If deleting the last fresnel analysis object
             else:
@@ -2076,20 +2094,122 @@ if __name__ == '__main__':
                 current_fresnel_analysis = None
                 current_session.save_session()
 
-                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'batch-fresnel-analysis-button' == dash.ctx.triggered_id:
-            # TODO: Update Select example sensor and Select example analysis dropdowns with current_session.analysis_instances
-            # TODO: Add outputs in this callback for the dropdowns
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update
+
+            # Update example sensor and analysis options and open batch modal
+            example_sensor_options = [{'label': 'S' + str(sensor.object_id) + ' ' + sensor.name + ' - ' + sensor.channel, 'value': sensor.object_id} for sensor in current_session.sensor_instances]
+            example_analysis_options = [{'label': 'FM' + str(fresnel_analysis.object_id) + ' ' + fresnel_analysis.name, 'value': fresnel_analysis.object_id} for fresnel_analysis in current_session.fresnel_analysis_instances]
+
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, example_sensor_options, example_analysis_options
 
         elif 'batch-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             # TODO: Implement batch analysis. It needs to create new analysis objects and run analysis for each data file in the batch.
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update
+            # Conditional for batch analysis radio button selection
+            if batch_radio_selection == 0:
+
+                # Use the same layer structure copied from selected example sensor object
+                for file_path in batch_files:
+                    # TODO: This part is copy paste patchwork still, very much WIP, trust nothing...
+                    # Load data from measurement file using load_csv_data
+                    _, _, _, _, _, next_reflectivity_df_ = load_csv_data(path=file_path)
+
+                    # Add copy of sensor object to session
+                    example_sensor_object = current_session.sensor_instances[batch_sensor_index]
+                    next_sensor = copy_sensor_backend(current_session, example_sensor_object)
+                    next_sensor.name = example_sensor_object.name + ' copy'
+                    current_sensor = next_sensor
+                    current_session.save_sensor(current_sensor.object_id)
+                    current_session.save_session()
+
+                    # Add fresnel model object to session
+                    example_fresnel_analysis_object = current_session.fresnel_analysis_instances[batch_analysis_index]
+                    current_fresnel_analysis = add_fresnel_model_object(current_session, next_sensor,
+                                                                        current_data_path, next_reflectivity_df_, TIR_range,
+                                                                        scanspeed, example_fresnel_analysis_object.name)
+                    # Set analysis options from example analysis objects
+                    current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
+                    current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 4,
+                                                       current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
+                    current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0],
+                                                            reflectivity_df['angles'].iloc[-1]]
+                    current_session.save_session()
+                    current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+
+                    # Run calculations and modelling
+                    fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
+
+                    # Update sensor object with the fit result and prism extinction value
+                    current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(
+                        current_fresnel_analysis.fitted_result, 4)
+                    current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+
+                    # Save session and analysis object
+                    current_session.save_session()
+                    current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+
+            elif batch_radio_selection == 1:
+                # TODO: Implement batch analysis for new layer added to a list of selected backgrounds (add this dropdown as a standard dash dropdown with multi choice enabled)
+                pass
+
+            # Fit result text
+            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+
+            # Plot fitted trace
+            new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
+                                              y=current_fresnel_analysis.measurement_data['ydata'],
+                                              mode='lines',
+                                              showlegend=False,
+                                              line_color='#636efa'
+                                              ))
+            new_figure.add_trace(go.Scatter(x=fresnel_df['angles'],
+                                            y=fresnel_df['ydata'],
+                                            mode='lines',
+                                            showlegend=False,
+                                            line_color='#ef553b'
+                                            ))
+            new_figure.add_trace(
+                go.Scatter(x=[current_fresnel_analysis.angle_range[0], current_fresnel_analysis.angle_range[0]],
+                           y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                              max(current_fresnel_analysis.measurement_data['ydata'])],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='black',
+                           line_dash='dash'
+                           ))
+            new_figure.add_trace(
+                go.Scatter(x=[current_fresnel_analysis.angle_range[1], current_fresnel_analysis.angle_range[1]],
+                           y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                              max(current_fresnel_analysis.measurement_data['ydata'])],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='black',
+                           line_dash='dash'
+                           ))
+            # Updating layout
+            new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                     yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                     font_family='Balto',
+                                     font_size=19,
+                                     margin_r=25,
+                                     margin_l=60,
+                                     margin_t=40,
+                                     template='simple_white',
+                                     uirevision=True)
+            new_figure.update_xaxes(mirror=True,
+                                    showline=True)
+            new_figure.update_yaxes(mirror=True,
+                                    showline=True)
+
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'batch-fresnel-analysis-cancel' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -2169,7 +2289,7 @@ if __name__ == '__main__':
                                     showline=True)
 
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-                current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+                current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     @dash.callback(
         dash.Output('batch-fresnel-analysis-newlayer-row', 'style'),
