@@ -490,7 +490,6 @@ if __name__ == '__main__':
                     ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
 
                     # Fresnel modelling tab
-                    # TODO: Add a rename analysis object button
                     dbc.Tab([
                         dash.html.Div([
                             dash.html.Div([
@@ -1709,7 +1708,6 @@ if __name__ == '__main__':
             return figure_object
 
     # Update the reflectivity plot in the Fresnel fitting tab
-    # TODO: Add a rename analysis object button
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),
         dash.Output('fresnel-reflectivity-run-finished', 'data'),
@@ -1908,7 +1906,7 @@ if __name__ == '__main__':
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
             current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
-            current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 4, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
+            current_fresnel_analysis.bounds = (current_fresnel_analysis.ini_guess / 4, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2)
             current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
@@ -2134,8 +2132,8 @@ if __name__ == '__main__':
                                                                         scanspeed, example_fresnel_analysis_object.name)
                     # Set analysis options from example analysis objects
                     current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
-                    current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 4,
-                                                       current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
+                    current_fresnel_analysis.bounds = (current_fresnel_analysis.ini_guess / 4,
+                                                       current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2)
                     current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0],
                                                             reflectivity_df['angles'].iloc[-1]]
                     current_session.save_session()
@@ -2366,10 +2364,6 @@ if __name__ == '__main__':
                                         dnpair_figure_JSON, active_page_state):
         """
         This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
-        TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
-         the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
-         fails the user is prompted to select the new path for the file.
-        TODO: When hovering over datapoints in the d_n_pair plot, take the d and n values and perform the fresnel calculation in the plot to display the fit
         """
         global current_session
         global current_data_path

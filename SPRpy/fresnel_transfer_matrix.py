@@ -37,17 +37,36 @@ def fresnel_calculation(fitted_var=None,
     # Check first if fitting is performed or not
     if fitted_var is not None:
 
-        # Selecting layer to fit
-        match fitted_layer_index[1]:
-            case 0:
-                print('Invalid fitting variable!')
-                return 0
-            case 1:
-                layer_thicknesses[fitted_layer_index[0]] = fitted_var
-            case 2:
-                n_re[fitted_layer_index[0]] = fitted_var
-            case 3:
-                n_im[fitted_layer_index[0]] = fitted_var
+        # Include fitting prism extinction value
+        if len(fitted_var) == 2:
+
+            # Selecting main layer to fit
+            match fitted_layer_index[1]:
+                case 0:
+                    print('Invalid fitting variable!')
+                    return 0
+                case 1:
+                    layer_thicknesses[fitted_layer_index[0]] = fitted_var[0]
+                case 2:
+                    n_re[fitted_layer_index[0]] = fitted_var[0]
+                case 3:
+                    n_im[fitted_layer_index[0]] = fitted_var[0]
+
+            # Fit prism extinction value
+            n_im[0] = fitted_var[1]
+
+        else:
+            # Selecting layer to fit
+            match fitted_layer_index[1]:
+                case 0:
+                    print('Invalid fitting variable!')
+                    return 0
+                case 1:
+                    layer_thicknesses[fitted_layer_index[0]] = fitted_var
+                case 2:
+                    n_re[fitted_layer_index[0]] = fitted_var
+                case 3:
+                    n_im[fitted_layer_index[0]] = fitted_var
 
     # Merge real and imaginary refractive indices
     n = n_re + 1j * n_im
