@@ -325,7 +325,7 @@ class FresnelModel:
         self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
         self.angle_range = [40, 80]
         self.ini_guess = 4
-        self.bounds = [0, 50]
+        self.bounds = (0, 50)
         self.extinction_correction = 0
         self.y_offset = 0
         self.fitted_data = None
@@ -373,8 +373,8 @@ class FresnelModel:
 
             # Perform the fitting
             result = scipy.optimize.least_squares(fresnel_calculation,
-                                                  self.ini_guess,
-                                                  bounds=self.bounds,
+                                                  [self.ini_guess, 0.001],
+                                                  bounds=[self.bounds, (0, 0.01)],
                                                   kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
                                                           'wavelength': self.sensor_object.wavelength,
                                                           'layer_thicknesses': self.sensor_object.layer_thicknesses,
