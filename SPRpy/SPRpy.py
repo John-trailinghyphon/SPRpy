@@ -1102,7 +1102,7 @@ if __name__ == '__main__':
         dash.Output('loaded-new-measurement', 'data'),
         dash.Output('datapath-textfield', 'children'),
         dash.Input('load-data', 'n_clicks'),
-        dash.Input('load-data-batch', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-choose-files', 'n_clicks'),
         prevent_initial_call=True)
     def update_measurement_data(load_data, load_data_batch):
 
@@ -1143,7 +1143,7 @@ if __name__ == '__main__':
 
             return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
 
-        elif 'load-data-batch' == dash.ctx.triggered_id:
+        elif 'batch-fresnel-analysis-choose-files' == dash.ctx.triggered_id:
             print('Select the measurement data files (.csv)')
             batch_data_paths_ = select_files('Select the measurement data files', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
 
@@ -1726,8 +1726,8 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-datapath', 'children'),
         dash.Output('batch-fresnel-analysis-modal', 'is_open'),
         dash.Output('rename-fresnel-analysis-modal', 'is_open'),
-        dash.Output('batch-fresnel-analysis-example-sensor-dropdown', 'options'),
-        dash.Output('batch-fresnel-analysis-example-analysis-dropdown', 'options'),
+        dash.Output('batch-fresnel-analysis-example-sensor-dropdown', 'children'),
+        dash.Output('batch-fresnel-analysis-example-analysis-dropdown', 'children'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1759,7 +1759,8 @@ if __name__ == '__main__':
         dash.State('batch-fresnel-analysis-newlayer-k', 'value'),
         dash.State('batch-sensor-list', 'index'),
         dash.State('batch-fresnel-analysis-list', 'index'),
-        prevent_initial_call=True)
+        prevent_initial_call=True,
+        suppress_callback_exceptions=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_button, batch_confirm, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
