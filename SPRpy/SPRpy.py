@@ -147,6 +147,7 @@ if __name__ == '__main__':
     # Dash app
     app = dash.Dash(name='SPRpy', title='SPRpy', external_stylesheets=[dash_app_theme])
     app._favicon = 'icon.ico'
+    # app.config.suppress_callback_exceptions = True  # NOTE: Comment out this line for debugging purposes if callbacks do not fire when supposed to
 
     # Dash figures
     reflectivity_fig = px.line(reflectivity_df, x='angles', y='ydata')
@@ -561,23 +562,17 @@ if __name__ == '__main__':
                                             dbc.ModalHeader(dbc.ModalTitle('Start automatic batch fresnel modelling')),
                                             dbc.ModalBody([dash.html.Div(['Prerequisites:']),
                                                            dash.html.Div([' - All files must be in the same folder.']),
-                                                           dash.html.Div([' - All files must have the same layer structure (provide examples below).']),
-                                                           dbc.ButtonGroup([
-                                                               dbc.Button('Choose measurement files',
-                                                                          id='batch-fresnel-analysis-choose-files',
-                                                                          n_clicks=0),
-                                                               dash.dcc.Store(id='batch-fresnel-analysis-files', storage_type='session'),
-                                                               dbc.DropdownMenu(id='batch-fresnel-analysis-example-sensor-dropdown',
-                                                                                label='Select example sensor',
-                                                                                children=[dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
-                                                                                                               id={'type': 'batch-sensor-list', 'index': sensor_id},
-                                                                                                               n_clicks=0) for sensor_id in current_session.sensor_instances]),
-                                                               dbc.DropdownMenu(id='batch-fresnel-analysis-example-analysis-dropdown',
-                                                                                label='Select example analysis',
-                                                                                children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
-                                                                                                               id={'type': 'batch-fresnel-analysis-list', 'index': fresnel_id},
-                                                                                                               n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
-                                                           ]),
+                                                           dash.html.Div([' - All files must have the same sensor layer structure (provide examples below).']),
+                                                           dbc.Button('Choose measurement files',
+                                                                      id='batch-fresnel-analysis-choose-files',
+                                                                      n_clicks=0),
+                                                           dash.dcc.Store(id='batch-fresnel-analysis-files', storage_type='session'),
+                                                           dash.dcc.Dropdown(id='batch-fresnel-analysis-example-sensor-dropdown',
+                                                                            placeholder='Select example sensor',
+                                                                            options=[{'label': 'S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, 'value': sensor_id} for sensor_id in current_session.sensor_instances]),
+                                                           dash.dcc.Dropdown(id='batch-fresnel-analysis-example-analysis-dropdown',
+                                                                            placeholder='Select example analysis',
+                                                                             options=[{'label': 'FM' + str(fresnel_analysis_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_analysis_id].name, 'value': fresnel_analysis_id} for fresnel_analysis_id in current_session.fresnel_analysis_instances]),
                                                            dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
                                                                                         {'label': 'Add new layer and select individual backgrounds', 'value': 1}],
                                                                                value=0,
@@ -1101,6 +1096,7 @@ if __name__ == '__main__':
     @dash.callback(
         dash.Output('loaded-new-measurement', 'data'),
         dash.Output('datapath-textfield', 'children'),
+        dash.Output('batch-fresnel-analysis-files', 'data'),
         dash.Input('load-data', 'n_clicks'),
         dash.Input('batch-fresnel-analysis-choose-files', 'n_clicks'),
         prevent_initial_call=True)
@@ -1141,11 +1137,12 @@ if __name__ == '__main__':
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
                                                    sensorgram_df_selection['TIR angle'][0]
 
-            return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
+            return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]], dash.no_update
 
         elif 'batch-fresnel-analysis-choose-files' == dash.ctx.triggered_id:
             print('Select the measurement data files (.csv)')
             batch_data_paths_ = select_files('Select the measurement data files', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
+            return dash.no_update, dash.no_update, batch_data_paths_
 
     # Updating the sensor table with new values and properties
     @dash.callback(
@@ -1726,8 +1723,8 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-datapath', 'children'),
         dash.Output('batch-fresnel-analysis-modal', 'is_open'),
         dash.Output('rename-fresnel-analysis-modal', 'is_open'),
-        dash.Output('batch-fresnel-analysis-example-sensor-dropdown', 'children'),
-        dash.Output('batch-fresnel-analysis-example-analysis-dropdown', 'children'),
+        dash.Output('batch-fresnel-analysis-example-sensor-dropdown', 'options'),
+        dash.Output('batch-fresnel-analysis-example-analysis-dropdown', 'options'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1757,10 +1754,9 @@ if __name__ == '__main__':
         dash.State('batch-fresnel-analysis-newlayer-thickness', 'value'),
         dash.State('batch-fresnel-analysis-newlayer-n', 'value'),
         dash.State('batch-fresnel-analysis-newlayer-k', 'value'),
-        dash.State('batch-sensor-list', 'index'),
-        dash.State('batch-fresnel-analysis-list', 'index'),
-        prevent_initial_call=True,
-        suppress_callback_exceptions=True)
+        dash.State('batch-fresnel-analysis-example-sensor-dropdown', 'value'),
+        dash.State('batch-fresnel-analysis-example-analysis-dropdown', 'value'),
+        prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_button, batch_confirm, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
@@ -2086,7 +2082,7 @@ if __name__ == '__main__':
                 try:
                     current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
                 except AttributeError:
-                    pass  # There was no object at all
+                    pass  # There was no object at all, this will cause big problems if AttributeError can happen for other reasons though
                 current_fresnel_analysis = None
                 current_session.save_session()
 
@@ -2098,8 +2094,8 @@ if __name__ == '__main__':
         elif 'batch-fresnel-analysis-button' == dash.ctx.triggered_id:
 
             # Update example sensor and analysis options and open batch modal
-            example_sensor_options = [{'label': 'S' + str(sensor.object_id) + ' ' + sensor.name + ' - ' + sensor.channel, 'value': sensor.object_id} for sensor in current_session.sensor_instances]
-            example_analysis_options = [{'label': 'FM' + str(fresnel_analysis.object_id) + ' ' + fresnel_analysis.name, 'value': fresnel_analysis.object_id} for fresnel_analysis in current_session.fresnel_analysis_instances]
+            example_sensor_options = [{'label': 'S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, 'value': sensor_id} for sensor_id in current_session.sensor_instances]
+            example_analysis_options = [{'label': 'FM' + str(fresnel_analysis_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_analysis_id].name, 'value': fresnel_analysis_id} for fresnel_analysis_id in current_session.fresnel_analysis_instances]
 
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, example_sensor_options, example_analysis_options
 
