@@ -363,18 +363,22 @@ class FresnelModel:
         self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
         # Add extinction correction to fitted surface layer extinction value
-        self.sensor_object.extinction_coefficients[0] += self.extinction_correction  # Correct Prism layer extinction
+        # self.sensor_object.extinction_coefficients[0] += self.extinction_correction  # Correct Prism layer extinction
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
 
         for offset_ind in range(3):
             selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] - self.y_offset
+            weights = np.ones(len(selection_ydata_))
+            weights[selection_ydata_.argmin():-1] = 2
 
-            # Perform the fitting
+            # Perform the first fitting
             result = scipy.optimize.least_squares(fresnel_calculation,
-                                                  [self.ini_guess, 0.001],
-                                                  bounds=[self.bounds, (0, 0.01)],
+                                                  # self.ini_guess,
+                                                  # bounds=self.bounds,
+                                                  np.array([self.ini_guess, 0.001]),  # TODO: Add options to adjust these and to turn off prism fitting
+                                                  bounds=[(self.bounds[0], 0), (self.bounds[1], 0.1)],
                                                   kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
                                                           'wavelength': self.sensor_object.wavelength,
                                                           'layer_thicknesses': self.sensor_object.layer_thicknesses,
@@ -382,11 +386,14 @@ class FresnelModel:
                                                           'n_im': self.sensor_object.extinction_coefficients,
                                                           'angles': selection_xdata_,
                                                           'ydata': selection_ydata_,
+                                                          'weights': weights,
                                                           'ydata_type': self.sensor_object.data_type,
                                                           'polarization': self.sensor_object.polarization}
                                                   )
+
             # Collect the results from least_squares object and calculate corresponding fresnel coefficients
-            self.fitted_result = result['x'][0]
+            self.fitted_result = np.array([result['x'][0], result['x'][1]])
+            # self.fitted_result = result['x'][0]
             fresnel_coefficients = fresnel_calculation(self.fitted_result,
                                                        fitted_layer_index=self.sensor_object.fitted_layer_index,
                                                        angles=selection_xdata_,
@@ -395,6 +402,7 @@ class FresnelModel:
                                                        n_re=self.sensor_object.refractive_indices,
                                                        n_im=self.sensor_object.extinction_coefficients,
                                                        ydata=None,
+                                                       weights=weights,
                                                        ydata_type='R',
                                                        polarization=1
                                                        )
@@ -402,7 +410,7 @@ class FresnelModel:
                 # Calculate new y_offset
                 self.y_offset = self.y_offset + np.min(selection_ydata_) - np.min(fresnel_coefficients)
 
-        # Shift fresnel coefficients back to measurement data  level
+        # Shift fresnel coefficients back to measurement data level
         fresnel_ydata = fresnel_coefficients + self.y_offset
 
         # Compile into fresnel_coefficients data frame

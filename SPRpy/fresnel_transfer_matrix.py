@@ -14,6 +14,7 @@ def fresnel_calculation(fitted_var=None,
                         n_im=np.array([0, 3.4556, 3.9259, 0, 0]),
                         ydata=None,
                         ydata_type='R',
+                        weights=None,
                         polarization=1
                         ):
 
@@ -141,8 +142,10 @@ def fresnel_calculation(fitted_var=None,
                 fresnel_residuals = fresnel_coefficients_transmission - ydata
             case 'A':
                 fresnel_residuals = fresnel_coefficients_absorption - ydata
-
-        return fresnel_residuals
+        if weights is not None:
+            return fresnel_residuals*weights
+        else:
+            return fresnel_residuals
 
 
 def TIR_determination(xdata, ydata, TIR_range, scanspeed):
