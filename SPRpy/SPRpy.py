@@ -665,7 +665,10 @@ if __name__ == '__main__':
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.RangeSlider(reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1],
+                                                            # TODO: Calculate angle range automatically based on number of points from min value
+                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-70], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+70]],
+                                                                                 min=reflectivity_df['angles'].iloc[0],
+                                                                                 max=reflectivity_df['angles'].iloc[-1],
                                                                                  marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
                                                                                  step=0.005,
                                                                                  allowCross=False,
@@ -675,7 +678,7 @@ if __name__ == '__main__':
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
-                                                        dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),
+                                                        dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),  # TODO: Remove extinction correction slider? It currently has no effect
                                                         dbc.Col([
                                                             dash.dcc.Slider(min=-0.0005, max=0.0005,
                                                                             step=0.00005,
@@ -1832,23 +1835,23 @@ if __name__ == '__main__':
             # Set analysis options from dash app
             current_fresnel_analysis.angle_range = rangeslider_state
             current_fresnel_analysis.ini_guess = ini_guess
-            current_fresnel_analysis.bounds[0] = lower_bound
-            current_fresnel_analysis.bounds[1] = upper_bound
-            current_fresnel_analysis.extinction_correction = extinction_correction
+            current_fresnel_analysis.bounds = (lower_bound, upper_bound)
+            current_fresnel_analysis.extinction_correction = extinction_correction  # TODO: Remove manual extinction correction? (it currently does not do anything because of prism fitting)
 
             # Run calculations and modelling
             fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
 
             # Update current sensor object with the fit result and prism extinction value
-            current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(current_fresnel_analysis.fitted_result, 4)
-            current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+            current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(current_fresnel_analysis.fitted_result[0], 4)
+            current_sensor.optical_parameters.iloc[(0, 3)] = round(current_fresnel_analysis.fitted_result[1], 5)
+            # current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
 
             # Save session and analysis object
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
             # Fit result text
-            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
 
             # Plot fitted trace
             new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
@@ -1901,7 +1904,10 @@ if __name__ == '__main__':
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
             current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
             current_fresnel_analysis.bounds = (current_fresnel_analysis.ini_guess / 4, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2)
-            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
+
+            # TODO: Calculate angle range automatically based on number of points from min value
+            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-70], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+70]]
+
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
@@ -2015,7 +2021,7 @@ if __name__ == '__main__':
                                                current_session.fresnel_analysis_instances]
 
                 if current_fresnel_analysis.fitted_result is not None:
-                    result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+                    result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
                 else:
                     result = 'Fit result: None'
 
@@ -2138,7 +2144,7 @@ if __name__ == '__main__':
 
                     # Update sensor object with the fit result and prism extinction value
                     current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(
-                        current_fresnel_analysis.fitted_result, 4)
+                        current_fresnel_analysis.fitted_result[0], 4)
                     current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
 
                     # Save session and analysis object
@@ -2150,7 +2156,7 @@ if __name__ == '__main__':
                 pass
 
             # Fit result text
-            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
 
             # Plot fitted trace
             new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
@@ -2224,7 +2230,7 @@ if __name__ == '__main__':
                 dash.callback_context.triggered_id.index]
 
             if current_fresnel_analysis.fitted_result is not None:
-                result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+                result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
             else:
                 result = 'Fit result: None'
 
