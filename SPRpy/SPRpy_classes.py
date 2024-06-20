@@ -205,17 +205,15 @@ class Sensor:
     layers and their optical properties.
     """
 
-    def __init__(self, data_path_, object_id_, object_name_='Gold sensor', sensor_metal='Au', data_type='R', polarization=1):
+    def __init__(self, data_path_, object_id_, object_name_='Gold sensor', sensor_metal='Au', data_type='R'):
         """
         :param data_path_: string
         :param sensor_metal: string, see options in method "set_default_optical_properties"
-        :param polarization: int, default 1 or "p-polarization"
         """
         # Load sensor's default optical properties
         self.object_id = object_id_
         self.name = object_name_
         self.data_path = data_path_
-        self.polarization = polarization
         self.data_type = data_type
         self.wavelength = int(data_path_[-9:-6])
         self.channel = data_path_[-12:-4].replace('_', ' ')
@@ -324,8 +322,9 @@ class FresnelModel:
         self.TIR_range = TIR_range_  # Default for air. For water: (60.8, 63)
         self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
         self.angle_range = [40, 80]
-        self.ini_guess = 4
-        self.bounds = (0, 50)
+        self.polarization = 1.0  # 0-1, for degree of s (=0) and p(=1) polarization,
+        self.ini_guess = np.array(4)
+        self.bounds = [0, 50]  # or [(lb1, lb2), (ub1, ub2)] etc
         self.extinction_correction = 0
         self.y_offset = 0
         self.fitted_data = None
@@ -342,7 +341,7 @@ class FresnelModel:
                                                     n_im=self.sensor_object.extinction_coefficients,
                                                     ydata=None,
                                                     ydata_type=self.sensor_object.data_type,
-                                                    polarization=self.sensor_object.polarization)
+                                                    polarization=self.polarization)
         return fresnel_coefficients_
 
     def model_reflectivity_trace(self):
@@ -363,55 +362,55 @@ class FresnelModel:
         self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
         # Add extinction correction to fitted surface layer extinction value
-        # self.sensor_object.extinction_coefficients[0] += self.extinction_correction  # Correct Prism layer extinction
+        self.sensor_object.extinction_coefficients[0] += self.extinction_correction  # Manually correct prism layer extinction
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
 
-        for offset_ind in range(3):
-            selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] - self.y_offset
-            weights = np.ones(len(selection_ydata_))
-            weights[selection_ydata_.argmin():-1] = 2
+        #for offset_ind in range(3):
+        selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] #- self.y_offset
+        # weights_ = np.abs(np.diff(selection_ydata_))+1  # Highest derivative
+        # weights = np.append(weights_, 0)
+        # weights = np.ones(len(selection_ydata_))
+        # weights[selection_ydata_.argmin():-1] = 2
 
-            # Perform the first fitting
-            result = scipy.optimize.least_squares(fresnel_calculation,
-                                                  # self.ini_guess,
-                                                  # bounds=self.bounds,
-                                                  np.array([self.ini_guess, 0.001]),  # TODO: Add options to adjust these and to turn off prism fitting
-                                                  bounds=[(self.bounds[0], 0), (self.bounds[1], 0.1)],
-                                                  kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
-                                                          'wavelength': self.sensor_object.wavelength,
-                                                          'layer_thicknesses': self.sensor_object.layer_thicknesses,
-                                                          'n_re': self.sensor_object.refractive_indices,
-                                                          'n_im': self.sensor_object.extinction_coefficients,
-                                                          'angles': selection_xdata_,
-                                                          'ydata': selection_ydata_,
-                                                          'weights': weights,
-                                                          'ydata_type': self.sensor_object.data_type,
-                                                          'polarization': self.sensor_object.polarization}
-                                                  )
+        # Perform the first fitting
+        result = scipy.optimize.least_squares(fresnel_calculation,
+                                              self.ini_guess,
+                                              bounds=self.bounds,
+                                              kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
+                                                      'wavelength': self.sensor_object.wavelength,
+                                                      'layer_thicknesses': self.sensor_object.layer_thicknesses,
+                                                      'n_re': self.sensor_object.refractive_indices,
+                                                      'n_im': self.sensor_object.extinction_coefficients,
+                                                      'angles': selection_xdata_,
+                                                      'ydata': selection_ydata_,
+                                                      'weights': None,
+                                                      'ydata_type': self.sensor_object.data_type,
+                                                      'polarization': self.polarization},
+                                              loss='huber')
 
-            # Collect the results from least_squares object and calculate corresponding fresnel coefficients
-            self.fitted_result = np.array([result['x'][0], result['x'][1]])
-            # self.fitted_result = result['x'][0]
-            fresnel_coefficients = fresnel_calculation(self.fitted_result,
-                                                       fitted_layer_index=self.sensor_object.fitted_layer_index,
-                                                       angles=selection_xdata_,
-                                                       wavelength=self.sensor_object.wavelength,
-                                                       layer_thicknesses=self.sensor_object.layer_thicknesses,
-                                                       n_re=self.sensor_object.refractive_indices,
-                                                       n_im=self.sensor_object.extinction_coefficients,
-                                                       ydata=None,
-                                                       weights=weights,
-                                                       ydata_type='R',
-                                                       polarization=1
-                                                       )
-            if offset_ind < 2:
-                # Calculate new y_offset
-                self.y_offset = self.y_offset + np.min(selection_ydata_) - np.min(fresnel_coefficients)
+        # Collect the results from least_squares object and calculate corresponding fresnel coefficients
+        self.fitted_result = np.array(result['x'])
+
+        fresnel_coefficients = fresnel_calculation(self.fitted_result,
+                                                   fitted_layer_index=self.sensor_object.fitted_layer_index,
+                                                   angles=selection_xdata_,
+                                                   wavelength=self.sensor_object.wavelength,
+                                                   layer_thicknesses=self.sensor_object.layer_thicknesses,
+                                                   n_re=self.sensor_object.refractive_indices,
+                                                   n_im=self.sensor_object.extinction_coefficients,
+                                                   ydata=None,
+                                                   weights=None,
+                                                   ydata_type='R',
+                                                   polarization=self.polarization
+                                                   )
+        # if offset_ind < 2:
+        #     # Calculate new y_offset
+        #     self.y_offset = self.y_offset + np.min(selection_ydata_) - np.min(fresnel_coefficients)
 
         # Shift fresnel coefficients back to measurement data level
-        fresnel_ydata = fresnel_coefficients + self.y_offset
+        fresnel_ydata = fresnel_coefficients #+ self.y_offset
 
         # Compile into fresnel_coefficients data frame
         self.fitted_data = pd.DataFrame(data={'angles': selection_xdata_, 'ydata': fresnel_ydata})
@@ -448,6 +447,7 @@ class ExclusionHeight:
                                                                     analysis_number=fresnel_object_.object_id,
                                                                     analysis_name=fresnel_object_.name)
         self.sensor_object = fresnel_object_.sensor_object
+        self.polarization = fresnel_object_.polarization
         self.initial_data_path = data_path_
         self.sensorgram_data = sensorgram_df_
         self.sensorgram_offset_ind = 0
@@ -587,7 +587,7 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
                                                           'angles': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
                                                           'ydata': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object_copy.fresnel_object.y_offset,
                                                           'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
-                                                          'polarization': exclusion_height_analysis_object_copy.sensor_object.polarization}
+                                                          'polarization': exclusion_height_analysis_object_copy.polarization}
                                                   )
             # Collect the results from least_squares object
             RI_results.append(result['x'][0])
@@ -616,7 +616,7 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
                                                           'angles': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
                                                           'ydata': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy() - exclusion_height_analysis_object_copy.fresnel_object.y_offset,
                                                           'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
-                                                          'polarization': exclusion_height_analysis_object_copy.sensor_object.polarization}
+                                                          'polarization': exclusion_height_analysis_object_copy.polarization}
                                                   )
             # Collect the results from least_squares object
             RI_results.append(result['x'][0])
@@ -757,14 +757,14 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
     return
 
 
-def add_sensor_backend(session_object, data_path_, sensor_metal='Au', polarization=1):
+def add_sensor_backend(session_object, data_path_, sensor_metal='Au'):
 
     """
     Adds sensor objects to a session object.
     :return: a sensor object
     """
     session_object.sensor_ID_count += 1
-    sensor_object = Sensor(data_path_, session_object.sensor_ID_count, sensor_metal=sensor_metal, polarization=polarization)
+    sensor_object = Sensor(data_path_, session_object.sensor_ID_count, sensor_metal=sensor_metal)
     session_object.sensor_instances[session_object.sensor_ID_count] = sensor_object
 
     return sensor_object
