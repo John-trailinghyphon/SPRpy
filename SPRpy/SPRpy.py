@@ -136,6 +136,12 @@ if __name__ == '__main__':
         TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
         current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
         current_sensor.optical_parameters.replace(current_sensor.optical_parameters['n'].iloc[-1], current_sensor.refractive_indices[-1], inplace=True)
+        current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            sensor_number=current_sensor.object_id,
+            sensor_name=current_sensor.name,
+            channel=current_sensor.channel,
+            fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+            fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
         current_session.save_session()
         current_session.save_sensor(current_sensor.object_id)
@@ -660,12 +666,16 @@ if __name__ == '__main__':
                                                                           value=float(current_sensor.fitted_var) + float(current_sensor.fitted_var) / 2,
                                                                           type='number')
                                                             ])
-                                                        ], width=4)
+                                                        ], width=4),
+                                                        dbc.Label('p-factor', width='auto'),
+                                                        dbc.Col([
+                                                            dbc.Input(id='fresnel-fit-option-pfactor',
+                                                                      value=1.0, type='number')
+                                                        ]),
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
                                                         dbc.Col([
-                                                            # TODO: Calculate angle range automatically based on number of points from min value
                                                             dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-70], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+70]],
                                                                                  min=reflectivity_df['angles'].iloc[0],
                                                                                  max=reflectivity_df['angles'].iloc[-1],
@@ -678,7 +688,12 @@ if __name__ == '__main__':
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
-                                                        dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),  # TODO: Remove extinction correction slider? It currently has no effect
+                                                        dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),
+                                                        dbc.Col([
+                                                            dbc.Checkbox(id='fresnel-analysis-elastomer-fit',
+                                                                         label="Fit?",
+                                                                         value=False)
+                                                        ], width='auto', style={'padding-top': '20px'}),
                                                         dbc.Col([
                                                             dash.dcc.Slider(min=-0.0005, max=0.0005,
                                                                             step=0.00005,
@@ -1214,7 +1229,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1226,7 +1241,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
@@ -1244,7 +1259,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1256,7 +1271,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
@@ -1274,7 +1289,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1286,7 +1301,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
@@ -1302,7 +1317,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1314,7 +1329,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'copy-sensor' == dash.ctx.triggered_id:
             new_sensor = copy_sensor_backend(current_session, current_sensor)
@@ -1324,7 +1339,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1336,7 +1351,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'rename-sensor-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update
@@ -1354,7 +1369,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1366,7 +1381,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'remove-sensor-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
@@ -1387,14 +1402,8 @@ if __name__ == '__main__':
                                          n_clicks=0) for sensor_id in current_session.sensor_instances]
 
                 data_rows = current_sensor.optical_parameters.to_dict('records')
-                sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                    sensor_number=current_sensor.object_id,
-                    sensor_name=current_sensor.name,
-                    channel=current_sensor.channel,
-                    fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                    fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-                return data_rows, sensor_table_title, sensor_options, dash.no_update, False
+                return data_rows, current_sensor.sensor_table_title, sensor_options, dash.no_update, False
 
             else:
                 raise dash.exceptions.PreventUpdate
@@ -1426,7 +1435,7 @@ if __name__ == '__main__':
 
             current_sensor.fitted_layer_index = (active_cell['row'], active_cell['column'])
             current_sensor.fitted_var = current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index]
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1437,7 +1446,7 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_sensor(current_sensor.object_id)
 
-            return table_rows, sensor_table_title, dash.no_update, dash.no_update, dash.no_update
+            return table_rows, current_sensor.sensor_table_title, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-finished' == dash.ctx.triggered_id:
 
@@ -1449,14 +1458,8 @@ if __name__ == '__main__':
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                sensor_number=current_sensor.object_id,
-                sensor_name=current_sensor.name,
-                channel=current_sensor.channel,
-                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-            return data_rows, sensor_table_title, dash.no_update, dash.no_update, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, dash.no_update, dash.no_update, dash.no_update
 
 
     # Toggle view of default optical parameters for different materials
@@ -1759,11 +1762,13 @@ if __name__ == '__main__':
         dash.State('batch-fresnel-analysis-newlayer-k', 'value'),
         dash.State('batch-fresnel-analysis-example-sensor-dropdown', 'value'),
         dash.State('batch-fresnel-analysis-example-analysis-dropdown', 'value'),
+        dash.State('fresnel-analysis-elastomer-fit', 'value'),
+        dash.State('fresnel-fit-option-pfactor', 'value'),
         prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_button, batch_confirm, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction, analysis_name_, batch_files, batch_radio_selection, batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k, batch_sensor_index, batch_analysis_index):
+                                          extinction_correction, analysis_name_, batch_files, batch_radio_selection, batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k, batch_sensor_index, batch_analysis_index, elastomer_fit_flag, polarization_factor):
 
         global current_fresnel_analysis
         global current_data_path
@@ -1834,17 +1839,29 @@ if __name__ == '__main__':
 
             # Set analysis options from dash app
             current_fresnel_analysis.angle_range = rangeslider_state
-            current_fresnel_analysis.ini_guess = ini_guess
-            current_fresnel_analysis.bounds = (lower_bound, upper_bound)
-            current_fresnel_analysis.extinction_correction = extinction_correction  # TODO: Remove manual extinction correction? (it currently does not do anything because of prism fitting)
+            current_fresnel_analysis.polarization = polarization_factor
+            current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
+
+            if not elastomer_fit_flag:
+                current_fresnel_analysis.ini_guess = np.array([ini_guess])
+                current_fresnel_analysis.bounds = [lower_bound, upper_bound]
+                current_fresnel_analysis.extinction_correction = extinction_correction
+            else:
+                current_fresnel_analysis.ini_guess = np.array([ini_guess, 0.005])
+                current_fresnel_analysis.bounds = [(lower_bound, 0), (upper_bound, 0.1)]
+                current_fresnel_analysis.extinction_correction = 0
 
             # Run calculations and modelling
             fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
 
             # Update current sensor object with the fit result and prism extinction value
             current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(current_fresnel_analysis.fitted_result[0], 4)
-            current_sensor.optical_parameters.iloc[(0, 3)] = round(current_fresnel_analysis.fitted_result[1], 5)
-            # current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+
+            if not elastomer_fit_flag:
+                current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+            else:
+                current_sensor.optical_parameters.iloc[(0, 3)] = round(current_fresnel_analysis.fitted_result[1], 5)
+
 
             # Save session and analysis object
             current_session.save_session()
@@ -1895,17 +1912,17 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
-            current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
-            current_fresnel_analysis.bounds = (current_fresnel_analysis.ini_guess / 4, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2)
+            current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var)])
+            current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess[0] / 4, current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2]
 
-            # TODO: Calculate angle range automatically based on number of points from min value
+
             current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-70], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+70]]
 
             current_session.save_session()
@@ -1918,12 +1935,7 @@ if __name__ == '__main__':
 
             exclusion_analysis_dropdown = [{'label': 'FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name, 'value': fresnel_id} for fresnel_id in current_session.fresnel_analysis_instances]
 
-            current_fresnel_analysis.sensor_object_label = 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                sensor_number=current_sensor.object_id,
-                sensor_name=current_sensor.name,
-                channel=current_sensor.channel,
-                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+            current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
 
             # Update fresnel plot with current measurement data
             new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
@@ -1972,9 +1984,16 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-            current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            # Check bounds structure
+            if type(current_fresnel_analysis.bounds[0]) is not tuple:
+                lower_bound_ = current_fresnel_analysis.bounds[0]
+                upper_bound_ = current_fresnel_analysis.bounds[1]
+            else:
+                lower_bound_ = current_fresnel_analysis.bounds[0][0]
+                upper_bound_ = current_fresnel_analysis.bounds[1][0]
+
+            return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
+            lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'rename-fresnel-analysis-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update
@@ -2079,9 +2098,16 @@ if __name__ == '__main__':
                 new_figure.update_yaxes(mirror=True,
                                         showline=True)
 
-                return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-                    current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                # Check bounds structure
+                if type(current_fresnel_analysis.bounds[0]) is not tuple:
+                    lower_bound_ = current_fresnel_analysis.bounds[0]
+                    upper_bound_ = current_fresnel_analysis.bounds[1]
+                else:
+                    lower_bound_ = current_fresnel_analysis.bounds[0][0]
+                    upper_bound_ = current_fresnel_analysis.bounds[1][0]
+
+                return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
+                    lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
             # If deleting the last fresnel analysis object
             else:
@@ -2131,11 +2157,9 @@ if __name__ == '__main__':
                                                                         current_data_path, next_reflectivity_df_, TIR_range,
                                                                         scanspeed, example_fresnel_analysis_object.name)
                     # Set analysis options from example analysis objects
-                    current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
-                    current_fresnel_analysis.bounds = (current_fresnel_analysis.ini_guess / 4,
-                                                       current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2)
-                    current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0],
-                                                            reflectivity_df['angles'].iloc[-1]]
+                    current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var)])
+                    current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess[0] / 4, current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2]
+                    current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
                     current_session.save_session()
                     current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
@@ -2286,8 +2310,16 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-                current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            # Check bounds structure
+            if type(current_fresnel_analysis.bounds[0]) is not tuple:
+                lower_bound_ = current_fresnel_analysis.bounds[0]
+                upper_bound_ = current_fresnel_analysis.bounds[1]
+            else:
+                lower_bound_ = current_fresnel_analysis.bounds[0][0]
+                upper_bound_ = current_fresnel_analysis.bounds[1][0]
+
+            return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
+                lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     @dash.callback(
         dash.Output('batch-fresnel-analysis-newlayer-row', 'style'),

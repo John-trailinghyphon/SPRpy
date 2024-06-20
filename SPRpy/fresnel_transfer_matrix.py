@@ -15,7 +15,7 @@ def fresnel_calculation(fitted_var=None,
                         ydata=None,
                         ydata_type='R',
                         weights=None,
-                        polarization=1
+                        polarization=0.99
                         ):
 
     """
@@ -38,36 +38,23 @@ def fresnel_calculation(fitted_var=None,
     # Check first if fitting is performed or not
     if fitted_var is not None:
 
+        # Selecting main layer to fit
+        match fitted_layer_index[1]:
+            case 0:
+                print('Invalid fitting variable!')
+                return 0
+            case 1:
+                layer_thicknesses[fitted_layer_index[0]] = fitted_var[0]
+            case 2:
+                n_re[fitted_layer_index[0]] = fitted_var[0]
+            case 3:
+                n_im[fitted_layer_index[0]] = fitted_var[0]
+
         # Include fitting prism extinction value
         if len(fitted_var) == 2:
 
-            # Selecting main layer to fit
-            match fitted_layer_index[1]:
-                case 0:
-                    print('Invalid fitting variable!')
-                    return 0
-                case 1:
-                    layer_thicknesses[fitted_layer_index[0]] = fitted_var[0]
-                case 2:
-                    n_re[fitted_layer_index[0]] = fitted_var[0]
-                case 3:
-                    n_im[fitted_layer_index[0]] = fitted_var[0]
-
             # Fit prism extinction value
             n_im[0] = fitted_var[1]
-
-        else:
-            # Selecting layer to fit
-            match fitted_layer_index[1]:
-                case 0:
-                    print('Invalid fitting variable!')
-                    return 0
-                case 1:
-                    layer_thicknesses[fitted_layer_index[0]] = fitted_var
-                case 2:
-                    n_re[fitted_layer_index[0]] = fitted_var
-                case 3:
-                    n_im[fitted_layer_index[0]] = fitted_var
 
     # Merge real and imaginary refractive indices
     n = n_re + 1j * n_im
@@ -89,14 +76,17 @@ def fresnel_calculation(fitted_var=None,
         fresnel_reflection = np.zeros(len(n) - 1, dtype=np.complex128)
         fresnel_transmission = np.zeros(len(n) - 1, dtype=np.complex128)
 
-        if polarization == 0:  # formulas for s polarization
-            for a in range(len(n) - 1):
-                fresnel_reflection[a] = (n[a] * np.cos(theta[a]) - n[a + 1] * np.cos(theta[a + 1])) / (n[a] * np.cos(theta[a]) + n[a + 1] * np.cos(theta[a + 1]))
-                fresnel_transmission[a] = 2 * n[a] * np.cos(theta[a]) / (n[a] * np.cos(theta[a]) + n[a + 1] * np.cos(theta[a + 1]))
-        elif polarization == 1:  # formulas for p polarization
-            for a in range(len(n) - 1):
-                fresnel_reflection[a] = (n[a] * np.cos(theta[a + 1]) - n[a + 1] * np.cos(theta[a])) / (n[a] * np.cos(theta[a + 1]) + n[a + 1] * np.cos(theta[a]))
-                fresnel_transmission[a] = 2 * n[a] * np.cos(theta[a]) / (n[a] * np.cos(theta[a + 1]) + n[a + 1] * np.cos(theta[a]))
+        for a in range(len(n) - 1):
+            # formulas for s polarization
+            s_reflection = (n[a] * np.cos(theta[a]) - n[a + 1] * np.cos(theta[a + 1])) / (n[a] * np.cos(theta[a]) + n[a + 1] * np.cos(theta[a + 1]))
+            s_transmission = 2 * n[a] * np.cos(theta[a]) / (n[a] * np.cos(theta[a]) + n[a + 1] * np.cos(theta[a + 1]))
+
+            # formulas for p polarization
+            p_reflection = (n[a] * np.cos(theta[a + 1]) - n[a + 1] * np.cos(theta[a])) / (n[a] * np.cos(theta[a + 1]) + n[a + 1] * np.cos(theta[a]))
+            p_transmission = 2 * n[a] * np.cos(theta[a]) / (n[a] * np.cos(theta[a + 1]) + n[a + 1] * np.cos(theta[a]))
+
+            fresnel_reflection[a] = s_reflection*(polarization-1) + p_reflection*polarization
+            fresnel_transmission[a] = s_transmission*(polarization-1) + p_transmission*polarization
 
         # Phase shift factors:
         delta = np.zeros(len(n) - 2, dtype=np.complex128)
