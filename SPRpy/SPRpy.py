@@ -676,7 +676,7 @@ if __name__ == '__main__':
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-70], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+70]],
+                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-40], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+60]],
                                                                                  min=reflectivity_df['angles'].iloc[0],
                                                                                  max=reflectivity_df['angles'].iloc[-1],
                                                                                  marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
@@ -692,7 +692,7 @@ if __name__ == '__main__':
                                                         dbc.Col([
                                                             dbc.Checkbox(id='fresnel-analysis-elastomer-fit',
                                                                          label="Fit?",
-                                                                         value=False)
+                                                                         value=True)
                                                         ], width='auto', style={'padding-top': '20px'}),
                                                         dbc.Col([
                                                             dash.dcc.Slider(min=-0.0005, max=0.0005,
@@ -1843,12 +1843,12 @@ if __name__ == '__main__':
             current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
 
             if not elastomer_fit_flag:
-                current_fresnel_analysis.ini_guess = np.array([ini_guess])
-                current_fresnel_analysis.bounds = [lower_bound, upper_bound]
+                current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset])
+                current_fresnel_analysis.bounds = [(lower_bound, -np.inf), (upper_bound, np.inf)]
                 current_fresnel_analysis.extinction_correction = extinction_correction
             else:
-                current_fresnel_analysis.ini_guess = np.array([ini_guess, 0.005])
-                current_fresnel_analysis.bounds = [(lower_bound, 0), (upper_bound, 0.1)]
+                current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset, 0.001])
+                current_fresnel_analysis.bounds = [(lower_bound, -np.inf, 0), (upper_bound, np.inf, 0.1)]
                 current_fresnel_analysis.extinction_correction = 0
 
             # Run calculations and modelling
@@ -1860,8 +1860,7 @@ if __name__ == '__main__':
             if not elastomer_fit_flag:
                 current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
             else:
-                current_sensor.optical_parameters.iloc[(0, 3)] = round(current_fresnel_analysis.fitted_result[1], 5)
-
+                current_sensor.optical_parameters.iloc[(0, 3)] = round(current_fresnel_analysis.fitted_result[2], 5)
 
             # Save session and analysis object
             current_session.save_session()
@@ -1919,11 +1918,22 @@ if __name__ == '__main__':
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
-            current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var)])
-            current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess[0] / 4, current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2]
 
+            # Calculate initial intensity offset from data
+            FR_y = fresnel_calculation(
+                angles=reflectivity_df['angles'].iloc[
+                       reflectivity_df['ydata'].idxmin()-1:reflectivity_df['ydata'].idxmin()+1],
+                wavelength=current_fresnel_analysis.sensor_object.wavelength,
+                layer_thicknesses=current_fresnel_analysis.sensor_object.layer_thicknesses,
+                n_re=current_fresnel_analysis.sensor_object.refractive_indices,
+                n_im=current_fresnel_analysis.sensor_object.extinction_coefficients,
+                ydata_type='R',
+                polarization=current_fresnel_analysis.polarization)
+            current_fresnel_analysis.y_offset = reflectivity_df['ydata'].min() - FR_y[1]  # Can't calculate only 1 angle, so use middle of 3 around minimum
 
-            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-70], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+70]]
+            current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var), current_fresnel_analysis.y_offset])
+            current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2, np.inf)]
+            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-40], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+60]]
 
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
@@ -2157,9 +2167,9 @@ if __name__ == '__main__':
                                                                         current_data_path, next_reflectivity_df_, TIR_range,
                                                                         scanspeed, example_fresnel_analysis_object.name)
                     # Set analysis options from example analysis objects
-                    current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var)])
-                    current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess[0] / 4, current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2]
-                    current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
+                    # current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var), current_fresnel_analysis.y_offset])
+                    # current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2, np.inf)]
+                    # current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
                     current_session.save_session()
                     current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 

@@ -366,11 +366,16 @@ class FresnelModel:
 
         # Selecting a range of measurement data to use for fitting, and including an offset in reflectivity (iterated 3 times)
         selection_xdata_ = xdata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
+        selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])]
 
-        #for offset_ind in range(3):
-        selection_ydata_ = ydata_[(xdata_ >= self.angle_range[0]) & (xdata_ <= self.angle_range[1])] #- self.y_offset
+        # Weighing options
+        weights = None
+
         # weights_ = np.abs(np.diff(selection_ydata_))+1  # Highest derivative
         # weights = np.append(weights_, 0)
+
+        # weights = 1/selection_ydata_
+
         # weights = np.ones(len(selection_ydata_))
         # weights[selection_ydata_.argmin():-1] = 2
 
@@ -385,13 +390,18 @@ class FresnelModel:
                                                       'n_im': self.sensor_object.extinction_coefficients,
                                                       'angles': selection_xdata_,
                                                       'ydata': selection_ydata_,
-                                                      'weights': None,
+                                                      'weights': weights,
                                                       'ydata_type': self.sensor_object.data_type,
-                                                      'polarization': self.polarization},
-                                              loss='huber')
+                                                      'polarization': self.polarization,
+                                                      'ydata_offset': self.y_offset},
+                                              loss='huber',
+                                              ftol=1e-12,
+                                              xtol=1e-12,
+                                              gtol=1e-12)
 
         # Collect the results from least_squares object and calculate corresponding fresnel coefficients
         self.fitted_result = np.array(result['x'])
+        self.y_offset = self.fitted_result[1]
 
         fresnel_coefficients = fresnel_calculation(self.fitted_result,
                                                    fitted_layer_index=self.sensor_object.fitted_layer_index,
@@ -401,19 +411,14 @@ class FresnelModel:
                                                    n_re=self.sensor_object.refractive_indices,
                                                    n_im=self.sensor_object.extinction_coefficients,
                                                    ydata=None,
-                                                   weights=None,
+                                                   weights=weights,
                                                    ydata_type='R',
-                                                   polarization=self.polarization
+                                                   polarization=self.polarization,
+                                                   ydata_offset=self.y_offset
                                                    )
-        # if offset_ind < 2:
-        #     # Calculate new y_offset
-        #     self.y_offset = self.y_offset + np.min(selection_ydata_) - np.min(fresnel_coefficients)
-
-        # Shift fresnel coefficients back to measurement data level
-        fresnel_ydata = fresnel_coefficients #+ self.y_offset
 
         # Compile into fresnel_coefficients data frame
-        self.fitted_data = pd.DataFrame(data={'angles': selection_xdata_, 'ydata': fresnel_ydata})
+        self.fitted_data = pd.DataFrame(data={'angles': selection_xdata_, 'ydata': fresnel_coefficients})
 
         return self.fitted_data
 
