@@ -15,7 +15,8 @@ def fresnel_calculation(fitted_var=None,
                         ydata=None,
                         ydata_type='R',
                         weights=None,
-                        polarization=0.99
+                        polarization=1.0,
+                        ydata_offset=0,
                         ):
 
     """
@@ -50,11 +51,11 @@ def fresnel_calculation(fitted_var=None,
             case 3:
                 n_im[fitted_layer_index[0]] = fitted_var[0]
 
-        # Include fitting prism extinction value
-        if len(fitted_var) == 2:
+        ydata_offset = fitted_var[1]
 
-            # Fit prism extinction value
-            n_im[0] = fitted_var[1]
+        # Include fitting prism extinction value
+        if len(fitted_var) >= 3:
+            n_im[0] = fitted_var[2]
 
     # Merge real and imaginary refractive indices
     n = n_re + 1j * n_im
@@ -117,21 +118,21 @@ def fresnel_calculation(fitted_var=None,
     if ydata is None:
         match ydata_type:
             case 'R':
-                return fresnel_coefficients_reflection
+                return fresnel_coefficients_reflection - ydata_offset
             case 'T':
-                return fresnel_coefficients_transmission
+                return fresnel_coefficients_transmission - ydata_offset
             case 'A':
-                return fresnel_coefficients_absorption
+                return fresnel_coefficients_absorption - ydata_offset
 
     else:
         fresnel_residuals = np.array([]*len(ydata))
         match ydata_type:
             case 'R':
-                fresnel_residuals = fresnel_coefficients_reflection - ydata
+                fresnel_residuals = (fresnel_coefficients_reflection - ydata_offset) - ydata
             case 'T':
-                fresnel_residuals = fresnel_coefficients_transmission - ydata
+                fresnel_residuals = (fresnel_coefficients_transmission - ydata_offset) - ydata
             case 'A':
-                fresnel_residuals = fresnel_coefficients_absorption - ydata
+                fresnel_residuals = (fresnel_coefficients_absorption - ydata_offset) - ydata
         if weights is not None:
             return fresnel_residuals*weights
         else:
