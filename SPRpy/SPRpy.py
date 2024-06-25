@@ -1841,8 +1841,9 @@ if __name__ == '__main__':
             current_fresnel_analysis.angle_range = rangeslider_state
             current_fresnel_analysis.polarization = polarization_factor
             current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
+            current_fresnel_analysis.fit_prism_k = elastomer_fit_flag
 
-            if not elastomer_fit_flag:
+            if not current_fresnel_analysis.fit_prism_k:
                 current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset])
                 current_fresnel_analysis.bounds = [(lower_bound, -np.inf), (upper_bound, np.inf)]
                 current_fresnel_analysis.extinction_correction = extinction_correction
@@ -1857,7 +1858,7 @@ if __name__ == '__main__':
             # Update current sensor object with the fit result and prism extinction value
             current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(current_fresnel_analysis.fitted_result[0], 4)
 
-            if not elastomer_fit_flag:
+            if not current_fresnel_analysis.fit_prism_k:
                 current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
             else:
                 current_sensor.optical_parameters.iloc[(0, 3)] = round(current_fresnel_analysis.fitted_result[2], 5)
@@ -2145,7 +2146,11 @@ if __name__ == '__main__':
             # TODO: Implement batch analysis. It needs to create new analysis objects and run analysis for each data file in the batch.
 
             # Conditional for batch analysis radio button selection
-            if batch_radio_selection == 0:
+            if batch_radio_selection == 0:  # Copy selected example layer structure
+
+                # Load the example sensor and fresnel model into memory for pulling base settings
+                example_sensor_object = current_session.sensor_instances[batch_sensor_index]
+                example_analysis_object = current_session.analysis_instances[batch_analysis_index]
 
                 # Use the same layer structure copied from selected example sensor object
                 for file_path in batch_files:
@@ -2154,38 +2159,47 @@ if __name__ == '__main__':
                     _, _, _, _, _, next_reflectivity_df_ = load_csv_data(path=file_path)
 
                     # Add copy of sensor object to session
-                    example_sensor_object = current_session.sensor_instances[batch_sensor_index]
                     next_sensor = copy_sensor_backend(current_session, example_sensor_object)
-                    next_sensor.name = example_sensor_object.name + ' copy'
+                    next_sensor.name = example_sensor_object.name
                     current_sensor = next_sensor
                     current_session.save_sensor(current_sensor.object_id)
                     current_session.save_session()
 
                     # Add fresnel model object to session
-                    example_fresnel_analysis_object = current_session.fresnel_analysis_instances[batch_analysis_index]
-                    current_fresnel_analysis = add_fresnel_model_object(current_session, next_sensor,
-                                                                        current_data_path, next_reflectivity_df_, TIR_range,
-                                                                        scanspeed, example_fresnel_analysis_object.name)
+                    current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
+                                                                        current_data_path, next_reflectivity_df_, example_analysis_object.TIR_range,
+                                                                        example_analysis_object.scanspeed, current_sensor.name)
+
                     # Set analysis options from example analysis objects
-                    # current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var), current_fresnel_analysis.y_offset])
-                    # current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2, np.inf)]
-                    # current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
+                    current_fresnel_analysis.ini_guess = example_analysis_object.ini_guess
+                    current_fresnel_analysis.bounds = example_analysis_object.bounds
+                    current_fresnel_analysis.angle_range = example_analysis_object.angle_range
+                    current_fresnel_analysis.polarization = example_analysis_object.polarization
+                    current_fresnel_analysis.extinction_correction = example_analysis_object.extinction_correction
+                    current_fresnel_analysis.y_offset = example_analysis_object.y_offset
+                    current_fresnel_analysis.fit_prism_k = example_analysis_object.fit_prism_k
+
                     current_session.save_session()
                     current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
                     # Run calculations and modelling
                     fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
 
-                    # Update sensor object with the fit result and prism extinction value
+                    # Update current sensor object with the fit result and prism extinction value
                     current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(
                         current_fresnel_analysis.fitted_result[0], 4)
-                    current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+
+                    if not current_fresnel_analysis.fit_prism_k:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+                    else:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = round(
+                            current_fresnel_analysis.fitted_result[2], 5)
 
                     # Save session and analysis object
                     current_session.save_session()
                     current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
-            elif batch_radio_selection == 1:
+            elif batch_radio_selection == 1:  # Use specific backgrounds and add new layer
                 # TODO: Implement batch analysis for new layer added to a list of selected backgrounds (add this dropdown as a standard dash dropdown with multi choice enabled)
                 pass
 
