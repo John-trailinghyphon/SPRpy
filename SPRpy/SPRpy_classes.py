@@ -327,6 +327,7 @@ class FresnelModel:
         self.bounds = [0, 50]  # or [(lb1, lb2), (ub1, ub2)] etc
         self.extinction_correction = 0
         self.y_offset = 0
+        self.fit_prism_k = True
         self.fitted_data = None
         self.fitted_result = None
 
