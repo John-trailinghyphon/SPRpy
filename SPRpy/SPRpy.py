@@ -2259,7 +2259,77 @@ if __name__ == '__main__':
 
             elif batch_radio_selection == 1:  # Use specific backgrounds and add new layer
                 # TODO: Implement batch analysis for new layer added to a list of selected backgrounds (add this dropdown as a standard dash dropdown with multi choice enabled)
-                pass
+
+                # Use the same layer structure copied from selected example sensor object
+                for file_path, sensor_id in zip(batch_files, background_sensors):
+
+                    # Load data from measurement file using load_csv_data
+                    _, batch_current_data_path, batch_scanspeed, batch_ydata_df, _, next_reflectivity_df_ = load_csv_data(path=file_path)
+
+                    # Calculate batch TIR range (assume air or liquid medium for TIR calculation based on number of scans)
+                    if batch_ydata_df.shape[0] > 50:
+                        batch_TIR_range = TIR_range_water_or_long_measurement
+                    else:
+                        batch_TIR_range = TIR_range_air_or_few_scans
+
+                    # Select background sensor
+                    sensor_object = current_session.sensor_instances[sensor_id]
+
+                    # Add copy of sensor object to session
+                    next_sensor = copy_sensor_backend(current_session, sensor_object)
+                    next_sensor.name = sensor_object.name
+
+                    # TODO: How to add the new layer properly in the backend. How to select which layer property to fit (radio selection)?
+                    # batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k,
+                    # TODO: How to select fitting parameters? Probably add new ones again...
+                    current_sensor = next_sensor
+                    current_sensor.channel = file_path[-12:-4].replace('_', ' ')
+
+                    current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                        sensor_number=current_sensor.object_id,
+                        sensor_name=current_sensor.name,
+                        channel=current_sensor.channel,
+                        fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                        fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+                    current_session.save_sensor(current_sensor.object_id)
+                    current_session.save_session()
+
+                    # Add fresnel model object to session
+                    current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
+                                                                        file_path, next_reflectivity_df_,
+                                                                        batch_TIR_range,
+                                                                        batch_scanspeed,
+                                                                        current_sensor.name + ' (S' + str(
+                                                                            current_sensor.object_id) + ') ')
+                    # Calculate angle range based on measured data
+                    current_fresnel_analysis.angle_range = [
+                        next_reflectivity_df_['angles'].iloc[
+                            next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
+                        next_reflectivity_df_['angles'].iloc[
+                            next_reflectivity_df_['ydata'].idxmin() + auto_angle_range_points[1]]]
+
+                    # Set analysis options from example analysis objects
+                    current_fresnel_analysis.ini_guess = example_analysis_object.ini_guess
+                    current_fresnel_analysis.bounds = example_analysis_object.bounds
+
+                    # Run calculations and modelling
+                    fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
+
+                    # Update current sensor object with the fit result and prism extinction value
+                    current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(
+                        current_fresnel_analysis.fitted_result[0], 4)
+
+                    if not current_fresnel_analysis.fit_prism_k:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+                    else:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = round(
+                            current_fresnel_analysis.fitted_result[2], 5)
+
+                    current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
+
+                    # Save session and analysis object
+                    current_session.save_session()
+                    current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
             # Fit result text
             result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
