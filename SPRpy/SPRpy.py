@@ -575,7 +575,7 @@ if __name__ == '__main__':
                                                                       n_clicks=0),
                                                            dash.dcc.Store(id='batch-fresnel-analysis-files', storage_type='session'),
                                                            dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
-                                                                                        {'label': 'Add new layer and select individual backgrounds', 'value': 1}],
+                                                                                        {'label': 'Add new layer to individually selected backgrounds', 'value': 1}],
                                                                                value=0,
                                                                                id='batch-fresnel-analysis-radio-selection'),
                                                            dbc.Row([
@@ -600,7 +600,7 @@ if __name__ == '__main__':
                                                            ], id='batch-fresnel-analysis-example-row', style={'visibility': 'visible'}),
                                                            dbc.Row([
                                                                dash.dcc.Dropdown(
-                                                                   id='batch-fresnel-analysis-background-sensors-dropdown',  # TODO: How to correctly sort this based on selected measurement files? User has to double check they are in the right order, but need to display the selected options in a good way...
+                                                                   id='batch-fresnel-analysis-background-sensors-dropdown',
                                                                    placeholder='Select individual background sensors',
                                                                    multi=True,
                                                                    clearable=True,
@@ -609,6 +609,9 @@ if __name__ == '__main__':
                                                                                           sensor_id].name,
                                                                              'value': sensor_id} for sensor_id in
                                                                             current_session.sensor_instances]),
+                                                               dbc.Button('Submit backgrounds',
+                                                                          id='batch-fresnel-analysis-background-sensors-button-submit',
+                                                                          n_clicks=0)
                                                            ], id='batch-fresnel-analysis-background-sensors-dropdown-row', style={'visibility': 'hidden'}),
                                                            dbc.Row([
                                                                dbc.Label('New layer parameters:', width='auto'),
@@ -633,13 +636,16 @@ if __name__ == '__main__':
                                                                    ])
                                                                ])
                                                            ], id='batch-fresnel-analysis-newlayer-row', style={'visibility': 'hidden'}),
+                                                           dbc.Table.from_dataframe(pd.DataFrame({'Measurement files': [''], 'Background sensors': ['']}), bordered=True, id='batch-fresnel-analysis-table', style={'visibility': 'hidden', 'margin-top': '20px'}),
+                                                           dash.dcc.Store(
+                                                               id='batch-fresnel-analysis-background-sensors',
+                                                               storage_type='session'),
                                                            dash.dcc.Store(id='batch-fresnel-analysis-start',
                                                                           storage_type='memory'),
                                                            dash.dcc.Store(id='batch-fresnel-analysis-done',
                                                                           storage_type='memory'),
                                                            dash.dcc.Store(id='batch-fresnel-analysis-finish',
                                                                           storage_type='memory'),
-
                                                            ]),
                                             dbc.ModalFooter([
                                                 dbc.ButtonGroup([
@@ -1803,6 +1809,7 @@ if __name__ == '__main__':
         dash.State('fresnel-fit-option-extinctionslider', 'value'),
         dash.State('rename-fresnel-analysis-input', 'value'),
         dash.State('batch-fresnel-analysis-files', 'data'),
+        dash.State('batch-fresnel-analysis-background-sensors', 'data'),
         dash.State('batch-fresnel-analysis-radio-selection', 'value'),
         dash.State('batch-fresnel-analysis-newlayer-label', 'value'),
         dash.State('batch-fresnel-analysis-newlayer-thickness', 'value'),
@@ -1816,7 +1823,7 @@ if __name__ == '__main__':
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction, analysis_name_, batch_files, batch_radio_selection, batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k, batch_sensor_index, batch_analysis_index, elastomer_fit_flag, polarization_factor):
+                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k, batch_sensor_index, batch_analysis_index, elastomer_fit_flag, polarization_factor):
 
         global current_fresnel_analysis
         global current_data_path
@@ -2215,7 +2222,7 @@ if __name__ == '__main__':
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
                                                                         file_path, next_reflectivity_df_, example_analysis_object.TIR_range,
-                                                                        example_analysis_object.scanspeed, example_analysis_object.name + '(S' + current_sensor.object_id + ') ')
+                                                                        example_analysis_object.scanspeed, example_analysis_object.name + ' (S' + str(current_sensor.object_id) + ') ')
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
                         next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
@@ -2411,13 +2418,39 @@ if __name__ == '__main__':
         dash.Output('batch-fresnel-analysis-example-row', 'style'),
         dash.Output('batch-fresnel-analysis-newlayer-row', 'style'),
         dash.Output('batch-fresnel-analysis-background-sensors-dropdown-row', 'style'),
+        dash.Output('batch-fresnel-analysis-table', 'style'),
         dash.Input('batch-fresnel-analysis-radio-selection', 'value'),
         prevent_initial_call=True)
     def show_batch_fresnel_analysis_new_layer(radio_value):
         if radio_value == 0:
-            return {'visibility': 'visible'}, {'visibility': 'hidden'}, {'visibility': 'hidden'}
+            return {'visibility': 'visible'}, {'visibility': 'hidden'}, {'visibility': 'hidden'}, {'visibility': 'hidden', 'margin-top': '20px'}
         elif radio_value == 1:
-            return {'visibility': 'hidden'}, {'visibility': 'visible'}, {'visibility': 'visible'}
+            return {'visibility': 'hidden'}, {'visibility': 'visible'}, {'visibility': 'visible'}, {'visibility': 'visible', 'margin-top': '20px'}
+
+    @dash.callback(
+        dash.Output('batch-fresnel-analysis-table', 'children'),
+        dash.Output('batch-fresnel-analysis-background-sensors', 'data'),
+        dash.Input('batch-fresnel-analysis-background-sensors-button-submit', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-radio-selection', 'value'),
+        dash.State('batch-fresnel-analysis-files', 'data'),
+        dash.State('batch-fresnel-analysis-background-sensors-dropdown', 'value'),
+        prevent_initial_call=True)
+    def submit_background_sensors(submit, radio_selection, measurement_files, background_sensors):
+        if 'batch-fresnel-analysis-background-sensors-button-submit' == dash.ctx.triggered_id:
+            table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Measurement files'), dash.html.Th('Background sensors')]))]
+            table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(file_name.split('/')[-1]), dash.html.Td('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name)]) for file_name, sensor_id in zip(measurement_files, background_sensors)])]
+            table_children = table_header + table_body
+            return table_children, background_sensors
+
+        elif 'batch-fresnel-analysis-radio-selection' == dash.ctx.triggered_id:
+            if measurement_files:
+                table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Measurement files'), dash.html.Th('Background sensors')]))]
+                table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(file_name.split('/')[-1]), dash.html.Td('')]) for file_name in
+                                               measurement_files])]
+                table_children = table_header + table_body
+                return table_children, dash.no_update
+            else:
+                return dash.exceptions.PreventUpdate
 
     @dash.callback(
         dash.Output('batch-fresnel-analysis-finish', 'data'),
@@ -2432,6 +2465,7 @@ if __name__ == '__main__':
     @dash.callback(
         dash.Output('batch-fresnel-analysis-modal', 'is_open'),
         dash.Output('batch-fresnel-analysis-example-sensor-dropdown', 'options'),
+        dash.Output('batch-fresnel-analysis-background-sensors-dropdown', 'options'),
         dash.Output('batch-fresnel-analysis-example-analysis-dropdown', 'options'),
         dash.Output('batch-fresnel-spinner', 'spinner_style'),
         dash.Output('batch-fresnel-analysis-start', 'data'),
@@ -2451,13 +2485,13 @@ if __name__ == '__main__':
                                          'value': fresnel_analysis_id} for fresnel_analysis_id in
                                         current_session.fresnel_analysis_instances]
 
-            return True, example_sensor_options, example_analysis_options, dash.no_update, dash.no_update
+            return True, example_sensor_options, example_sensor_options, example_analysis_options, dash.no_update, dash.no_update
 
         elif 'batch-fresnel-analysis-confirm' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, {'visibility': 'visible', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, 'start'
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'visibility': 'visible', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, 'start'
 
         elif 'batch-fresnel-analysis-cancel' == dash.ctx.triggered_id:
-            return False, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         else:
             return dash.exceptions.PreventUpdate
