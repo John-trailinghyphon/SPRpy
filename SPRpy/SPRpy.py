@@ -574,10 +574,6 @@ if __name__ == '__main__':
                                                                       id='batch-fresnel-analysis-choose-files',
                                                                       n_clicks=0),
                                                            dash.dcc.Store(id='batch-fresnel-analysis-files', storage_type='session'),
-                                                           dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
-                                                                                        {'label': 'Add new layer to individually selected backgrounds', 'value': 1}],
-                                                                               value=0,
-                                                                               id='batch-fresnel-analysis-radio-selection'),
                                                            dbc.Row([
                                                                dash.dcc.Dropdown(
                                                                    id='batch-fresnel-analysis-example-sensor-dropdown',
@@ -597,7 +593,11 @@ if __name__ == '__main__':
                                                                              'value': fresnel_analysis_id} for
                                                                             fresnel_analysis_id in
                                                                             current_session.fresnel_analysis_instances])
-                                                           ], id='batch-fresnel-analysis-example-row', style={'visibility': 'visible'}),
+                                                           ], id='batch-fresnel-analysis-example-row'),
+                                                           dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
+                                                                                        {'label': 'Add new layer to individually selected backgrounds', 'value': 1}],
+                                                                               value=0,
+                                                                               id='batch-fresnel-analysis-radio-selection'),
                                                            dbc.Row([
                                                                dash.dcc.Dropdown(
                                                                    id='batch-fresnel-analysis-background-sensors-dropdown',
@@ -613,29 +613,6 @@ if __name__ == '__main__':
                                                                           id='batch-fresnel-analysis-background-sensors-button-submit',
                                                                           n_clicks=0)
                                                            ], id='batch-fresnel-analysis-background-sensors-dropdown-row', style={'visibility': 'hidden'}),
-                                                           dbc.Row([
-                                                               dbc.Label('New layer parameters:', width='auto'),
-                                                               dbc.Col([
-                                                                   dbc.InputGroup([
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-label',
-                                                                           placeholder='Label',
-                                                                           type='text'),
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-thickness',
-                                                                           placeholder='Thickness [nm]',
-                                                                           type='number'),
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-n',
-                                                                           placeholder='n',
-                                                                           type='number'),
-                                                                       dbc.Input(
-                                                                           id='batch-fresnel-analysis-newlayer-k',
-                                                                           placeholder='k',
-                                                                           type='number')
-                                                                   ])
-                                                               ])
-                                                           ], id='batch-fresnel-analysis-newlayer-row', style={'visibility': 'hidden'}),
                                                            dbc.Table.from_dataframe(pd.DataFrame({'Measurement files': [''], 'Background sensors': ['']}), bordered=True, id='batch-fresnel-analysis-table', style={'visibility': 'hidden', 'margin-top': '20px'}),
                                                            dash.dcc.Store(
                                                                id='batch-fresnel-analysis-background-sensors',
@@ -1811,10 +1788,6 @@ if __name__ == '__main__':
         dash.State('batch-fresnel-analysis-files', 'data'),
         dash.State('batch-fresnel-analysis-background-sensors', 'data'),
         dash.State('batch-fresnel-analysis-radio-selection', 'value'),
-        dash.State('batch-fresnel-analysis-newlayer-label', 'value'),
-        dash.State('batch-fresnel-analysis-newlayer-thickness', 'value'),
-        dash.State('batch-fresnel-analysis-newlayer-n', 'value'),
-        dash.State('batch-fresnel-analysis-newlayer-k', 'value'),
         dash.State('batch-fresnel-analysis-example-sensor-dropdown', 'value'),
         dash.State('batch-fresnel-analysis-example-analysis-dropdown', 'value'),
         dash.State('fresnel-analysis-elastomer-fit', 'value'),
@@ -1823,7 +1796,7 @@ if __name__ == '__main__':
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k, batch_sensor_index, batch_analysis_index, elastomer_fit_flag, polarization_factor):
+                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_sensor_index, batch_analysis_index, elastomer_fit_flag, polarization_factor):
 
         global current_fresnel_analysis
         global current_data_path
@@ -2173,7 +2146,7 @@ if __name__ == '__main__':
                     upper_bound_ = current_fresnel_analysis.bounds[1][0]
 
                 return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
-                    lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, False, dash.no_update
 
             # If deleting the last fresnel analysis object
             else:
@@ -2192,12 +2165,12 @@ if __name__ == '__main__':
         elif 'batch-fresnel-analysis-start' == dash.ctx.triggered_id:
             # TODO: Implement batch analysis. It needs to create new analysis objects and run analysis for each data file in the batch.
 
+            # Load the example sensor and fresnel model into memory for pulling base settings
+            example_sensor_object = current_session.sensor_instances[batch_sensor_index]
+            example_analysis_object = current_session.fresnel_analysis_instances[batch_analysis_index]
+
             # Conditional for batch analysis radio button selection
             if batch_radio_selection == 0:  # Copy selected example layer structure
-
-                # Load the example sensor and fresnel model into memory for pulling base settings
-                example_sensor_object = current_session.sensor_instances[batch_sensor_index]
-                example_analysis_object = current_session.fresnel_analysis_instances[batch_analysis_index]
 
                 # Use the same layer structure copied from selected example sensor object
                 for file_path in batch_files:
@@ -2210,6 +2183,11 @@ if __name__ == '__main__':
                     next_sensor.name = example_sensor_object.name
                     current_sensor = next_sensor
                     current_sensor.channel = file_path[-12:-4].replace('_', ' ')
+                    TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], example_analysis_object.TIR_range,
+                                                        example_analysis_object.scanspeed)
+                    current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
+                        np.pi / 180 * TIR_angle)
+                    current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
                     current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                         sensor_number=current_sensor.object_id,
                         sensor_name=current_sensor.name,
@@ -2255,33 +2233,39 @@ if __name__ == '__main__':
                     current_session.save_session()
                     current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
-                    # TODO: Update the results and sensor lists properly after batch analysis somehow (maybe a flag?)
-
             elif batch_radio_selection == 1:  # Use specific backgrounds and add new layer
-                # TODO: Implement batch analysis for new layer added to a list of selected backgrounds (add this dropdown as a standard dash dropdown with multi choice enabled)
 
                 # Use the same layer structure copied from selected example sensor object
                 for file_path, sensor_id in zip(batch_files, background_sensors):
 
                     # Load data from measurement file using load_csv_data
-                    _, batch_current_data_path, batch_scanspeed, batch_ydata_df, _, next_reflectivity_df_ = load_csv_data(path=file_path)
-
-                    # Calculate batch TIR range (assume air or liquid medium for TIR calculation based on number of scans)
-                    if batch_ydata_df.shape[0] > 50:
-                        batch_TIR_range = TIR_range_water_or_long_measurement
-                    else:
-                        batch_TIR_range = TIR_range_air_or_few_scans
+                    _, batch_current_data_path, _, batch_ydata_df, _, next_reflectivity_df_ = load_csv_data(path=file_path)
 
                     # Select background sensor
-                    sensor_object = current_session.sensor_instances[sensor_id]
+                    background_sensor_object = current_session.sensor_instances[sensor_id]
 
                     # Add copy of sensor object to session
-                    next_sensor = copy_sensor_backend(current_session, sensor_object)
-                    next_sensor.name = sensor_object.name
+                    next_sensor = copy_sensor_backend(current_session, background_sensor_object)
+                    next_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
 
-                    # TODO: How to add the new layer properly in the backend. How to select which layer property to fit (radio selection)?
-                    # batch_new_layer_label, batch_new_layer_thickness, batch_new_layer_n, batch_new_layer_k,
-                    # TODO: How to select fitting parameters? Probably add new ones again...
+                    # Add example layer row and values, also convert other parameters  # TODO: THis is not working correctly, missing the APS layer (except the thickness, but n is medium instead...)
+                    next_sensor.optical_parameters.loc[len(next_sensor.optical_parameters)-1.5] = example_sensor_object.optical_parameters.loc[len(example_sensor_object.optical_parameters) - 2]
+                    next_sensor.optical_parameters = next_sensor.optical_parameters.sort_index().reset_index(drop=True)
+                    next_sensor.layer_thicknesses = next_sensor.optical_parameters['d [nm]'].to_numpy()
+                    next_sensor.refractive_indices = next_sensor.optical_parameters['n'].to_numpy()
+                    next_sensor.extinction_coefficients = next_sensor.optical_parameters['k'].to_numpy()
+
+                    # Calculate TIR angle
+                    TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'],
+                                                        example_analysis_object.TIR_range,
+                                                        example_analysis_object.scanspeed)
+                    next_sensor.refractive_indices[-1] = next_sensor.refractive_indices[0] * np.sin(
+                        np.pi / 180 * TIR_angle)
+                    next_sensor.optical_parameters['n'] = next_sensor.refractive_indices
+
+                    next_sensor.fitted_layer_index = example_sensor_object.fitted_layer_index
+                    next_sensor.fitted_var = next_sensor.optical_parameters.iloc[next_sensor.fitted_layer_index]
+
                     current_sensor = next_sensor
                     current_sensor.channel = file_path[-12:-4].replace('_', ' ')
 
@@ -2297,10 +2281,11 @@ if __name__ == '__main__':
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
                                                                         file_path, next_reflectivity_df_,
-                                                                        batch_TIR_range,
-                                                                        batch_scanspeed,
+                                                                        example_analysis_object.TIR_range,
+                                                                        example_analysis_object.scanspeed,
                                                                         current_sensor.name + ' (S' + str(
                                                                             current_sensor.object_id) + ') ')
+
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
                         next_reflectivity_df_['angles'].iloc[
@@ -2311,6 +2296,10 @@ if __name__ == '__main__':
                     # Set analysis options from example analysis objects
                     current_fresnel_analysis.ini_guess = example_analysis_object.ini_guess
                     current_fresnel_analysis.bounds = example_analysis_object.bounds
+                    current_fresnel_analysis.polarization = example_analysis_object.polarization
+                    current_fresnel_analysis.extinction_correction = example_analysis_object.extinction_correction
+                    current_fresnel_analysis.y_offset = example_analysis_object.y_offset
+                    current_fresnel_analysis.fit_prism_k = example_analysis_object.fit_prism_k
 
                     # Run calculations and modelling
                     fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
@@ -2328,8 +2317,8 @@ if __name__ == '__main__':
                     current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
 
                     # Save session and analysis object
-                    current_session.save_session()
                     current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+                    current_session.save_session()
 
             # Fit result text
             result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
@@ -2485,17 +2474,15 @@ if __name__ == '__main__':
                 lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
 
     @dash.callback(
-        dash.Output('batch-fresnel-analysis-example-row', 'style'),
-        dash.Output('batch-fresnel-analysis-newlayer-row', 'style'),
         dash.Output('batch-fresnel-analysis-background-sensors-dropdown-row', 'style'),
         dash.Output('batch-fresnel-analysis-table', 'style'),
         dash.Input('batch-fresnel-analysis-radio-selection', 'value'),
         prevent_initial_call=True)
     def show_batch_fresnel_analysis_new_layer(radio_value):
         if radio_value == 0:
-            return {'visibility': 'visible'}, {'visibility': 'hidden'}, {'visibility': 'hidden'}, {'visibility': 'hidden', 'margin-top': '20px'}
+            return {'visibility': 'hidden'}, {'visibility': 'hidden', 'margin-top': '20px'}
         elif radio_value == 1:
-            return {'visibility': 'hidden'}, {'visibility': 'visible'}, {'visibility': 'visible'}, {'visibility': 'visible', 'margin-top': '20px'}
+            return {'visibility': 'visible'}, {'visibility': 'visible', 'margin-top': '20px'}
 
     @dash.callback(
         dash.Output('batch-fresnel-analysis-table', 'children'),
