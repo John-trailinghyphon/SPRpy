@@ -2163,8 +2163,6 @@ if __name__ == '__main__':
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'batch-fresnel-analysis-start' == dash.ctx.triggered_id:
-            # TODO: Implement batch analysis. It needs to create new analysis objects and run analysis for each data file in the batch.
-
             # Load the example sensor and fresnel model into memory for pulling base settings
             example_sensor_object = current_session.sensor_instances[batch_sensor_index]
             example_analysis_object = current_session.fresnel_analysis_instances[batch_analysis_index]
@@ -2180,7 +2178,7 @@ if __name__ == '__main__':
 
                     # Add copy of sensor object to session
                     next_sensor = copy_sensor_backend(current_session, example_sensor_object)
-                    next_sensor.name = example_sensor_object.name
+                    next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
                     current_sensor = next_sensor
                     current_sensor.channel = file_path[-12:-4].replace('_', ' ')
                     TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], example_analysis_object.TIR_range,
@@ -2200,7 +2198,7 @@ if __name__ == '__main__':
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
                                                                         file_path, next_reflectivity_df_, example_analysis_object.TIR_range,
-                                                                        example_analysis_object.scanspeed, example_analysis_object.name + ' (S' + str(current_sensor.object_id) + ') ')
+                                                                        example_analysis_object.scanspeed, file_path.split('/')[-1][15:-10].replace('_', ' '))
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
                         next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
@@ -2246,9 +2244,9 @@ if __name__ == '__main__':
 
                     # Add copy of sensor object to session
                     next_sensor = copy_sensor_backend(current_session, background_sensor_object)
-                    next_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
+                    next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
 
-                    # Add example layer row and values, also convert other parameters  # TODO: THis is not working correctly, missing the APS layer (except the thickness, but n is medium instead...)
+                    # Add example layer row and values, also convert other parameters
                     next_sensor.optical_parameters.loc[len(next_sensor.optical_parameters)-1.5] = example_sensor_object.optical_parameters.loc[len(example_sensor_object.optical_parameters) - 2]
                     next_sensor.optical_parameters = next_sensor.optical_parameters.sort_index().reset_index(drop=True)
                     next_sensor.layer_thicknesses = next_sensor.optical_parameters['d [nm]'].to_numpy()
@@ -2283,8 +2281,7 @@ if __name__ == '__main__':
                                                                         file_path, next_reflectivity_df_,
                                                                         example_analysis_object.TIR_range,
                                                                         example_analysis_object.scanspeed,
-                                                                        current_sensor.name + ' (S' + str(
-                                                                            current_sensor.object_id) + ') ')
+                                                                        file_path.split('/')[-1][15:-10].replace('_', ' '))
 
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
