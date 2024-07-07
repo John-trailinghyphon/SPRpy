@@ -2617,6 +2617,8 @@ if __name__ == '__main__':
         """
         This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
         """
+        # TODO: Adapt height probing to more fitting variables in callbacks!
+
         global current_session
         global current_data_path
         global current_exclusion_height_analysis
@@ -2905,8 +2907,20 @@ if __name__ == '__main__':
             buffer_RI_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer RI']
             probe_RI_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe RI']
             height_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'height']
+            buffer_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer offset']
+            probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offset']
+            try:
+                buffer_prism_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer prism k']
+                probe_prism_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe prism k']
+            except:
+                buffer_prism_val = 0
+                probe_prism_val = 0
 
-            ext_coefficients = copy.deepcopy(current_exclusion_height_analysis.sensor_object.extinction_coefficients)
+            buffer_ext_coefficients = copy.deepcopy(current_exclusion_height_analysis.sensor_object.extinction_coefficients)
+            buffer_ext_coefficients[0] = buffer_prism_val
+
+            probe_ext_coefficients = copy.deepcopy(current_exclusion_height_analysis.sensor_object.extinction_coefficients)
+            probe_ext_coefficients[0] = probe_prism_val
 
             buffer_ref_indices = copy.deepcopy(current_exclusion_height_analysis.sensor_object.refractive_indices)
             buffer_ref_indices[-1] = current_exclusion_height_analysis.buffer_bulk_RIs[active_page_state-1]
@@ -2928,14 +2942,16 @@ if __name__ == '__main__':
                                                               wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
                                                               layer_thicknesses=buffer_layer_thicknesses,
                                                               n_re=buffer_ref_indices,
-                                                              n_im=ext_coefficients,
+                                                              n_im=buffer_ext_coefficients,
+                                                              ydata_offset=buffer_offset_val,
                                                               )
             probe_fresnel_coefficients = fresnel_calculation(angles=probe_angles_inj_step,
-                                                              wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
-                                                              layer_thicknesses=probe_layer_thicknesses,
-                                                              n_re=probe_ref_indices,
-                                                              n_im=ext_coefficients,  # Should be the same for probe
-                                                              )
+                                                             wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
+                                                             layer_thicknesses=probe_layer_thicknesses,
+                                                             n_re=probe_ref_indices,
+                                                             n_im=probe_ext_coefficients,
+                                                             ydata_offset=probe_offset_val,
+                                                             )
             
             # Plot mean reflectivity figure with fitted fresnel traces
             mean_reflectivity_figure = go.Figure(
@@ -2958,7 +2974,7 @@ if __name__ == '__main__':
 
             mean_reflectivity_figure.add_trace(
                 go.Scatter(x=buffer_angles_inj_step,
-                           y=buffer_fresnel_coefficients + current_exclusion_height_analysis.fresnel_object.y_offset,
+                           y=buffer_fresnel_coefficients,
                            mode='lines',
                            showlegend=False,
                            line_dash='dash',
@@ -2967,7 +2983,7 @@ if __name__ == '__main__':
 
             mean_reflectivity_figure.add_trace(
                 go.Scatter(x=probe_angles_inj_step,
-                           y=probe_fresnel_coefficients + current_exclusion_height_analysis.fresnel_object.y_offset,
+                           y=probe_fresnel_coefficients,
                            mode='lines',
                            showlegend=False,
                            line_dash='dash',
