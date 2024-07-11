@@ -2,7 +2,7 @@
 
 import numpy as np
 import tkinter
-from tkinter.filedialog import askopenfilename, askdirectory
+from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory
 import pandas as pd
 import re
 from fresnel_transfer_matrix import TIR_determination
@@ -26,10 +26,19 @@ def select_file(prompt, prompt_folder=None, file_types=[('Pickle files', '*.pick
     return selected_file
 
 
-def load_csv_data(path=False):
+def select_files(prompt, prompt_folder=None, file_types=[('Pickle files', '*.pickle')]):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    selected_files = askopenfilenames(title=prompt, filetypes=file_types, initialdir=prompt_folder, parent=root)
+    root.destroy()
+    return selected_files
+
+
+def load_csv_data(path=False, default_data_folder=None):
     if not path:
         print('Select the measurement data file (.csv)')
-        data_path_ = select_file(prompt='Select the measurement data file', file_types=[('CSV files', '*.csv')])
+        data_path_ = select_file('Select the measurement data file', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
     else:
         data_path_ = path
 

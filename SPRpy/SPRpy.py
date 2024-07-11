@@ -37,9 +37,11 @@ if __name__ == '__main__':
     # Access individual parameters as variables
     TIR_range_water_or_long_measurement = config["TIR_range_water_or_long_measurement"]  # TIR range for water --> Automatically used for 50 or more scans per file
     TIR_range_air_or_few_scans = config["TIR_range_air_or_few_scans"]  # TIR range for dry scans --> Automatically used for less than 50 scans per file
+    auto_angle_range_points = config["auto_angle_range_points"]  # Number of data points below and above the SPR minimum for auto-detection of the SPR peak
     ask_for_previous_session = config["ask_for_previous_session"]
     default_data_folder = config["default_data_folder"]
     session_host = config["session_host"]
+    default_sensor_values = config["default_sensor_values"]
 
     load_session_flag = False
     if ask_for_previous_session is True:
@@ -51,7 +53,7 @@ if __name__ == '__main__':
 
             print('Loading previous session, please wait...')
             load_session_flag = True
-            session_file = select_file(prompt=r'Choose a previous session file', prompt_folder=os.getcwd())
+            session_file = select_file(r'Choose a previous session file', prompt_folder=os.getcwd())
 
             with open(session_file, 'rb') as file:
                 current_session = pickle.load(file)
@@ -70,7 +72,7 @@ if __name__ == '__main__':
 
             # Load measurement data
             current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(
-                path=current_session.current_data_path)
+                path=current_session.current_data_path, default_data_folder=default_data_folder)
 
             # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
             if ydata_df.shape[0] > 50:
@@ -108,7 +110,7 @@ if __name__ == '__main__':
 
         # Prompt user for initial measurement data
         print('Please wait...')
-        current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
+        current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
 
         # Create initial session
         current_session = Session(version, current_data_path=current_data_path)
@@ -135,6 +137,12 @@ if __name__ == '__main__':
         TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
         current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
         current_sensor.optical_parameters.replace(current_sensor.optical_parameters['n'].iloc[-1], current_sensor.refractive_indices[-1], inplace=True)
+        current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            sensor_number=current_sensor.object_id,
+            sensor_name=current_sensor.name,
+            channel=current_sensor.channel,
+            fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+            fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
         current_session.save_session()
         current_session.save_sensor(current_sensor.object_id)
@@ -146,6 +154,7 @@ if __name__ == '__main__':
     # Dash app
     app = dash.Dash(name='SPRpy', title='SPRpy', external_stylesheets=[dash_app_theme])
     app._favicon = 'icon.ico'
+    # app.config.suppress_callback_exceptions = True  # NOTE: Comment out this line for debugging purposes if callbacks do not fire when supposed to
 
     # Dash figures
     reflectivity_fig = px.line(reflectivity_df, x='angles', y='ydata')
@@ -219,12 +228,12 @@ if __name__ == '__main__':
                 ),
                 dash.html.Div([
                     dash.dcc.Markdown('''
-                    # **#SPRpy#**
-                    ''', className='dash-bootstrap'),
+                # **#SPRpy#**
+                ''', className='dash-bootstrap'),
                     dash.dcc.Markdown('''
-                        #### **v ''' + version + '''**
-                        ''', className='dash-bootstrap', style={'display': 'flex', 'justify-content': 'center', 'margin-right': '10px'}),
-                    ], style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
+                    #### **v ''' + version + '''**
+                    ''', className='dash-bootstrap', style={'display': 'flex', 'justify-content': 'center', 'margin-right': '10px'}),
+                ], style={'margin-top': '6rem', 'margin-left': '5rem', 'margin-right': '5rem'}),
                 dbc.Card(
                     [
                         dbc.CardImg(src='static/images/SPR_angular_spectrum.svg', top=True),
@@ -279,7 +288,7 @@ if __name__ == '__main__':
                            n_clicks=0,
                            color='primary',
                            title='Load data from another measurement. Analysis is always performed on this active measurement'),
-                dash.dcc.Store(id='loaded-new-measurement', storage_type='session'),
+                dash.dcc.Store(id='loaded-new-measurement', storage_type='memory'),
                 # TODO: Add functionality for this button
                 # dbc.Button('Import result',
                 #            id='import-from-session',
@@ -342,7 +351,7 @@ if __name__ == '__main__':
                     channel=current_sensor.channel,
                     fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                     fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
-                              ], id='sensor-table-title', style={'text-align': 'center'}),
+                ], id='sensor-table-title', style={'text-align': 'center'}),
                 dash.html.Div([
                     dash.dash_table.DataTable(data=current_sensor.optical_parameters.to_dict('records'),
                                               columns=[{'name': 'Layers', 'id': 'Layers', 'type': 'text'},
@@ -386,7 +395,7 @@ if __name__ == '__main__':
                         dbc.ModalHeader(dbc.ModalTitle('Rename sensor')),
                         dbc.ModalBody(dbc.Input(id='rename-sensor-input', placeholder='Give a name...', type='text')),
                         dbc.ModalFooter(dbc.Button('Confirm', id='rename-sensor-confirm', color='success', n_clicks=0))
-                        ],
+                    ],
                         id='rename-sensor-modal',
                         size='sm',
                         is_open=False,
@@ -406,16 +415,7 @@ if __name__ == '__main__':
                     dbc.Card(
                         dbc.CardBody(
                             dbc.Table.from_dataframe(pd.DataFrame(
-                                {
-                                    "Layer": ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt', 'PEG', 'Protein', 'DNA'],
-                                    "d[nm]": ['', '2', '50', '14', '20', '20', '~2 or ~8.5 (2 or 20 kDa)', '4', '?'],
-                                    "n (670)": ['1.5202', '3.3105', '0.2238', '1.4628', '2.2500', '2.4687', '1.456', '1.53', '1.58'],
-                                    "n (785)": ['1.5162', '3.3225', '0.2580', '1.4610', '2.5467', '?', '1.456', '1.53', '1.58'],
-                                    "n (980)": ['1.5130', '3.4052', '0.2800', '1.4592', '3.0331', '?', '1.456', '1.53', '1.58'],
-                                    "k (670)": ['0', '3.4556', '3.9259', '0', '4.6000', '5.2774', '0', '0', '0'],
-                                    "k (785)": ['0', '3.6148', '4.8800', '0', '5.1250', '?', '0', '0', '0'],
-                                    "k (980)": ['0', '3.5678', '6.7406', '0', '6.7406', '?', '0', '0', '0'],
-                                }
+                                default_sensor_values,
                             ), size='sm', striped=True, bordered=True, hover=True)
                         ), style={'width': '650px'}),
                     id='default-values-collapse',
@@ -459,7 +459,7 @@ if __name__ == '__main__':
                                         dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
                                         dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
                                         dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0)],
-                                    )
+                                )
                             ], style={'margin-left': '13%'}),
                         ], style={'width': '35%'}),
                         dash.html.Div([
@@ -479,13 +479,12 @@ if __name__ == '__main__':
                                               dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
                                               dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0)],
                                     style={'margin-left': '100%'}),
-                                ], style={'margin-left': '27.5%'}),
+                            ], style={'margin-left': '27.5%'}),
                         ], style={'width': '60%'})
                     ], id='quantification-tab-content', style={'display': 'flex', 'justify-content': 'center'})
                 ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
 
                 # Fresnel modelling tab
-                # TODO: Add a rename analysis object button
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
@@ -516,8 +515,27 @@ if __name__ == '__main__':
                                                          label='Choose analysis',
                                                          color='primary',
                                                          children=[dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
-                                                                   id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
-                                                                   n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
+                                                                                        id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                                                                        n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]),
+                                        dbc.Button('Rename analysis',
+                                                   id='rename-fresnel-analysis-button',
+                                                   n_clicks=0,
+                                                   color='warning',
+                                                   title='Rename the current fresnel analysis object.'),
+                                        dbc.Modal([
+                                            dbc.ModalHeader(dbc.ModalTitle('Rename fresnel analysis')),
+                                            dbc.ModalBody(
+                                                dbc.Input(id='rename-fresnel-analysis-input', placeholder='Give a name...',
+                                                          type='text')),
+                                            dbc.ModalFooter(
+                                                dbc.Button('Confirm', id='rename-fresnel-analysis-confirm', color='success',
+                                                           n_clicks=0))
+                                        ],
+                                            id='rename-fresnel-analysis-modal',
+                                            size='sm',
+                                            is_open=False,
+                                            backdrop='static',
+                                            keyboard=False),
                                         dbc.Button('Remove analysis',
                                                    id='remove-fresnel-analysis-button',
                                                    n_clicks=0,
@@ -539,6 +557,93 @@ if __name__ == '__main__':
                                         ],
                                             id='remove-fresnel-analysis-modal',
                                             size='sm',
+                                            is_open=False,
+                                            backdrop='static',
+                                            keyboard=False),
+                                        dbc.Button('Batch analysis',
+                                                   id='batch-fresnel-analysis-button',
+                                                   n_clicks=0,
+                                                   color='primary',
+                                                   title='Perform automatic batch fresnel modelling on several similar measurement files based on a selected example sensor and example analysis.'),
+                                        dbc.Modal([
+                                            dbc.ModalHeader(dbc.ModalTitle('Start automatic batch fresnel modelling')),
+                                            dbc.ModalBody([dash.html.Div(['Prerequisites:']),
+                                                           dash.html.Div([' - All files must be in the same folder.']),
+                                                           dash.html.Div([' - All files must have the same sensor layer structure and wavelength.']),
+                                                           dbc.Button('Choose measurement files',
+                                                                      id='batch-fresnel-analysis-choose-files',
+                                                                      n_clicks=0),
+                                                           dash.dcc.Store(id='batch-fresnel-analysis-files', storage_type='session'),
+                                                           dbc.Row([
+                                                               dash.dcc.Dropdown(
+                                                                   id='batch-fresnel-analysis-example-sensor-dropdown',
+                                                                   placeholder='Select example sensor',
+                                                                   options=[{'label': 'S' + str(sensor_id) + ' ' +
+                                                                                      current_session.sensor_instances[
+                                                                                          sensor_id].name,
+                                                                             'value': sensor_id} for sensor_id in
+                                                                            current_session.sensor_instances]),
+                                                               dash.dcc.Dropdown(
+                                                                   id='batch-fresnel-analysis-example-analysis-dropdown',
+                                                                   placeholder='Select example analysis',
+                                                                   options=[{'label': 'FM' + str(
+                                                                       fresnel_analysis_id) + ' ' +
+                                                                                      current_session.fresnel_analysis_instances[
+                                                                                          fresnel_analysis_id].name,
+                                                                             'value': fresnel_analysis_id} for
+                                                                            fresnel_analysis_id in
+                                                                            current_session.fresnel_analysis_instances])
+                                                           ], id='batch-fresnel-analysis-example-row'),
+                                                           dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
+                                                                                        {'label': 'Add new layer to individually selected backgrounds', 'value': 1}],
+                                                                               value=0,
+                                                                               id='batch-fresnel-analysis-radio-selection'),
+                                                           dbc.Row([
+                                                               dash.dcc.Dropdown(
+                                                                   id='batch-fresnel-analysis-background-sensors-dropdown',
+                                                                   placeholder='Select individual background sensors',
+                                                                   multi=True,
+                                                                   clearable=True,
+                                                                   options=[{'label': 'S' + str(sensor_id) + ' ' +
+                                                                                      current_session.sensor_instances[
+                                                                                          sensor_id].name,
+                                                                             'value': sensor_id} for sensor_id in
+                                                                            current_session.sensor_instances]),
+                                                               dbc.Button('Submit backgrounds',
+                                                                          id='batch-fresnel-analysis-background-sensors-button-submit',
+                                                                          n_clicks=0)
+                                                           ], id='batch-fresnel-analysis-background-sensors-dropdown-row', style={'visibility': 'hidden'}),
+                                                           dbc.Table.from_dataframe(pd.DataFrame({'Measurement files': [''], 'Background sensors': ['']}), bordered=True, id='batch-fresnel-analysis-table', style={'visibility': 'hidden', 'margin-top': '20px'}),
+                                                           dash.dcc.Store(
+                                                               id='batch-fresnel-analysis-background-sensors',
+                                                               storage_type='session'),
+                                                           dash.dcc.Store(id='batch-fresnel-analysis-start',
+                                                                          storage_type='memory'),
+                                                           dash.dcc.Store(id='batch-fresnel-analysis-done',
+                                                                          storage_type='memory'),
+                                                           dash.dcc.Store(id='batch-fresnel-analysis-finish',
+                                                                          storage_type='memory'),
+                                                           ]),
+                                            dbc.ModalFooter([
+                                                dbc.ButtonGroup([
+                                                    dbc.Spinner(color='success', type='border',
+                                                                id='batch-fresnel-spinner',
+                                                                spinner_style={'visibility': 'hidden',
+                                                                               'margin-top': '10px',
+                                                                               'margin-right': '10px',
+                                                                               'width': '2rem',
+                                                                               'height': '2rem'}),
+                                                    dbc.Button('Confirm', id='batch-fresnel-analysis-confirm',
+                                                               color='success',
+                                                               n_clicks=0),
+                                                    dbc.Button('Cancel', id='batch-fresnel-analysis-cancel',
+                                                               color='danger',
+                                                               n_clicks=0)
+                                                ])
+                                            ])
+                                        ],
+                                            id='batch-fresnel-analysis-modal',
+                                            size='xl',
                                             is_open=False,
                                             backdrop='static',
                                             keyboard=False),
@@ -582,12 +687,19 @@ if __name__ == '__main__':
                                                                           value=float(current_sensor.fitted_var) + float(current_sensor.fitted_var) / 2,
                                                                           type='number')
                                                             ])
-                                                        ], width=4)
+                                                        ], width=4),
+                                                        dbc.Label('p-factor', width='auto'),
+                                                        dbc.Col([
+                                                            dbc.Input(id='fresnel-fit-option-pfactor',
+                                                                      value=1.0, type='number')
+                                                        ]),
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.RangeSlider(reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1],
+                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]],
+                                                                                 min=reflectivity_df['angles'].iloc[0],
+                                                                                 max=reflectivity_df['angles'].iloc[-1],
                                                                                  marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
                                                                                  step=0.005,
                                                                                  allowCross=False,
@@ -598,6 +710,11 @@ if __name__ == '__main__':
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
                                                         dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),
+                                                        dbc.Col([
+                                                            dbc.Checkbox(id='fresnel-analysis-elastomer-fit',
+                                                                         label="Fit?",
+                                                                         value=True)
+                                                        ], width='auto', style={'padding-top': '20px'}),
                                                         dbc.Col([
                                                             dash.dcc.Slider(min=-0.0005, max=0.0005,
                                                                             step=0.00005,
@@ -660,7 +777,8 @@ if __name__ == '__main__':
                                                        id='add-exclusion-height-analysis-button',
                                                        n_clicks=0,
                                                        color='primary',
-                                                       title='Add a new exclusion analysis object for the current sensor.'),
+                                                       title='Add a new exclusion analysis object for the current sensor.'
+                                                       ),
                                             dash.dcc.Store(id='add-exclusion-height-analysis-signal', storage_type='session'),
                                             dbc.Modal([
                                                 dbc.ModalHeader(dbc.ModalTitle('New exclusion height analysis object')),
@@ -696,7 +814,7 @@ if __name__ == '__main__':
                                                                  id={'type': 'exclusion-analysis-list',
                                                                      'index': exclusion_id},
                                                                  n_clicks=0) for exclusion_id in
-                                                                       current_session.exclusion_height_analysis_instances]),
+                                                                 current_session.exclusion_height_analysis_instances]),
                                             dbc.Button('Remove analysis',
                                                        id='remove-exclusion-height-analysis-button',
                                                        n_clicks=0,
@@ -729,6 +847,10 @@ if __name__ == '__main__':
                                             dbc.Card(
                                                 dbc.CardBody(
                                                     dbc.Form([
+                                                        dbc.Row([
+                                                            dbc.Label('Selected analysis: ',
+                                                                      id='exclusion-height-analysis-label')
+                                                        ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
                                                             dbc.Label(
                                                                 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
@@ -767,11 +889,25 @@ if __name__ == '__main__':
                                                             dbc.Col([
                                                                 dbc.InputGroup([
                                                                     dbc.Input(id='exclusion-height-option-resolution',
-                                                                              value=int(200),
+                                                                              value=int(100),
                                                                               type='number'),
                                                                 ])
-                                                            ], width=3)
+                                                            ], width=3),
                                                         ], style={'margin-bottom': '10px'}),
+                                                        dbc.Row([
+                                                            dbc.Col([
+                                                                dbc.Checkbox(
+                                                                    id='exclusion-height-analysis-offset-refit',
+                                                                    label="Refitting offset?",
+                                                                    value=False)
+                                                            ], width='auto'),
+                                                            dbc.Col([
+                                                                dbc.Checkbox(
+                                                                    id='exclusion-height-analysis-prism-refit',
+                                                                    label="Refitting prism k?",
+                                                                    value=False)
+                                                            ], width='auto'),
+                                                        ]),
                                                         dbc.Row([
                                                             dbc.Label('Injection points: ', width='auto', id='exclusion-height-settings-injection-points')
                                                         ]),
@@ -874,7 +1010,7 @@ if __name__ == '__main__':
                                 dbc.Label('Injection step', id='exclusion-height-result-pagination-label',
                                           style={'display': 'flex', 'justify-content': 'center'}),
                                 dash.html.Div([
-                                            dbc.Pagination(max_value=2, previous_next=True, id='exclusion-height-result-pagination')
+                                    dbc.Pagination(max_value=2, previous_next=True, id='exclusion-height-result-pagination')
                                 ], style={'display': 'flex', 'justify-content': 'center'}),
                                 dash.html.Div([
                                     dash.html.Div([
@@ -948,9 +1084,38 @@ if __name__ == '__main__':
 
                 # Result summary tab
                 dbc.Tab([
-                    dash.html.Div(
-                        ['Summary'],
-                        id='summary-tab-content')
+                    dash.html.Div([
+                        #TODO: Use a form to create an initial window containing the different options to choose from,
+                        # first one should select what type of plot maybe? Then dropdowns containing checklists to
+                        # select which model objects to pull results from (default all?). Also buttons for different
+                        # plot styling options and what kind of statistics (STD, SE, Confidence interval etc). Barplot
+                        # option to make stacked barplots or grouped barplots. Should be dynamic added options that
+                        # are adding dropdowns to select from? Or how to do this conveniently... Maybe I can add some of
+                        # the more common options, and then one that is fully customisable?
+                        # To make persistent editable axis and titles -> https://community.plotly.com/t/allowing-users-to-edit-graph-properties-without-code-changes/72031'
+                        # (but I would create an object for the summary maybe {or saved in the session object}? at least give that option so everything is saved.
+
+                        dash.html.Div([
+                            dash.html.Div([
+                                dash.html.H3(['Settings']),
+
+                            ], style={'margin-top': '1.9rem', 'width': '65%'}),
+                            dash.html.Div([
+                                dash.dcc.Graph(id='barplot-reflectivity-graph',
+                                               figure=go.Figure(go.Scatter()),
+                                               mathjax=True),
+                                dbc.DropdownMenu(
+                                    id='barplot-save-dropdown',
+                                    label='Save as...',
+                                    color='info',
+                                    children=[
+                                        dbc.DropdownMenuItem('.PNG', id='barplot-save-png', n_clicks=0),
+                                        dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
+                                        dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0)],
+                                    style={'margin-left': '-5px'})
+                            ], style={'margin-left': '30%'}),
+                        ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
+                    ], id='summary-tab-content')
                 ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
             ], id='analysis-tabs', active_tab='quantification-tab'),
         ], style={'margin-left': '2%', 'margin-right': '2%'})
@@ -968,7 +1133,6 @@ if __name__ == '__main__':
     def update_session_log(input1, input2, state1):
 
         global current_session
-
         if 'submit-button' == dash.ctx.triggered_id:
 
             new_message = current_session.log + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + state1
@@ -985,14 +1149,15 @@ if __name__ == '__main__':
 
             return dash.no_update, new_name, ''
 
-
     # Load in new measurement data and send a Store signal to other callbacks to update appropriately
     @dash.callback(
         dash.Output('loaded-new-measurement', 'data'),
         dash.Output('datapath-textfield', 'children'),
+        dash.Output('batch-fresnel-analysis-files', 'data'),
         dash.Input('load-data', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-choose-files', 'n_clicks'),
         prevent_initial_call=True)
-    def update_measurement_data(load_data):
+    def update_measurement_data(load_data, load_data_batch):
 
         global current_data_path
         global current_session
@@ -1006,28 +1171,35 @@ if __name__ == '__main__':
         global TIR_range_water_or_long_measurement
         global TIR_range_air_or_few_scans
         global TIR_range
+        global default_data_folder
 
-        # Load measurement data and update session current data path
-        current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data()
-        current_session.current_data_path = current_data_path
-        current_session.save_session()
+        if 'load-data' == dash.ctx.triggered_id:
+            # Load measurement data and update session current data path
+            current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
+            current_session.current_data_path = current_data_path
+            current_session.save_session()
 
-        # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
-        if ydata_df.shape[0] > 50:
-            TIR_range = TIR_range_water_or_long_measurement
-        else:
-            TIR_range = TIR_range_air_or_few_scans
+            # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
+            if ydata_df.shape[0] > 50:
+                TIR_range = TIR_range_water_or_long_measurement
+            else:
+                TIR_range = TIR_range_air_or_few_scans
 
-        sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
-        # Offset to start at 0 degrees at 0 minutes
-        sensorgram_df_selection = sensorgram_df
-        sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
-                                               sensorgram_df_selection['SPR angle'][0]
-        sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
-                                               sensorgram_df_selection['TIR angle'][0]
+            # Offset to start at 0 degrees at 0 minutes
+            sensorgram_df_selection = sensorgram_df
+            sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
+                                                   sensorgram_df_selection['SPR angle'][0]
+            sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
+                                                   sensorgram_df_selection['TIR angle'][0]
 
-        return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]]
+            return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]], dash.no_update
+
+        elif 'batch-fresnel-analysis-choose-files' == dash.ctx.triggered_id:
+            print('Select the measurement data files (.csv)')
+            batch_data_paths_ = select_files('Select the measurement data files', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
+            return dash.no_update, dash.no_update, batch_data_paths_
 
     # Updating the sensor table with new values and properties
     @dash.callback(
@@ -1050,6 +1222,7 @@ if __name__ == '__main__':
         dash.Input('table-update-values', 'n_clicks'),
         dash.Input('table-select-fitted', 'n_clicks'),
         dash.Input('fresnel-reflectivity-run-finished', 'data'),
+        dash.Input('batch-fresnel-analysis-finish', 'data'),
         dash.State('sensor-table', 'data'),
         dash.State('sensor-table', 'columns'),
         dash.State('sensor-table', 'active_cell'),
@@ -1058,7 +1231,7 @@ if __name__ == '__main__':
     def update_sensor_table(n_clicks_sensor_list, add_gold, add_sio2, add_palladium, add_platinum, rename_button,
                             rename_confirm, remove_button,
                             remove_confirm, click_copy, n_clicks_add_row, n_clicks_update, n_clicks_fitted,
-                            fitted_result_update, table_rows, table_columns, active_cell, sensor_name_):
+                            fitted_result_update, batch_result_update, table_rows, table_columns, active_cell, sensor_name_):
         """
         This callback function controls all updates to the sensor table.
 
@@ -1096,7 +1269,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1108,7 +1281,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
@@ -1126,7 +1299,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1138,7 +1311,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
@@ -1156,7 +1329,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1168,7 +1341,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
@@ -1184,7 +1357,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1196,17 +1369,18 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'copy-sensor' == dash.ctx.triggered_id:
             new_sensor = copy_sensor_backend(current_session, current_sensor)
             new_sensor.name = current_sensor.name + ' copy'
             current_sensor = new_sensor
+            current_sensor.channel = current_data_path[-12:-4].replace('_', ' ')
             current_session.save_sensor(current_sensor.object_id)
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1218,7 +1392,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'rename-sensor-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update
@@ -1236,7 +1410,7 @@ if __name__ == '__main__':
             current_session.save_session()
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1248,7 +1422,7 @@ if __name__ == '__main__':
                                      id={'type': 'sensor-list', 'index': sensor_id},
                                      n_clicks=0) for sensor_id in current_session.sensor_instances]
 
-            return data_rows, sensor_table_title, sensor_options, False, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'remove-sensor-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
@@ -1269,14 +1443,8 @@ if __name__ == '__main__':
                                          n_clicks=0) for sensor_id in current_session.sensor_instances]
 
                 data_rows = current_sensor.optical_parameters.to_dict('records')
-                sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                    sensor_number=current_sensor.object_id,
-                    sensor_name=current_sensor.name,
-                    channel=current_sensor.channel,
-                    fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                    fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-                return data_rows, sensor_table_title, sensor_options, dash.no_update, False
+                return data_rows, current_sensor.sensor_table_title, sensor_options, dash.no_update, False
 
             else:
                 raise dash.exceptions.PreventUpdate
@@ -1308,7 +1476,7 @@ if __name__ == '__main__':
 
             current_sensor.fitted_layer_index = (active_cell['row'], active_cell['column'])
             current_sensor.fitted_var = current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index]
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+            current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                 sensor_number=current_sensor.object_id,
                 sensor_name=current_sensor.name,
                 channel=current_sensor.channel,
@@ -1319,7 +1487,7 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_sensor(current_sensor.object_id)
 
-            return table_rows, sensor_table_title, dash.no_update, dash.no_update, dash.no_update
+            return table_rows, current_sensor.sensor_table_title, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-finished' == dash.ctx.triggered_id:
 
@@ -1327,18 +1495,23 @@ if __name__ == '__main__':
 
             return data_rows, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
+        elif 'batch-fresnel-analysis-finish' == dash.ctx.triggered_id:
+
+            data_rows = current_sensor.optical_parameters.to_dict('records')
+
+            sensor_options = [
+                dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
+                                     id={'type': 'sensor-list', 'index': sensor_id},
+                                     n_clicks=0) for sensor_id in current_session.sensor_instances]
+
+            return data_rows, current_sensor.sensor_table_title, sensor_options, dash.no_update, dash.no_update
+
         else:
             current_sensor = current_session.sensor_instances[dash.callback_context.triggered_id.index]
 
             data_rows = current_sensor.optical_parameters.to_dict('records')
-            sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                sensor_number=current_sensor.object_id,
-                sensor_name=current_sensor.name,
-                channel=current_sensor.channel,
-                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
 
-            return data_rows, sensor_table_title, dash.no_update, dash.no_update, dash.no_update
+            return data_rows, current_sensor.sensor_table_title, dash.no_update, dash.no_update, dash.no_update
 
 
     # Toggle view of default optical parameters for different materials
@@ -1417,7 +1590,7 @@ if __name__ == '__main__':
 
         # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
         elif 'quantification-reflectivity-add-data-trace' == dash.ctx.triggered_id:
-            _, _, _, _, _, trace_reflectivity_df = load_csv_data()
+            _, _, _, _, _, trace_reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
                                                y=trace_reflectivity_df['ydata'],
                                                mode='lines',
@@ -1587,7 +1760,6 @@ if __name__ == '__main__':
             return figure_object
 
     # Update the reflectivity plot in the Fresnel fitting tab
-    # TODO: Add a rename analysis object button
     @dash.callback(
         dash.Output('fresnel-reflectivity-graph', 'figure'),
         dash.Output('fresnel-reflectivity-run-finished', 'data'),
@@ -1607,6 +1779,8 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-option-rangeslider', 'min'),
         dash.Output('fresnel-fit-option-rangeslider', 'max'),
         dash.Output('fresnel-fit-datapath', 'children'),
+        dash.Output('rename-fresnel-analysis-modal', 'is_open'),
+        dash.Output('batch-fresnel-analysis-done', 'data'),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1618,6 +1792,9 @@ if __name__ == '__main__':
         dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
+        dash.Input('rename-fresnel-analysis-button', 'n_clicks'),
+        dash.Input('rename-fresnel-analysis-confirm', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-start', 'data'),
         dash.State('fresnel-analysis-name-input', 'value'),
         dash.State('fresnel-reflectivity-graph', 'figure'),
         dash.State('fresnel-fit-option-rangeslider', 'value'),
@@ -1625,11 +1802,19 @@ if __name__ == '__main__':
         dash.State('fresnel-fit-option-lowerbound', 'value'),
         dash.State('fresnel-fit-option-upperbound', 'value'),
         dash.State('fresnel-fit-option-extinctionslider', 'value'),
+        dash.State('rename-fresnel-analysis-input', 'value'),
+        dash.State('batch-fresnel-analysis-files', 'data'),
+        dash.State('batch-fresnel-analysis-background-sensors', 'data'),
+        dash.State('batch-fresnel-analysis-radio-selection', 'value'),
+        dash.State('batch-fresnel-analysis-example-sensor-dropdown', 'value'),
+        dash.State('batch-fresnel-analysis-example-analysis-dropdown', 'value'),
+        dash.State('fresnel-analysis-elastomer-fit', 'value'),
+        dash.State('fresnel-fit-option-pfactor', 'value'),
         prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
-                                          selected_fresnel_object, save_png, save_svg, save_html, analysis_name, figure_JSON, rangeslider_state, ini_guess,
+                                          selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction):
+                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_sensor_index, batch_analysis_index, elastomer_fit_flag, polarization_factor):
 
         global current_fresnel_analysis
         global current_data_path
@@ -1694,29 +1879,42 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
             # Set analysis options from dash app
             current_fresnel_analysis.angle_range = rangeslider_state
-            current_fresnel_analysis.ini_guess = ini_guess
-            current_fresnel_analysis.bounds[0] = lower_bound
-            current_fresnel_analysis.bounds[1] = upper_bound
-            current_fresnel_analysis.extinction_correction = extinction_correction
+            current_fresnel_analysis.polarization = polarization_factor
+            current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
+            current_fresnel_analysis.fit_prism_k = elastomer_fit_flag
+
+            if not current_fresnel_analysis.fit_prism_k:
+                current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset])
+                current_fresnel_analysis.bounds = [(lower_bound, -np.inf), (upper_bound, np.inf)]
+                current_fresnel_analysis.extinction_correction = extinction_correction
+            else:
+                current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset, 0.001])
+                current_fresnel_analysis.bounds = [(lower_bound, -np.inf, 0), (upper_bound, np.inf, 0.1)]
+                current_fresnel_analysis.extinction_correction = 0
 
             # Run calculations and modelling
             fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
 
-            # Update current sensor object with the fit result
-            current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(current_fresnel_analysis.fitted_result, 4)
+            # Update current sensor object with the fit result and prism extinction value
+            current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(current_fresnel_analysis.fitted_result[0], 4)
+
+            if not current_fresnel_analysis.fit_prism_k:
+                current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+            else:
+                current_sensor.optical_parameters.iloc[(0, 3)] = round(current_fresnel_analysis.fitted_result[2], 5)
 
             # Save session and analysis object
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
             # Fit result text
-            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
 
             # Plot fitted trace
             new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
@@ -1760,16 +1958,30 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
-            current_fresnel_analysis.ini_guess = float(current_sensor.fitted_var)
-            current_fresnel_analysis.bounds = [current_fresnel_analysis.ini_guess / 4, current_fresnel_analysis.ini_guess + current_fresnel_analysis.ini_guess / 2]
-            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]]
+
+            # Calculate initial intensity offset from data
+            FR_y = fresnel_calculation(
+                angles=reflectivity_df['angles'].iloc[
+                       reflectivity_df['ydata'].idxmin()-1:reflectivity_df['ydata'].idxmin()+1],
+                wavelength=current_fresnel_analysis.sensor_object.wavelength,
+                layer_thicknesses=current_fresnel_analysis.sensor_object.layer_thicknesses,
+                n_re=current_fresnel_analysis.sensor_object.refractive_indices,
+                n_im=current_fresnel_analysis.sensor_object.extinction_coefficients,
+                ydata_type='R',
+                polarization=current_fresnel_analysis.polarization)
+            current_fresnel_analysis.y_offset = reflectivity_df['ydata'].min() - FR_y[1]  # Can't calculate only 1 angle, so use middle of 3 around minimum
+
+            current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var), current_fresnel_analysis.y_offset])
+            current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2, np.inf)]
+            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]]
+
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
 
@@ -1780,12 +1992,7 @@ if __name__ == '__main__':
 
             exclusion_analysis_dropdown = [{'label': 'FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name, 'value': fresnel_id} for fresnel_id in current_session.fresnel_analysis_instances]
 
-            current_fresnel_analysis.sensor_object_label = 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
-                sensor_number=current_sensor.object_id,
-                sensor_name=current_sensor.name,
-                channel=current_sensor.channel,
-                fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
-                fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+            current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
 
             # Update fresnel plot with current measurement data
             new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
@@ -1834,12 +2041,39 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-            current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path
+            # Check bounds structure
+            if type(current_fresnel_analysis.bounds[0]) is not tuple:
+                lower_bound_ = current_fresnel_analysis.bounds[0]
+                upper_bound_ = current_fresnel_analysis.bounds[1]
+            else:
+                lower_bound_ = current_fresnel_analysis.bounds[0][0]
+                upper_bound_ = current_fresnel_analysis.bounds[1][0]
+
+            return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
+            lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+
+        elif 'rename-fresnel-analysis-button' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update
+
+        elif 'rename-fresnel-analysis-confirm' == dash.ctx.triggered_id:
+
+            # First remove previous fresnel analysis pickle object file
+            old_path = current_session.location + r'\Analysis instances\FM{id} {name}.pickle'.format(id=current_fresnel_analysis.object_id, name=current_fresnel_analysis.name)
+            os.remove(old_path)
+
+            # Change fresnel analysis name and save new fresnel analysis pickle file and session
+            current_fresnel_analysis.name = analysis_name_
+            current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+            current_session.save_session()
+
+            analysis_options = [dbc.DropdownMenuItem('FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                                                     id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                                                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
+
+            return dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.fresnel_analysis_instances) > 1:
@@ -1863,7 +2097,7 @@ if __name__ == '__main__':
                                                current_session.fresnel_analysis_instances]
 
                 if current_fresnel_analysis.fitted_result is not None:
-                    result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+                    result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
                 else:
                     result = 'Fit result: None'
 
@@ -1921,23 +2155,258 @@ if __name__ == '__main__':
                 new_figure.update_yaxes(mirror=True,
                                         showline=True)
 
-                return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-                    current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                    1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path
+                # Check bounds structure
+                if type(current_fresnel_analysis.bounds[0]) is not tuple:
+                    lower_bound_ = current_fresnel_analysis.bounds[0]
+                    upper_bound_ = current_fresnel_analysis.bounds[1]
+                else:
+                    lower_bound_ = current_fresnel_analysis.bounds[0][0]
+                    upper_bound_ = current_fresnel_analysis.bounds[1][0]
+
+                return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
+                    lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, False, dash.no_update
 
             # If deleting the last fresnel analysis object
             else:
                 try:
                     current_session.remove_fresnel_analysis(current_fresnel_analysis.object_id)
                 except AttributeError:
-                    pass  # There was no object at all
+                    pass  # There was no object at all, this will cause big problems if AttributeError can happen for other reasons though
                 current_fresnel_analysis = None
                 current_session.save_session()
 
-                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update. dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        elif 'batch-fresnel-analysis-start' == dash.ctx.triggered_id:
+            # Load the example sensor and fresnel model into memory for pulling base settings
+            example_sensor_object = current_session.sensor_instances[batch_sensor_index]
+            example_analysis_object = current_session.fresnel_analysis_instances[batch_analysis_index]
+
+            # Conditional for batch analysis radio button selection
+            if batch_radio_selection == 0:  # Copy selected example layer structure
+
+                # Use the same layer structure copied from selected example sensor object
+                for file_path in batch_files:
+
+                    # Load data from measurement file using load_csv_data
+                    _, _, _, _, _, next_reflectivity_df_ = load_csv_data(path=file_path)
+
+                    # Add copy of sensor object to session
+                    next_sensor = copy_sensor_backend(current_session, example_sensor_object)
+                    try:
+                        next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                    except:
+                        next_sensor.name = example_sensor_object.name
+
+                    current_sensor = next_sensor
+                    current_sensor.channel = file_path[-12:-4].replace('_', ' ')
+                    TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], example_analysis_object.TIR_range,
+                                                        example_analysis_object.scanspeed)
+                    current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
+                        np.pi / 180 * TIR_angle)
+                    current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
+                    current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                        sensor_number=current_sensor.object_id,
+                        sensor_name=current_sensor.name,
+                        channel=current_sensor.channel,
+                        fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                        fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+                    current_session.save_sensor(current_sensor.object_id)
+                    current_session.save_session()
+
+                    # Add fresnel model object to session
+                    current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
+                                                                        file_path, next_reflectivity_df_, example_analysis_object.TIR_range,
+                                                                        example_analysis_object.scanspeed, current_sensor.name)
+                    # Calculate angle range based on measured data
+                    current_fresnel_analysis.angle_range = [
+                        next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
+                        next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() + auto_angle_range_points[1]]]
+
+                    # Set analysis options from example analysis objects
+                    current_fresnel_analysis.ini_guess = example_analysis_object.ini_guess
+                    current_fresnel_analysis.bounds = example_analysis_object.bounds
+                    current_fresnel_analysis.polarization = example_analysis_object.polarization
+                    current_fresnel_analysis.extinction_correction = example_analysis_object.extinction_correction
+                    current_fresnel_analysis.y_offset = example_analysis_object.y_offset
+                    current_fresnel_analysis.fit_prism_k = example_analysis_object.fit_prism_k
+
+                    # Run calculations and modelling
+                    fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
+
+                    # Update current sensor object with the fit result and prism extinction value
+                    current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(
+                        current_fresnel_analysis.fitted_result[0], 4)
+
+                    if not current_fresnel_analysis.fit_prism_k:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+                    else:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = round(
+                            current_fresnel_analysis.fitted_result[2], 5)
+
+                    current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
+
+                    # Save session and analysis object
+                    current_session.save_session()
+                    current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+
+            elif batch_radio_selection == 1:  # Use specific backgrounds and add new layer
+
+                # Use the same layer structure copied from selected example sensor object
+                for file_path, sensor_id in zip(batch_files, background_sensors):
+
+                    # Load data from measurement file using load_csv_data
+                    _, batch_current_data_path, _, batch_ydata_df, _, next_reflectivity_df_ = load_csv_data(path=file_path)
+
+                    # Select background sensor
+                    background_sensor_object = current_session.sensor_instances[sensor_id]
+
+                    # Add copy of sensor object to session
+                    next_sensor = copy_sensor_backend(current_session, background_sensor_object)
+                    try:
+                        next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                    except:
+                        next_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
+
+                    # Add example layer row and values, also convert other parameters
+                    next_sensor.optical_parameters.loc[len(next_sensor.optical_parameters)-1.5] = example_sensor_object.optical_parameters.loc[len(example_sensor_object.optical_parameters) - 2]
+                    next_sensor.optical_parameters = next_sensor.optical_parameters.sort_index().reset_index(drop=True)
+                    next_sensor.layer_thicknesses = next_sensor.optical_parameters['d [nm]'].to_numpy()
+                    next_sensor.refractive_indices = next_sensor.optical_parameters['n'].to_numpy()
+                    next_sensor.extinction_coefficients = next_sensor.optical_parameters['k'].to_numpy()
+
+                    # Calculate TIR angle
+                    TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'],
+                                                        example_analysis_object.TIR_range,
+                                                        example_analysis_object.scanspeed)
+                    next_sensor.refractive_indices[-1] = next_sensor.refractive_indices[0] * np.sin(
+                        np.pi / 180 * TIR_angle)
+                    next_sensor.optical_parameters['n'] = next_sensor.refractive_indices
+
+                    next_sensor.fitted_layer_index = example_sensor_object.fitted_layer_index
+                    next_sensor.fitted_var = next_sensor.optical_parameters.iloc[next_sensor.fitted_layer_index]
+
+                    current_sensor = next_sensor
+                    current_sensor.channel = file_path[-12:-4].replace('_', ' ')
+
+                    current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
+                        sensor_number=current_sensor.object_id,
+                        sensor_name=current_sensor.name,
+                        channel=current_sensor.channel,
+                        fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
+                        fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+                    current_session.save_sensor(current_sensor.object_id)
+                    current_session.save_session()
+
+                    # Add fresnel model object to session
+                    current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
+                                                                        file_path, next_reflectivity_df_,
+                                                                        example_analysis_object.TIR_range,
+                                                                        example_analysis_object.scanspeed,
+                                                                        current_sensor.name + ' (S' + str(
+                                                                            current_sensor.object_id) + ') ')
+
+                    # Calculate angle range based on measured data
+                    current_fresnel_analysis.angle_range = [
+                        next_reflectivity_df_['angles'].iloc[
+                            next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
+                        next_reflectivity_df_['angles'].iloc[
+                            next_reflectivity_df_['ydata'].idxmin() + auto_angle_range_points[1]]]
+
+                    # Set analysis options from example analysis objects
+                    current_fresnel_analysis.ini_guess = example_analysis_object.ini_guess
+                    current_fresnel_analysis.bounds = example_analysis_object.bounds
+                    current_fresnel_analysis.polarization = example_analysis_object.polarization
+                    current_fresnel_analysis.extinction_correction = example_analysis_object.extinction_correction
+                    current_fresnel_analysis.y_offset = example_analysis_object.y_offset
+                    current_fresnel_analysis.fit_prism_k = example_analysis_object.fit_prism_k
+
+                    # Run calculations and modelling
+                    fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
+
+                    # Update current sensor object with the fit result and prism extinction value
+                    current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index] = round(
+                        current_fresnel_analysis.fitted_result[0], 4)
+
+                    if not current_fresnel_analysis.fit_prism_k:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = current_sensor.extinction_coefficients[0]
+                    else:
+                        current_sensor.optical_parameters.iloc[(0, 3)] = round(
+                            current_fresnel_analysis.fitted_result[2], 5)
+
+                    current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
+
+                    # Save session and analysis object
+                    current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+                    current_session.save_session()
+
+            # Fit result text
+            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
+
+            # Plot fitted trace
+            new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
+                                              y=current_fresnel_analysis.measurement_data['ydata'],
+                                              mode='lines',
+                                              showlegend=False,
+                                              line_color='#636efa'
+                                              ))
+            new_figure.add_trace(go.Scatter(x=fresnel_df['angles'],
+                                            y=fresnel_df['ydata'],
+                                            mode='lines',
+                                            showlegend=False,
+                                            line_color='#ef553b'
+                                            ))
+            new_figure.add_trace(
+                go.Scatter(x=[current_fresnel_analysis.angle_range[0], current_fresnel_analysis.angle_range[0]],
+                           y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                              max(current_fresnel_analysis.measurement_data['ydata'])],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='black',
+                           line_dash='dash'
+                           ))
+            new_figure.add_trace(
+                go.Scatter(x=[current_fresnel_analysis.angle_range[1], current_fresnel_analysis.angle_range[1]],
+                           y=[min(current_fresnel_analysis.measurement_data['ydata']),
+                              max(current_fresnel_analysis.measurement_data['ydata'])],
+                           mode='lines',
+                           showlegend=False,
+                           line_color='black',
+                           line_dash='dash'
+                           ))
+            # Updating layout
+            new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                     yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                     font_family='Balto',
+                                     font_size=19,
+                                     margin_r=25,
+                                     margin_l=60,
+                                     margin_t=40,
+                                     template='simple_white',
+                                     uirevision=True)
+            new_figure.update_xaxes(mirror=True,
+                                    showline=True)
+            new_figure.update_yaxes(mirror=True,
+                                    showline=True)
+
+            # Check bounds structure
+            if type(current_fresnel_analysis.bounds[0]) is not tuple:
+                lower_bound_ = current_fresnel_analysis.bounds[0]
+                upper_bound_ = current_fresnel_analysis.bounds[1]
+            else:
+                lower_bound_ = current_fresnel_analysis.bounds[0][0]
+                upper_bound_ = current_fresnel_analysis.bounds[1][0]
+
+            analysis_options = [
+                dbc.DropdownMenuItem(
+                    'FM' + str(fresnel_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_id].name,
+                    id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
+                    n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
+
+            return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished'
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -1960,7 +2429,7 @@ if __name__ == '__main__':
                 dash.callback_context.triggered_id.index]
 
             if current_fresnel_analysis.fitted_result is not None:
-                result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result, 4))
+                result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
             else:
                 result = 'Fit result: None'
 
@@ -2016,9 +2485,96 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess, \
-                current_fresnel_analysis.bounds[0], current_fresnel_analysis.bounds[
-                1], current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path
+            # Check bounds structure
+            if type(current_fresnel_analysis.bounds[0]) is not tuple:
+                lower_bound_ = current_fresnel_analysis.bounds[0]
+                upper_bound_ = current_fresnel_analysis.bounds[1]
+            else:
+                lower_bound_ = current_fresnel_analysis.bounds[0][0]
+                upper_bound_ = current_fresnel_analysis.bounds[1][0]
+
+            return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
+                lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+
+    @dash.callback(
+        dash.Output('batch-fresnel-analysis-background-sensors-dropdown-row', 'style'),
+        dash.Output('batch-fresnel-analysis-table', 'style'),
+        dash.Input('batch-fresnel-analysis-radio-selection', 'value'),
+        prevent_initial_call=True)
+    def show_batch_fresnel_analysis_new_layer(radio_value):
+        if radio_value == 0:
+            return {'visibility': 'hidden'}, {'visibility': 'hidden', 'margin-top': '20px'}
+        elif radio_value == 1:
+            return {'visibility': 'visible'}, {'visibility': 'visible', 'margin-top': '20px'}
+
+    @dash.callback(
+        dash.Output('batch-fresnel-analysis-table', 'children'),
+        dash.Output('batch-fresnel-analysis-background-sensors', 'data'),
+        dash.Input('batch-fresnel-analysis-background-sensors-button-submit', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-radio-selection', 'value'),
+        dash.State('batch-fresnel-analysis-files', 'data'),
+        dash.State('batch-fresnel-analysis-background-sensors-dropdown', 'value'),
+        prevent_initial_call=True)
+    def submit_background_sensors(submit, radio_selection, measurement_files, background_sensors):
+        if 'batch-fresnel-analysis-background-sensors-button-submit' == dash.ctx.triggered_id:
+            table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Measurement files'), dash.html.Th('Background sensors')]))]
+            table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(file_name.split('/')[-1]), dash.html.Td('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name)]) for file_name, sensor_id in zip(measurement_files, background_sensors)])]
+            table_children = table_header + table_body
+            return table_children, background_sensors
+
+        elif 'batch-fresnel-analysis-radio-selection' == dash.ctx.triggered_id:
+            if measurement_files:
+                table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Measurement files'), dash.html.Th('Background sensors')]))]
+                table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(file_name.split('/')[-1]), dash.html.Td('')]) for file_name in
+                                               measurement_files])]
+                table_children = table_header + table_body
+                return table_children, dash.no_update
+            else:
+                raise dash.exceptions.PreventUpdate
+
+    @dash.callback(
+        dash.Output('batch-fresnel-analysis-finish', 'data'),
+        dash.Output('batch-fresnel-spinner', 'spinner_style', allow_duplicate=True),
+        dash.Output('batch-fresnel-analysis-modal', 'is_open', allow_duplicate=True),
+        dash.Input('batch-fresnel-analysis-done', 'data'),
+        prevent_initial_call=True)
+    def batch_pass_finish_signal(done_signal):
+        if 'batch-fresnel-analysis-done' == dash.ctx.triggered_id:
+            return 'finished', {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, False
+
+    @dash.callback(
+        dash.Output('batch-fresnel-analysis-modal', 'is_open'),
+        dash.Output('batch-fresnel-analysis-example-sensor-dropdown', 'options'),
+        dash.Output('batch-fresnel-analysis-background-sensors-dropdown', 'options'),
+        dash.Output('batch-fresnel-analysis-example-analysis-dropdown', 'options'),
+        dash.Output('batch-fresnel-spinner', 'spinner_style'),
+        dash.Output('batch-fresnel-analysis-start', 'data'),
+        dash.Input('batch-fresnel-analysis-button', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-confirm', 'n_clicks'),
+        dash.Input('batch-fresnel-analysis-cancel', 'n_clicks'),
+        prevent_initial_call=True)
+    def batch_modal_and_start(analysis_button, confirm_button, cancel_button):
+
+        if 'batch-fresnel-analysis-button' == dash.ctx.triggered_id:
+            # Update example sensor and analysis options and open batch modal
+            example_sensor_options = [
+                {'label': 'S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name, 'value': sensor_id} for
+                sensor_id in current_session.sensor_instances]
+            example_analysis_options = [{'label': 'FM' + str(fresnel_analysis_id) + ' ' +
+                                                  current_session.fresnel_analysis_instances[fresnel_analysis_id].name,
+                                         'value': fresnel_analysis_id} for fresnel_analysis_id in
+                                        current_session.fresnel_analysis_instances]
+
+            return True, example_sensor_options, example_sensor_options, example_analysis_options, dash.no_update, dash.no_update
+
+        elif 'batch-fresnel-analysis-confirm' == dash.ctx.triggered_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'visibility': 'visible', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, 'start'
+
+        elif 'batch-fresnel-analysis-cancel' == dash.ctx.triggered_id:
+            return False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        else:
+            raise dash.exceptions.PreventUpdate
 
 
     @dash.callback(
@@ -2045,6 +2601,8 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-settings-injection-points', 'children'),
         dash.Output('exclusion-height-settings-buffer-points', 'children'),
         dash.Output('exclusion-height-settings-probe-points', 'children'),
+        dash.Output('exclusion-height-option-resolution', 'value'),
+        dash.Output('exclusion-height-analysis-label', 'children'),
         dash.Input('add-exclusion-height-analysis-button', 'n_clicks'),
         dash.Input('add-exclusion-height-analysis-confirm', 'n_clicks'),
         dash.Input({'type': 'exclusion-analysis-list', 'index': dash.ALL}, 'n_clicks'),
@@ -2086,11 +2644,9 @@ if __name__ == '__main__':
                                         dnpair_figure_JSON, active_page_state):
         """
         This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
-        TODO: How should the measurement data be handled? It should definitely be loaded from disk instead of stored in
-         the object. Maybe there should be a try except clause for loading data paths stored in objects, where if it
-         fails the user is prompted to select the new path for the file.
-        TODO: When hovering over datapoints in the d_n_pair plot, take the d and n values and perform the fresnel calculation in the plot to display the fit
         """
+        # TODO: Adapt height probing to more fitting variables in callbacks!
+
         global current_session
         global current_data_path
         global current_exclusion_height_analysis
@@ -2180,7 +2736,7 @@ if __name__ == '__main__':
                     updated_figure.update_xaxes(mirror=True, showline=True)
                     updated_figure.update_yaxes(mirror=True, showline=True)
 
-                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
                 case 2:  # Add injection points
                     current_exclusion_height_analysis.injection_points.append((new_point_index, new_point_time, new_point_angle))
@@ -2265,7 +2821,7 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string, dash.no_update, dash.no_update
 
         elif 'exclusion-height-click-action-clear' == dash.ctx.triggered_id:
             # Determines what happens when clearing the selected points (remove from graph and backend object)
@@ -2274,7 +2830,7 @@ if __name__ == '__main__':
 
             match action_selected:
                 case 1:  # Offset data (do nothing)
-                    return dash.exceptions.PreventUpdate
+                    raise dash.exceptions.PreventUpdate
 
                 case 2:  # Clear latest injection point
                     current_exclusion_height_analysis.injection_points = []
@@ -2358,7 +2914,7 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string, dash.no_update, dash.no_update
 
         elif 'exclusion-height-d-n-pair-graph' == dash.ctx.triggered_id:
 
@@ -2380,7 +2936,29 @@ if __name__ == '__main__':
             probe_RI_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe RI']
             height_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'height']
 
-            ext_coefficients = copy.deepcopy(current_exclusion_height_analysis.sensor_object.extinction_coefficients)
+            if not current_exclusion_height_analysis.fit_offset:
+                buffer_offset_val = current_exclusion_height_analysis.fresnel_object.y_offset
+                probe_offset_val = current_exclusion_height_analysis.fresnel_object.y_offset
+                buffer_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+                probe_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+
+            elif current_exclusion_height_analysis.fit_offset and not current_exclusion_height_analysis.fit_prism:
+                buffer_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer offsets']
+                probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offset']
+                buffer_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+                probe_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+
+            elif current_exclusion_height_analysis.fit_offset and current_exclusion_height_analysis.fit_prism:
+                buffer_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer offsets']
+                probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offsets']
+                buffer_prism_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer prism k']
+                probe_prism_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe prism k']
+
+            buffer_ext_coefficients = copy.deepcopy(current_exclusion_height_analysis.sensor_object.extinction_coefficients)
+            buffer_ext_coefficients[0] = buffer_prism_val
+
+            probe_ext_coefficients = copy.deepcopy(current_exclusion_height_analysis.sensor_object.extinction_coefficients)
+            probe_ext_coefficients[0] = probe_prism_val
 
             buffer_ref_indices = copy.deepcopy(current_exclusion_height_analysis.sensor_object.refractive_indices)
             buffer_ref_indices[-1] = current_exclusion_height_analysis.buffer_bulk_RIs[active_page_state-1]
@@ -2402,14 +2980,16 @@ if __name__ == '__main__':
                                                               wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
                                                               layer_thicknesses=buffer_layer_thicknesses,
                                                               n_re=buffer_ref_indices,
-                                                              n_im=ext_coefficients,
+                                                              n_im=buffer_ext_coefficients,
+                                                              ydata_offset=buffer_offset_val,
                                                               )
             probe_fresnel_coefficients = fresnel_calculation(angles=probe_angles_inj_step,
-                                                              wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
-                                                              layer_thicknesses=probe_layer_thicknesses,
-                                                              n_re=probe_ref_indices,
-                                                              n_im=ext_coefficients,  # Should be the same for probe
-                                                              )
+                                                             wavelength=current_exclusion_height_analysis.sensor_object.wavelength,
+                                                             layer_thicknesses=probe_layer_thicknesses,
+                                                             n_re=probe_ref_indices,
+                                                             n_im=probe_ext_coefficients,
+                                                             ydata_offset=probe_offset_val,
+                                                             )
             
             # Plot mean reflectivity figure with fitted fresnel traces
             mean_reflectivity_figure = go.Figure(
@@ -2432,7 +3012,7 @@ if __name__ == '__main__':
 
             mean_reflectivity_figure.add_trace(
                 go.Scatter(x=buffer_angles_inj_step,
-                           y=buffer_fresnel_coefficients + current_exclusion_height_analysis.fresnel_object.y_offset,
+                           y=buffer_fresnel_coefficients,
                            mode='lines',
                            showlegend=False,
                            line_dash='dash',
@@ -2441,7 +3021,7 @@ if __name__ == '__main__':
 
             mean_reflectivity_figure.add_trace(
                 go.Scatter(x=probe_angles_inj_step,
-                           y=probe_fresnel_coefficients + current_exclusion_height_analysis.fresnel_object.y_offset,
+                           y=probe_fresnel_coefficients,
                            mode='lines',
                            showlegend=False,
                            line_dash='dash',
@@ -2462,11 +3042,11 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                                   showline=True)
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, mean_reflectivity_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, mean_reflectivity_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open add analysis name giving modal
-            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -2480,6 +3060,12 @@ if __name__ == '__main__':
             lower_height_bound = float(background_object.sensor_object.layer_thicknesses[-2])
             upper_height_bound = float(background_object.sensor_object.layer_thicknesses[-2]) * 6
             current_exclusion_height_analysis.height_bounds = [lower_height_bound, upper_height_bound]
+
+            analysis_name_ = 'EH' + str(current_exclusion_height_analysis.object_id) + ' ' + current_exclusion_height_analysis.name
+
+            injection_time_string = '0 selected injection points '
+            buffer_time_string = '0 selected buffer points '
+            probe_time_string = '0 selected probe points '
 
             # Update choose analysis dropdown menu options
             analysis_options = [dbc.DropdownMenuItem('EH' + str(exclusion_id) + ' ' + current_session.exclusion_height_analysis_instances[exclusion_id].name,
@@ -2510,11 +3096,11 @@ if __name__ == '__main__':
             new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
             new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
-            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, lower_height_bound, upper_height_bound, dash.no_update, dash.no_update, dash.no_update
+            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string, 100, 'Selected analysis: ' + analysis_name_
 
         elif 'remove-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open remove analysis object confirmation modal
-            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -2529,6 +3115,9 @@ if __name__ == '__main__':
                 # Lower and upper bounds for height
                 lower_height_bound = current_exclusion_height_analysis.height_bounds[0]
                 upper_height_bound = current_exclusion_height_analysis.height_bounds[1]
+                resolution = current_exclusion_height_analysis.d_n_pair_resolution
+                analysis_name_ = 'EH' + str(
+                    current_exclusion_height_analysis.object_id) + ' ' + current_exclusion_height_analysis.name
 
                 # Update choose analysis dropdown menu options
                 analysis_options = [dbc.DropdownMenuItem(
@@ -2755,7 +3344,7 @@ if __name__ == '__main__':
                 else:
                     num_injection_steps = dash.no_update
 
-                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string
+                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string, resolution, 'Selected analysis: ' + analysis_name_
 
             else:
                 try:
@@ -2766,12 +3355,12 @@ if __name__ == '__main__':
                 current_exclusion_height_analysis = None
                 current_session.save_session()
 
-                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, '', '', ''
+                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, '', '', '', dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-cancel' == dash.ctx.triggered_id:
             # Cancel removal of exclusion height analysis object
 
-            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -2916,7 +3505,7 @@ if __name__ == '__main__':
             else:
                 d_n_pair_figure = dash.no_update
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-initialize-model' == dash.ctx.triggered_id:
 
@@ -2985,7 +3574,7 @@ if __name__ == '__main__':
                 # Update number of injection steps in pagination of result page
                 num_injection_steps = len(current_exclusion_height_analysis.probe_points)
 
-                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, num_injection_steps, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, num_injection_steps, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
             else:
                 if len(current_exclusion_height_analysis.injection_points) % 2 != 0:
@@ -3006,6 +3595,10 @@ if __name__ == '__main__':
             # Lower and upper bounds for height
             lower_height_bound = current_exclusion_height_analysis.height_bounds[0]
             upper_height_bound = current_exclusion_height_analysis.height_bounds[1]
+            resolution = current_exclusion_height_analysis.d_n_pair_resolution
+
+            analysis_name_ = 'EH' + str(
+                current_exclusion_height_analysis.object_id) + ' ' + current_exclusion_height_analysis.name
 
             # Update choose analysis dropdown menu options
             analysis_options = [dbc.DropdownMenuItem(
@@ -3229,7 +3822,7 @@ if __name__ == '__main__':
             # Update number of injection steps in pagination of result page
             num_injection_steps = len(current_exclusion_height_analysis.probe_points)
 
-            return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string
+            return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string, resolution, 'Selected analysis: ' + analysis_name_
 
     @dash.callback(
         dash.Output('exclusion-height-result-collapse', 'is_open'),
@@ -3246,8 +3839,10 @@ if __name__ == '__main__':
         dash.State('exclusion-height-option-lowerbound', 'value'),
         dash.State('exclusion-height-option-upperbound', 'value'),
         dash.State('exclusion-height-option-resolution', 'value'),
+        dash.State('exclusion-height-analysis-offset-refit', 'value'),
+        dash.State('exclusion-height-analysis-prism-refit', 'value'),
         prevent_initial_call=True)
-    def run_exclusion_height_calculations(run_button, lower_bound, upper_bound, resolution):
+    def run_exclusion_height_calculations(run_button, lower_bound, upper_bound, resolution, fit_offset_flag, fit_prism_flag):
         """
         This callback runs the exclusion height calculations in the background. It is triggered by the run button, and
         updates the progress bar. It also updates the result figures when the calculations are done.
@@ -3267,8 +3862,10 @@ if __name__ == '__main__':
 
         if 'exclusion-height-run-button' == dash.ctx.triggered_id:
 
-            # Reset abort flag
+            # Set flags
             current_exclusion_height_analysis.abort_flag = False
+            current_exclusion_height_analysis.fit_offset = fit_offset_flag
+            current_exclusion_height_analysis.fit_prism = fit_prism_flag
 
             # Set resolution and height steps
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
@@ -3279,8 +3876,8 @@ if __name__ == '__main__':
             # Overwrite previous results
             current_exclusion_height_analysis.all_exclusion_results = np.zeros((2, len(current_exclusion_height_analysis.injection_points)))
             current_exclusion_height_analysis.d_n_pair_dfs = [0] * len(current_exclusion_height_analysis.injection_points)
-            current_exclusion_height_analysis.mean_exclusion_height_result = (None, None)
-            current_exclusion_height_analysis.mean_exclusion_RI_result = (None, None)
+            current_exclusion_height_analysis.mean_exclusion_height_result = None
+            current_exclusion_height_analysis.mean_exclusion_RI_result = None
 
             # Run exclusion height calculations
             process_all_exclusion_heights(current_exclusion_height_analysis)
@@ -3391,6 +3988,17 @@ if __name__ == '__main__':
                                          showline=True)
 
             return True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
+
+    @dash.callback(
+        dash.Output('exclusion-height-analysis-prism-refit', 'value'),
+        dash.Output('exclusion-height-analysis-prism-refit', 'disabled'),
+        dash.Input('exclusion-height-analysis-offset-refit', 'value'),
+        prevent_initial_call=True)
+    def check_exclusion_prism_fitting_checkbox(offset_value):
+        if offset_value:
+            return dash.no_update, False
+        else:
+            return False, True
 
     @dash.callback(
         dash.Output('exclusion-height-spinner', 'spinner_style'),
