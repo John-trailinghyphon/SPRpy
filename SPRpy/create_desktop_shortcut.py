@@ -6,12 +6,13 @@ if platform.system() != 'Windows':
 import sysconfig
 from win32com.client import Dispatch
 import os
+from __about__ import version
 
 
 def create_shortcut():
 
     # folder name
-    folder_name = 'SPRpy'
+    folder_name = 'SPRpy' + ' (v' + version + ')'
 
     # Scripts directory (location of python packages)
     lib_dir = sysconfig.get_path('purelib')
