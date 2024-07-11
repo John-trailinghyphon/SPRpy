@@ -226,7 +226,7 @@ class Sensor:
         # These default parameters should be set based on material layer and wavelength from loaded .csv file
         match sensor_metal:
             case 'Au' | 'gold' | 'Gold' | 'GOLD':
-                self.layer_thicknesses = np.array([np.NaN, 2.00, 50.00, np.NaN])
+                self.layer_thicknesses = np.array([np.nan, 2.00, 50.00, np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
@@ -247,7 +247,7 @@ class Sensor:
                 # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez.
                 # Self-consistent optical constants of SiO2 and Ta2O5 films
                 # Opt. Mater. Express 6, 3622-3637 (2016) (Numerical data kindly provided by Juan Larruquert)
-                self.layer_thicknesses = np.array([np.NaN, 2.00, 50.00, 14.00, np.NaN])
+                self.layer_thicknesses = np.array([np.nan, 2.00, 50.00, 14.00, np.nan])
                 self.fitted_layer_index = (3, 1)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
@@ -264,7 +264,7 @@ class Sensor:
                                                              'n': self.refractive_indices,
                                                              'k': self.extinction_coefficients})
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
-                self.layer_thicknesses = np.array([np.NaN, 2.00, 20.00, np.NaN])
+                self.layer_thicknesses = np.array([np.nan, 2.00, 20.00, np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
@@ -282,7 +282,7 @@ class Sensor:
                                                              'k': self.extinction_coefficients})
 
             case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
-                self.layer_thicknesses = np.array([np.NaN, 2.00, 20.00, np.NaN])
+                self.layer_thicknesses = np.array([np.nan, 2.00, 20.00, np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
@@ -807,7 +807,7 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
                 break
 
     # Replace zeros with NaNs for non-intersecting results
-    exclusion_height_analysis_object.all_exclusion_results = np.where(exclusion_height_analysis_object.all_exclusion_results == 0, np.NaN, exclusion_height_analysis_object.all_exclusion_results)
+    exclusion_height_analysis_object.all_exclusion_results = np.where(exclusion_height_analysis_object.all_exclusion_results == 0, np.nan, exclusion_height_analysis_object.all_exclusion_results)
 
     return
 

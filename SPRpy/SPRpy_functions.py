@@ -95,7 +95,7 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
 
         except:
             print('No SPR minimum found. Skipping measurement point...')
-            sensorgram_SPR_angles[ind-1] = np.NaN
+            sensorgram_SPR_angles[ind-1] = np.nan
 
         # TIR angles
         try:
@@ -104,7 +104,7 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
 
         except:
             print('No TIR found. Skipping measurement point...')
-            sensorgram_TIR_angles[ind-1] = np.NaN
+            sensorgram_TIR_angles[ind-1] = np.nan
 
     sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles})
 

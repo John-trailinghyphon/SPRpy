@@ -2645,7 +2645,6 @@ if __name__ == '__main__':
         """
         This callback handles what happens when adding new exclusion height objects, choosing different ones, removing them and updating the sensorgram plot with selected probe points etc.
         """
-        # TODO: Adapt height probing to more fitting variables in callbacks!
 
         global current_session
         global current_data_path

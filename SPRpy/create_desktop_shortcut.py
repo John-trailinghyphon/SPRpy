@@ -12,7 +12,7 @@ from __about__ import version
 def create_shortcut():
 
     # folder name
-    folder_name = 'SPRpy' + ' (v' + version + ')'
+    folder_name = 'SPRpy'
 
     # Scripts directory (location of python packages)
     lib_dir = sysconfig.get_path('purelib')
