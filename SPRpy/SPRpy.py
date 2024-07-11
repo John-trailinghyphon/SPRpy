@@ -848,6 +848,10 @@ if __name__ == '__main__':
                                                 dbc.CardBody(
                                                     dbc.Form([
                                                         dbc.Row([
+                                                            dbc.Label('Selected analysis: ',
+                                                                      id='exclusion-height-analysis-label')
+                                                        ], style={'margin-bottom': '10px'}),
+                                                        dbc.Row([
                                                             dbc.Label(
                                                                 'Sensor: S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                                                                     sensor_number=current_sensor.object_id,
@@ -885,11 +889,25 @@ if __name__ == '__main__':
                                                             dbc.Col([
                                                                 dbc.InputGroup([
                                                                     dbc.Input(id='exclusion-height-option-resolution',
-                                                                              value=int(200),
+                                                                              value=int(100),
                                                                               type='number'),
                                                                 ])
-                                                            ], width=3)
+                                                            ], width=3),
                                                         ], style={'margin-bottom': '10px'}),
+                                                        dbc.Row([
+                                                            dbc.Col([
+                                                                dbc.Checkbox(
+                                                                    id='exclusion-height-analysis-offset-refit',
+                                                                    label="Refitting offset?",
+                                                                    value=False)
+                                                            ], width='auto'),
+                                                            dbc.Col([
+                                                                dbc.Checkbox(
+                                                                    id='exclusion-height-analysis-prism-refit',
+                                                                    label="Refitting prism k?",
+                                                                    value=False)
+                                                            ], width='auto'),
+                                                        ]),
                                                         dbc.Row([
                                                             dbc.Label('Injection points: ', width='auto', id='exclusion-height-settings-injection-points')
                                                         ]),
@@ -2178,7 +2196,11 @@ if __name__ == '__main__':
 
                     # Add copy of sensor object to session
                     next_sensor = copy_sensor_backend(current_session, example_sensor_object)
-                    next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                    try:
+                        next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                    except:
+                        next_sensor.name = example_sensor_object.name
+
                     current_sensor = next_sensor
                     current_sensor.channel = file_path[-12:-4].replace('_', ' ')
                     TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], example_analysis_object.TIR_range,
@@ -2198,7 +2220,7 @@ if __name__ == '__main__':
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
                                                                         file_path, next_reflectivity_df_, example_analysis_object.TIR_range,
-                                                                        example_analysis_object.scanspeed, file_path.split('/')[-1][15:-10].replace('_', ' '))
+                                                                        example_analysis_object.scanspeed, current_sensor.name)
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
                         next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
@@ -2244,7 +2266,10 @@ if __name__ == '__main__':
 
                     # Add copy of sensor object to session
                     next_sensor = copy_sensor_backend(current_session, background_sensor_object)
-                    next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                    try:
+                        next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                    except:
+                        next_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
 
                     # Add example layer row and values, also convert other parameters
                     next_sensor.optical_parameters.loc[len(next_sensor.optical_parameters)-1.5] = example_sensor_object.optical_parameters.loc[len(example_sensor_object.optical_parameters) - 2]
@@ -2281,7 +2306,8 @@ if __name__ == '__main__':
                                                                         file_path, next_reflectivity_df_,
                                                                         example_analysis_object.TIR_range,
                                                                         example_analysis_object.scanspeed,
-                                                                        file_path.split('/')[-1][15:-10].replace('_', ' '))
+                                                                        current_sensor.name + ' (S' + str(
+                                                                            current_sensor.object_id) + ') ')
 
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
@@ -2504,7 +2530,7 @@ if __name__ == '__main__':
                 table_children = table_header + table_body
                 return table_children, dash.no_update
             else:
-                return dash.exceptions.PreventUpdate
+                raise dash.exceptions.PreventUpdate
 
     @dash.callback(
         dash.Output('batch-fresnel-analysis-finish', 'data'),
@@ -2548,7 +2574,7 @@ if __name__ == '__main__':
             return False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         else:
-            return dash.exceptions.PreventUpdate
+            raise dash.exceptions.PreventUpdate
 
 
     @dash.callback(
@@ -2575,6 +2601,8 @@ if __name__ == '__main__':
         dash.Output('exclusion-height-settings-injection-points', 'children'),
         dash.Output('exclusion-height-settings-buffer-points', 'children'),
         dash.Output('exclusion-height-settings-probe-points', 'children'),
+        dash.Output('exclusion-height-option-resolution', 'value'),
+        dash.Output('exclusion-height-analysis-label', 'children'),
         dash.Input('add-exclusion-height-analysis-button', 'n_clicks'),
         dash.Input('add-exclusion-height-analysis-confirm', 'n_clicks'),
         dash.Input({'type': 'exclusion-analysis-list', 'index': dash.ALL}, 'n_clicks'),
@@ -2708,7 +2736,7 @@ if __name__ == '__main__':
                     updated_figure.update_xaxes(mirror=True, showline=True)
                     updated_figure.update_yaxes(mirror=True, showline=True)
 
-                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
                 case 2:  # Add injection points
                     current_exclusion_height_analysis.injection_points.append((new_point_index, new_point_time, new_point_angle))
@@ -2793,7 +2821,7 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string, dash.no_update, dash.no_update
 
         elif 'exclusion-height-click-action-clear' == dash.ctx.triggered_id:
             # Determines what happens when clearing the selected points (remove from graph and backend object)
@@ -2802,7 +2830,7 @@ if __name__ == '__main__':
 
             match action_selected:
                 case 1:  # Offset data (do nothing)
-                    return dash.exceptions.PreventUpdate
+                    raise dash.exceptions.PreventUpdate
 
                 case 2:  # Clear latest injection point
                     current_exclusion_height_analysis.injection_points = []
@@ -2886,7 +2914,7 @@ if __name__ == '__main__':
             current_session.save_session()
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
 
-            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string
+            return updated_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, injection_time_string, buffer_time_string, probe_time_string, dash.no_update, dash.no_update
 
         elif 'exclusion-height-d-n-pair-graph' == dash.ctx.triggered_id:
 
@@ -2907,14 +2935,24 @@ if __name__ == '__main__':
             buffer_RI_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer RI']
             probe_RI_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe RI']
             height_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'height']
-            buffer_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer offset']
-            probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offset']
-            try:
+
+            if not current_exclusion_height_analysis.fit_offset:
+                buffer_offset_val = current_exclusion_height_analysis.fresnel_object.y_offset
+                probe_offset_val = current_exclusion_height_analysis.fresnel_object.y_offset
+                buffer_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+                probe_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+
+            elif current_exclusion_height_analysis.fit_offset and not current_exclusion_height_analysis.fit_prism:
+                buffer_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer offsets']
+                probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offset']
+                buffer_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+                probe_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
+
+            elif current_exclusion_height_analysis.fit_offset and current_exclusion_height_analysis.fit_prism:
+                buffer_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer offsets']
+                probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offsets']
                 buffer_prism_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer prism k']
                 probe_prism_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state - 1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe prism k']
-            except:
-                buffer_prism_val = 0
-                probe_prism_val = 0
 
             buffer_ext_coefficients = copy.deepcopy(current_exclusion_height_analysis.sensor_object.extinction_coefficients)
             buffer_ext_coefficients[0] = buffer_prism_val
@@ -3004,11 +3042,11 @@ if __name__ == '__main__':
             mean_reflectivity_figure.update_yaxes(mirror=True,
                                                   showline=True)
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, mean_reflectivity_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, mean_reflectivity_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open add analysis name giving modal
-            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -3022,6 +3060,12 @@ if __name__ == '__main__':
             lower_height_bound = float(background_object.sensor_object.layer_thicknesses[-2])
             upper_height_bound = float(background_object.sensor_object.layer_thicknesses[-2]) * 6
             current_exclusion_height_analysis.height_bounds = [lower_height_bound, upper_height_bound]
+
+            analysis_name_ = 'EH' + str(current_exclusion_height_analysis.object_id) + ' ' + current_exclusion_height_analysis.name
+
+            injection_time_string = '0 selected injection points '
+            buffer_time_string = '0 selected buffer points '
+            probe_time_string = '0 selected probe points '
 
             # Update choose analysis dropdown menu options
             analysis_options = [dbc.DropdownMenuItem('EH' + str(exclusion_id) + ' ' + current_session.exclusion_height_analysis_instances[exclusion_id].name,
@@ -3052,11 +3096,11 @@ if __name__ == '__main__':
             new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
             new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
-            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, lower_height_bound, upper_height_bound, dash.no_update, dash.no_update, dash.no_update
+            return new_sensorgram_fig, False, analysis_options, dash.no_update, background_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string, 100, 'Selected analysis: ' + analysis_name_
 
         elif 'remove-exclusion-height-analysis-button' == dash.ctx.triggered_id:
             # Open remove analysis object confirmation modal
-            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -3071,6 +3115,9 @@ if __name__ == '__main__':
                 # Lower and upper bounds for height
                 lower_height_bound = current_exclusion_height_analysis.height_bounds[0]
                 upper_height_bound = current_exclusion_height_analysis.height_bounds[1]
+                resolution = current_exclusion_height_analysis.d_n_pair_resolution
+                analysis_name_ = 'EH' + str(
+                    current_exclusion_height_analysis.object_id) + ' ' + current_exclusion_height_analysis.name
 
                 # Update choose analysis dropdown menu options
                 analysis_options = [dbc.DropdownMenuItem(
@@ -3297,7 +3344,7 @@ if __name__ == '__main__':
                 else:
                     num_injection_steps = dash.no_update
 
-                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string
+                return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, True, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string, resolution, 'Selected analysis: ' + analysis_name_
 
             else:
                 try:
@@ -3308,12 +3355,12 @@ if __name__ == '__main__':
                 current_exclusion_height_analysis = None
                 current_session.save_session()
 
-                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, '', '', ''
+                return dash.no_update, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, '', '', '', dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-cancel' == dash.ctx.triggered_id:
             # Cancel removal of exclusion height analysis object
 
-            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -3458,7 +3505,7 @@ if __name__ == '__main__':
             else:
                 d_n_pair_figure = dash.no_update
 
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-initialize-model' == dash.ctx.triggered_id:
 
@@ -3527,7 +3574,7 @@ if __name__ == '__main__':
                 # Update number of injection steps in pagination of result page
                 num_injection_steps = len(current_exclusion_height_analysis.probe_points)
 
-                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, num_injection_steps, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, SPRvsTIR_figure, mean_reflectivity_figure, dash.no_update, num_injection_steps, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
             else:
                 if len(current_exclusion_height_analysis.injection_points) % 2 != 0:
@@ -3548,6 +3595,10 @@ if __name__ == '__main__':
             # Lower and upper bounds for height
             lower_height_bound = current_exclusion_height_analysis.height_bounds[0]
             upper_height_bound = current_exclusion_height_analysis.height_bounds[1]
+            resolution = current_exclusion_height_analysis.d_n_pair_resolution
+
+            analysis_name_ = 'EH' + str(
+                current_exclusion_height_analysis.object_id) + ' ' + current_exclusion_height_analysis.name
 
             # Update choose analysis dropdown menu options
             analysis_options = [dbc.DropdownMenuItem(
@@ -3771,7 +3822,7 @@ if __name__ == '__main__':
             # Update number of injection steps in pagination of result page
             num_injection_steps = len(current_exclusion_height_analysis.probe_points)
 
-            return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string
+            return new_sensorgram_fig, False, analysis_options, False, current_exclusion_height_analysis.fresnel_object.sensor_object_label, current_exclusion_height_analysis.fresnel_object_label, True, False, True, True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, num_injection_steps, lower_height_bound, upper_height_bound, injection_time_string, buffer_time_string, probe_time_string, resolution, 'Selected analysis: ' + analysis_name_
 
     @dash.callback(
         dash.Output('exclusion-height-result-collapse', 'is_open'),
@@ -3788,8 +3839,10 @@ if __name__ == '__main__':
         dash.State('exclusion-height-option-lowerbound', 'value'),
         dash.State('exclusion-height-option-upperbound', 'value'),
         dash.State('exclusion-height-option-resolution', 'value'),
+        dash.State('exclusion-height-analysis-offset-refit', 'value'),
+        dash.State('exclusion-height-analysis-prism-refit', 'value'),
         prevent_initial_call=True)
-    def run_exclusion_height_calculations(run_button, lower_bound, upper_bound, resolution):
+    def run_exclusion_height_calculations(run_button, lower_bound, upper_bound, resolution, fit_offset_flag, fit_prism_flag):
         """
         This callback runs the exclusion height calculations in the background. It is triggered by the run button, and
         updates the progress bar. It also updates the result figures when the calculations are done.
@@ -3809,8 +3862,10 @@ if __name__ == '__main__':
 
         if 'exclusion-height-run-button' == dash.ctx.triggered_id:
 
-            # Reset abort flag
+            # Set flags
             current_exclusion_height_analysis.abort_flag = False
+            current_exclusion_height_analysis.fit_offset = fit_offset_flag
+            current_exclusion_height_analysis.fit_prism = fit_prism_flag
 
             # Set resolution and height steps
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
@@ -3821,8 +3876,8 @@ if __name__ == '__main__':
             # Overwrite previous results
             current_exclusion_height_analysis.all_exclusion_results = np.zeros((2, len(current_exclusion_height_analysis.injection_points)))
             current_exclusion_height_analysis.d_n_pair_dfs = [0] * len(current_exclusion_height_analysis.injection_points)
-            current_exclusion_height_analysis.mean_exclusion_height_result = (None, None)
-            current_exclusion_height_analysis.mean_exclusion_RI_result = (None, None)
+            current_exclusion_height_analysis.mean_exclusion_height_result = None
+            current_exclusion_height_analysis.mean_exclusion_RI_result = None
 
             # Run exclusion height calculations
             process_all_exclusion_heights(current_exclusion_height_analysis)
@@ -3933,6 +3988,17 @@ if __name__ == '__main__':
                                          showline=True)
 
             return True, mean_result_height, mean_result_RI, all_result_heights, all_result_RI, SPRvsTIR_figure, mean_reflectivity_figure, d_n_pair_figure, {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
+
+    @dash.callback(
+        dash.Output('exclusion-height-analysis-prism-refit', 'value'),
+        dash.Output('exclusion-height-analysis-prism-refit', 'disabled'),
+        dash.Input('exclusion-height-analysis-offset-refit', 'value'),
+        prevent_initial_call=True)
+    def check_exclusion_prism_fitting_checkbox(offset_value):
+        if offset_value:
+            return dash.no_update, False
+        else:
+            return False, True
 
     @dash.callback(
         dash.Output('exclusion-height-spinner', 'spinner_style'),

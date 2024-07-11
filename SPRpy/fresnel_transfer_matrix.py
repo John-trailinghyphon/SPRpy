@@ -51,10 +51,12 @@ def fresnel_calculation(fitted_var=None,
             case 3:
                 n_im[fitted_layer_index[0]] = fitted_var[0]
 
-        ydata_offset = fitted_var[1]
+        # Include fitting intensity offset
+        if len(fitted_var) >= 2:
+            ydata_offset = fitted_var[1]
 
         # Include fitting prism extinction value
-        if len(fitted_var) >= 3:
+        if len(fitted_var) == 3:
             n_im[0] = fitted_var[2]
 
     # Merge real and imaginary refractive indices

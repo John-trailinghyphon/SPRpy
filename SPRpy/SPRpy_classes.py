@@ -474,6 +474,8 @@ class ExclusionHeight:
         self.mean_exclusion_height_result = None  # Tuple of mean value of exclusion height from all injection steps, and standard deviation
         self.mean_exclusion_RI_result = None  # Tuple of mean value of exclusion RI from all injection steps, and standard deviation
         self.abort_flag = False
+        self.fit_offset = False
+        self.fit_prism = False
 
     def initialize_model(self, ydata_df):
 
@@ -569,15 +571,23 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
     :return RI_results: list of calculated RI results for each height step
     """
 
-    # TODO: This calculation crashes towards the end most likely, at least none of the processes close correctly or send their result after long time of calculations.
-    #  Also try not doing prism fitting, only use constant value from fit.
-    # TODO: Run this code through something other than a process to understand what the error is
-
     # Adapt new initial guess and bounds for refractive index range
-    # TODO: This must check the prism fit flag of the analysus object
-    exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
-    exclusion_new_fresnel_ini_guess[0] = 1.38  # Swollen layer estimated hydration
-    exclusion_new_fresnel_bounds = [(1.0, -np.inf, 0), (3.0, np.inf, 0.1)]
+    RI_results = []
+    offset_results = []
+    prism_k_results = []
+    if not exclusion_height_analysis_object_copy.fit_offset:
+        exclusion_new_fresnel_ini_guess = 1.38  # Swollen layer estimated hydration
+        exclusion_new_fresnel_bounds = [1.0, 3.0]
+
+    elif exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
+        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
+        exclusion_new_fresnel_ini_guess[0] = 1.38  # Swollen layer estimated hydration
+        exclusion_new_fresnel_bounds = [(1.0, -np.inf), (3.0, np.inf)]
+
+    elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
+        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
+        exclusion_new_fresnel_ini_guess[0] = 1.38  # Swollen layer estimated hydration
+        exclusion_new_fresnel_bounds = [(1.0, -np.inf, 0), (3.0, np.inf, 0.1)]
 
     # Check if calculations should be performed on buffer or probe data
     if buffer_or_probe_flag == 'buffer':
@@ -586,8 +596,6 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
         refractive_indices = exclusion_height_analysis_object_copy.sensor_object.refractive_indices
         refractive_indices[-1] = exclusion_height_analysis_object_copy.buffer_bulk_RIs[data_frame_index]
 
-
-        RI_results = []
         for height in exclusion_height_analysis_object_copy.height_steps:
 
             exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses[-2] = height  # Surface layer height should be updated to current height step
@@ -604,12 +612,20 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
                                                           'angles': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
                                                           'ydata': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy(),
                                                           'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
+                                                          'ydata_offset': exclusion_height_analysis_object_copy.fresnel_object.y_offset,
                                                           'polarization': exclusion_height_analysis_object_copy.polarization}
                                                   )
             # Collect the results from least_squares object
-            RI_results.append(result['x'])
+            RI_results.append(result['x'][0])
 
-        return RI_results
+            if exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
+                offset_results.append(result['x'][1])
+
+            elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
+                offset_results.append(result['x'][1])
+                prism_k_results.append(result['x'][2])
+
+        return [RI_results, offset_results, prism_k_results]
 
     elif buffer_or_probe_flag == 'probe':
 
@@ -617,7 +633,6 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
         refractive_indices = exclusion_height_analysis_object_copy.sensor_object.refractive_indices
         refractive_indices[-1] = exclusion_height_analysis_object_copy.probe_bulk_RIs[data_frame_index]
 
-        RI_results = []
         for height in exclusion_height_analysis_object_copy.height_steps:
 
             exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses[-2] = height
@@ -633,15 +648,23 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
                                                           'angles': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
                                                           'ydata': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy(),
                                                           'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
+                                                          'ydata_offset': exclusion_height_analysis_object_copy.fresnel_object.y_offset,
                                                           'polarization': exclusion_height_analysis_object_copy.polarization}
                                                   )
             # Collect the results from least_squares object
-            RI_results.append(result['x'])
+            RI_results.append(result['x'][0])
 
-        return RI_results
+            if exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
+                offset_results.append(result['x'][1])
+
+            elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
+                offset_results.append(result['x'][1])
+                prism_k_results.append(result['x'][2])
+
+        return [RI_results, offset_results, prism_k_results]
 
     else:
-        raise ValueError('only buffer or probe allowed')
+        raise ValueError('Only buffer or probe allowed')
 
 
 def exclusion_height_process(exclusion_height_analysis_object_copy, buffer_or_probe_flag, data_frame_index, connection):
@@ -743,17 +766,27 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
         # Wait for processes to finish and collect results
         buffer_processes[process_index].join()
         full_buffer_result = buffer_connections[process_index].recv()
-        buffer_RI_result = [full_buffer_result[i][0] for i, _ in enumerate(full_buffer_result)]
+        buffer_RI_result = full_buffer_result[0]
 
         if process_index % 2 == 0:
             probe_processes[int(process_index/2)].join()
             full_probe_result = probe_connections[int(process_index/2)].recv()
-            probe_RI_result = [full_probe_result[i][0] for i, _ in enumerate(full_probe_result)]
+            probe_RI_result = full_probe_result[0]
 
-        if len(full_buffer_result[0]) == 3:
-            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': [full_buffer_result[i][1] for i, _ in enumerate(full_buffer_result)], 'probe offsets': [full_probe_result[i][1] for i, _ in enumerate(full_probe_result)], 'buffer prism k': [full_buffer_result[i][2] for i, _ in enumerate(full_buffer_result)], 'probe prism k': [full_probe_result[i][2] for i, _ in enumerate(full_probe_result)]})
-        else:
-            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': [full_buffer_result[i][1] for i, _ in enumerate(full_buffer_result)], 'probe offsets': [full_probe_result[i][1] for i, _ in enumerate(full_probe_result)]})
+        try:
+            if not exclusion_height_analysis_object.fit_offset:
+                exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
+            elif exclusion_height_analysis_object.fit_offset and not exclusion_height_analysis_object.fit_prism:
+                exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1]})
+            elif exclusion_height_analysis_object.fit_offset and exclusion_height_analysis_object.fit_prism:
+                exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1], 'buffer prism k': full_buffer_result[2], 'probe prism k': full_probe_result[2]})
+        except:
+            print('Buffer RI size: ' + str(len(buffer_RI_result)))  # 50
+            print('Probe RI size: ' + str(len(probe_RI_result)))  # 50
+            print('Buffer offset size: ' + str(len(full_buffer_result[1])))  # 100
+            print('Probe offset size: ' + str(len(full_probe_result[1])))  # 100
+            print('Buffer prism size: ' + str(len(full_buffer_result[2])))  # 0
+            print('Probe prism size: ' + str(len(full_probe_result[2])))  # 0
 
         # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_results
         for height_ind in range(len(exclusion_height_analysis_object.height_steps)):
