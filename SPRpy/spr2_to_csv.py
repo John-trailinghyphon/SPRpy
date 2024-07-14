@@ -1,27 +1,58 @@
 import re
 import os
 import numpy as np
+import math
 import tkinter
 import multiprocessing as mp
 from tkinter.filedialog import askopenfilename, askopenfilenames
 
-# Default .csv file for step vs angle polynomial coefficents (see "SPR_poly_coefficients_generator.py)
-poly_file = r'SPR_poly_coeff_22-01-29.csv'
+# Default .csv file for polynomial coefficents of fit for motor steps vs angle (see SPR_poly_coefficients_generator.py).
+# This should be regenerated when used in a new instrument. Does generally not need to be regenerated after normal calibrations,
+# unless the stepper motor calibration in the instrument has changed for some reason (e.g. may happen from homing errors or similar).
+# Assumes all selected measurement files comes from the same instrument. Use multiple copies of spr2_to_csv_v2.py and
+# their associated SPR_poly_coeff_YY-MM-DD.csv file if working with multiple instruments.
+
+default_poly_file = r'SPR_poly_coeff_22-01-29.csv'
+
+prism_n_635 = 1.5215  # Approximate prism RI based on Soda lime glass
+prism_n_650 = 1.5210  # Approximate prism RI based on Soda lime glass
+prism_n_670 = 1.5202  # From Bionavis
+prism_n_785 = 1.5162  # From Bionavis
+prism_n_850 = 1.5149  # From Bionavis
+prism_n_980 = 1.5129  # From Bionavis
 
 
 def extract_parameters(content):
 
-    #  Starting position for scans
+    # Calibration data
+    calibration_device_pattern = re.compile(r'<calibration device_serial=.*>')
+    cal_channels_pattern = re.compile(r'channels="\d+"')
+    cal_step_pattern = re.compile(r'step_len="\d+"')
+    cal_points_pattern = re.compile(r'points="\d+"')
+    cal_start_pos_pattern = re.compile(r'start_pos="\d+"')
+    digit_pattern = re.compile(r'\d+')
+
+    calibration_param_line = calibration_device_pattern.findall(content)[0]
+    channels = int(digit_pattern.findall(cal_channels_pattern.findall(calibration_param_line)[0])[0])
+    cal_scanspeed = int(digit_pattern.findall(cal_step_pattern.findall(calibration_param_line)[0])[0])
+    cal_points = int(digit_pattern.findall(cal_points_pattern.findall(calibration_param_line)[0])[0])
+    cal_start_pos = int(digit_pattern.findall(cal_start_pos_pattern.findall(calibration_param_line)[0])[0])
+
+    #  TIR steps for each laser in calibration
+    TIR_pattern = re.compile(r'<prm_set set="P1500">.*</prm_set>')
+    TIR_line = TIR_pattern.findall(content)[0]
+
+    # set P1500 - Laser channels start at index pos 15 (starting from 0), ends at 22
+    # TIR angle calibration step values starts at 26 and ends at 33
+    laser_channels = list(map(int, TIR_line.split(';')[15+(8-channels):23]))
+    TIR_step_values = list(map(int, TIR_line.split(';')[26:34-(8-channels)]))
+
+    #  Starting position for measurement scans
     pos_pattern1 = re.compile(r'<ch number="\d" start_pos="\d+">')
     pos_line = pos_pattern1.findall(content)
     pos_pattern2 = re.compile(r'"\d+">')
     pos_value = pos_pattern2.search(pos_line[-1]).group()
     start_pos = int(pos_value.strip('">'))
-
-    #  TIR steps for each laser in calibration
-    TIR_pattern = re.compile(r'111;111;111;\d+;\d+;\d+;\d+;11111;11111;111;111')
-    TIR_line = TIR_pattern.search(content).group()
-    TIR_values = list(map(float, TIR_line.split(';')[3:7]))
 
     #  List of measurement time for each point
     time_pattern = re.compile(r'<scan rtime="\d+"')
@@ -41,10 +72,10 @@ def extract_parameters(content):
     print('Start position: ', start_pos)
     print('Scan speed: ', step_length)
 
-    return start_pos, step_length, TIR_values, time_value_list
+    return start_pos, step_length, channels, laser_channels, TIR_step_values, time_value_list, cal_scanspeed, cal_points, cal_start_pos
 
 
-def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length, time_values, spr2_file):
+def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, scanspeed, cal_scanspeed, cal_points, cal_start_pos, time_values, laser_channels, spr2_file):
     #  Extracts and calibrates spectra from .sp2 file, then saves it as .csv
 
     #  Get the spectra data (angles and intensity)
@@ -71,7 +102,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
             continue
 
     # Generation of angles and combining with spectra
-    spectra_steps = np.arange(start_pos, (step_length*points) + start_pos, step_length)
+    spectra_steps = np.arange(start_pos, (scanspeed * points) + start_pos, scanspeed)
     spectra_angles = np.polyval(polycoff, spectra_steps) - TIR_offset
     spectra_full_array = np.vstack((spectra_angles, spectra_array))
 
@@ -87,7 +118,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
     calib_data_string = calib_data_string.replace(';', ';0.')
     
     calib_data = list(map(float, calib_data_string.split(';')))
-    calib_steps = np.arange(77.0, 27707.0, 10)  # Step length is 10 for calibration
+    calib_steps = np.arange(float(cal_start_pos), float(cal_scanspeed*cal_points)+float(cal_start_pos), cal_scanspeed)
     calib_angles = np.polyval(polycoff, calib_steps) - TIR_offset
     calib_array = np.vstack((calib_angles, calib_data))
 
@@ -97,8 +128,13 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
             cal_ind = next(ind1 for ind1, cal_angle in enumerate(calib_array[0, :]) if np.isclose(cal_angle, angle, 0.001))  # Search for calibration value close to its respective spectra value at a given angle
             spectra_full_array[1:, a_ind] = np.true_divide(spectra_full_array[1:, a_ind], calib_array[1, cal_ind])   # Divide all values in  spectra_full_array[1:, a_ind] with calib_array[1, cal_ind]
         except:
-            print('WARNING: Angle ', str(angle), ' was not calibrated')
-            continue
+            try:
+                # Try wider tolerance
+                cal_ind = next(ind1 for ind1, cal_angle in enumerate(calib_array[0, :]) if np.isclose(cal_angle, angle, 0.003))  # Search for calibration value close to its respective spectra value at a given angle
+                spectra_full_array[1:, a_ind] = np.true_divide(spectra_full_array[1:, a_ind], calib_array[1, cal_ind])  # Divide all values in  spectra_full_array[1:, a_ind] with calib_array[1, cal_ind]
+            except:
+                print('WARNING: Angle ', str(angle), ' was not calibrated')
+                continue
 
     #  Add time values as first column
     time_values_np = np.array(time_values)
@@ -106,18 +142,9 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, step_length
 
     #  Save data as .csv
     spr2_path, spr2_file_name = os.path.split(spr2_file)
-
-    if c_ind == 0:
-        file_identifier = spr2_file_name[:-5] + '-L1_670nm.csv'
-    elif c_ind == 1:
-        file_identifier = spr2_file_name[:-5] + '-L2_980nm.csv'
-    elif c_ind == 2:
-        file_identifier = spr2_file_name[:-5] + '-L3_670nm.csv'
-    elif c_ind == 3:
-        file_identifier = spr2_file_name[:-5] + '-L4_785nm.csv'
-
+    file_identifier = '{head}-L{index}_{wavelength}nm.csv'.format(head=spr2_file_name[:-5], index=str(c_ind+1), wavelength=str(laser_channels[c_ind]))
     save_name = os.path.join(spr2_path, file_identifier)
-    header_string = 'Left most column is Time (min), First row is Angles (deg), Scanspeed=' + str(step_length)
+    header_string = 'Left most column is Time (min), First row is Angles (deg), Scanspeed=' + str(scanspeed)
 
     np.savetxt(save_name, spectra_full_array, fmt='%1.6f', delimiter=';', header=header_string)
 
@@ -127,31 +154,7 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
 
     spr2_files = askopenfilenames(title='Select spr2 files')
 
-    try:
-        #  Read default polynomial file
-        with open(poly_file, 'r') as p_file:
-            polycoeffs = [0]*4
-            for p_ind in range(4):
-                coeff = p_file.readline().split('\t')
-                polycoeffs[p_ind] = list(map(float, coeff))
-
-        poly_path, poly_file_name = os.path.split(poly_file)
-
-    except FileNotFoundError:
-        print('Polynomial coefficients not found in default location')
-
-        poly_file = askopenfilename(title='Select polynomial coefficients (.csv)')
-
-        #  Read selected polynomial file
-        with open(poly_file, 'r') as p_file:
-            polycoeffs = [0]*4
-            for p_ind in range(4):
-                coeff = p_file.readline().split('\t')
-                polycoeffs[p_ind] = list(map(float, coeff))
-
-        poly_path, poly_file_name = os.path.split(poly_file)
-
-    for spr2_file in spr2_files:
+    for file_ind, spr2_file in enumerate(spr2_files):
 
         spr2_path, spr2_file_name = os.path.split(spr2_file)
 
@@ -159,22 +162,61 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
         with open(spr2_file, 'r') as f:
             content = f.read()
 
-        #  Get starting position for scan, TIR value steps and time points
-        start_pos, scan_speed, TIR_steps, time_value_list = extract_parameters(content)
+        #  Get various parameters from file
+        start_pos, scan_speed, channels, laser_channels, TIR_steps, time_value_list, cal_scanspeed, cal_points, cal_start_pos = extract_parameters(content)
 
-        #  Calculate angle for the TIR for each laser
-        TIR_theoretical = [41.1479, 41.3866, 41.1479, 41.2802]
-        angle_offsets = [0]*4
-        for ind in range(4):
-            angle_offsets[ind] = np.polyval(polycoeffs[ind], TIR_steps[ind]) - TIR_theoretical[ind]
+        # Assume all selected files are from the same instrument and has the same polynomial coefficients
+        if file_ind == 0:
+            try:
+                #  Read default polynomial file
+                with open(default_poly_file, 'r') as p_file:
+                    polycoeffs = [0] * channels
+                    for p_ind in range(channels):
+                        coeff = p_file.readline().split('\t')
+                        polycoeffs[p_ind] = list(map(float, coeff))
+
+                poly_path, poly_file_name = os.path.split(default_poly_file)
+
+            except FileNotFoundError:
+                print('Polynomial coefficients not found in default location')
+
+                poly_file = askopenfilename(title='Select polynomial coefficients (.csv)')
+
+                #  Read selected polynomial file
+                with open(poly_file, 'r') as p_file:
+                    polycoeffs = [0] * channels
+                    for p_ind in range(channels):
+                        coeff = p_file.readline().split('\t')
+                        polycoeffs[p_ind] = list(map(float, coeff))
+
+                poly_path, poly_file_name = os.path.split(poly_file)
+
+        #  Calculate angle correction theoretical TIR angle in air according to Snell's law and prism refractive index at the given wavelength using for the TIR for each laser
+        angle_offsets = [0] * channels
+        for ind, wavelength in enumerate(laser_channels):
+            match wavelength:
+                case 635:
+                    TIR_theoretical = math.asin(1.00027651 / prism_n_635) * 180 / math.pi
+                case 650:
+                    TIR_theoretical = math.asin(1.00027632 / prism_n_650) * 180 / math.pi
+                case 670:
+                    TIR_theoretical = math.asin(1.00027610 / prism_n_670) * 180 / math.pi
+                case 785:
+                    TIR_theoretical = math.asin(1.00027514 / prism_n_785) * 180 / math.pi
+                case 850:
+                    TIR_theoretical = math.asin(1.00027477 / prism_n_850) * 180 / math.pi
+                case 980:
+                    TIR_theoretical = math.asin(1.00027423 / prism_n_980) * 180 / math.pi
+
+            angle_offsets[ind] = np.polyval(polycoeffs[ind], TIR_steps[ind]) - TIR_theoretical
 
         #  Extract and calibrate spectra for each laser
         jobs = []
-        for i in range(4):
-            pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], angle_offsets[i], start_pos, scan_speed, time_value_list, spr2_file))
+        for i in range(channels):
+            pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], angle_offsets[i], start_pos, scan_speed, cal_scanspeed, cal_points, cal_start_pos, time_value_list, laser_channels, spr2_file))
             jobs.append(pr)
             pr.start()
-            print('TIR Calib. Offset', i, ': ', angle_offsets[i], ' deg')
+            print('TIR angle correction offset', str(laser_channels[i]), ': ', angle_offsets[i], ' deg')
             print('Working...')
 
         # Wait for the first file to finish

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from datetime import datetime
 
@@ -9,10 +10,13 @@ from datetime import datetime
 # Check from time to time that the angles obtained from spr2_to_csv conversion matches the angles from .dto export for a given scan.
 # If the step motor has been significantly affected or worn, it could be time to run this script again and replace this
 
-cal_save_folder = ''
+cal_save_folder = os.getcwd()
 file_name = f"{cal_save_folder}/SPR_poly_coeff_{datetime.now().strftime('%y-%m-%d')}.csv"
 
+scanspeed = 1  # Recommended to go for full range (slow) scans (1, 5 or 10 for slow, medium or fast scanspeed)
+start_pos = 10  # This number comes from start_pos="X" in the calibration section of the .spr2 file
 # 670;785;980;670;670;785;980;670;
+# Enter the file names for the .dto files
 data_L1 = np.loadtxt('X-cal_Full_range_L1 670nm.dto', delimiter='\t').T
 data_L2 = np.loadtxt('X-cal_Full_range_L2 785nm.dto', delimiter='\t').T
 data_L3 = np.loadtxt('X-cal_Full_range_L3 980nm.dto', delimiter='\t').T
@@ -31,8 +35,7 @@ y_L6 = data_L6[0, :]
 y_L7 = data_L7[0, :]
 y_L8 = data_L8[0, :]
 
-scanspeed = 1  # Recommended to go for full range (slow) scans (1, 5 or 10 for slow, medium or fast scanspeed)
-step_max = 10 + scanspeed * len(data_L1[0])  # This number comes from the number of measurement points in the calibration section of the .spr2 file
+step_max = start_pos + scanspeed * len(data_L1[0])  # This number comes from the number of measurement points in the calibration section of the .spr2 file
 steps = np.arange(10, step_max)
 
 p_L1 = np.polyfit(steps, y_L1, 20)

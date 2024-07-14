@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from datetime import datetime
 
@@ -7,9 +8,10 @@ from datetime import datetime
 # This gives absolute angle value accuracy within the noise limit of the homing sequence.
 # Use spectra from full angular scans
 # Check from time to time that the angles obtained from spr2_to_csv conversion matches the angles from .dto export for a given scan.
-# If the step motor has been significantly affected or worn, it could be time to run this script again and replace this
+# Small deviations of < 10-20 mdeg in absolute angle is likely within normal instrument uncertainty.
+# If the step motor has been significantly affected or worn, it could be time to run this script again and replace this file for the spr2_to_csv.py script
 
-cal_save_folder = ''
+cal_save_folder = os.getcwd()
 file_name = f"{cal_save_folder}/SPR_poly_coeff_{datetime.now().strftime('%y-%m-%d')}.csv"
 
 data_L1 = np.loadtxt('X-cal_Full_range_L1 670nm.dto', delimiter='\t').T
