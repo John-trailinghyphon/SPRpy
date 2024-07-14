@@ -1097,7 +1097,7 @@ if __name__ == '__main__':
 
                         dash.html.Div([
                             dash.html.Div([
-                                dash.html.H3(['Settings']),
+                                dash.html.H3(['Under construction. Coming in version 0.3.0']),
 
                             ], style={'margin-top': '1.9rem', 'width': '65%'}),
                             dash.html.Div([
@@ -1607,7 +1607,7 @@ if __name__ == '__main__':
                                                        n_im=current_sensor.extinction_coefficients,
                                                        ydata=None,
                                                        ydata_type=current_sensor.data_type,
-                                                       polarization=current_sensor.polarization)
+                                                       polarization=1.0)
             figure_object.add_trace(go.Scatter(x=reflectivity_df['angles'],
                                                y=fresnel_coefficients,
                                                mode='lines',
@@ -2943,7 +2943,7 @@ if __name__ == '__main__':
 
             elif current_exclusion_height_analysis.fit_offset and not current_exclusion_height_analysis.fit_prism:
                 buffer_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'buffer offsets']
-                probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offset']
+                probe_offset_val = current_exclusion_height_analysis.d_n_pair_dfs[active_page_state-1].loc[dnpair_hoverdata['points'][0]['pointIndex'], 'probe offsets']
                 buffer_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
                 probe_prism_val = current_exclusion_height_analysis.sensor_object.extinction_coefficients[0]
 

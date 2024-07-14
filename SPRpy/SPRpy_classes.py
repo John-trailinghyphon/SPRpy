@@ -580,12 +580,15 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
         exclusion_new_fresnel_bounds = [1.0, 3.0]
 
     elif exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
-        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
+        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess[0:2]
         exclusion_new_fresnel_ini_guess[0] = 1.38  # Swollen layer estimated hydration
         exclusion_new_fresnel_bounds = [(1.0, -np.inf), (3.0, np.inf)]
 
     elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
-        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
+        if len(exclusion_height_analysis_object_copy.fresnel_object.ini_guess) == 3:
+            exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
+        elif len(exclusion_height_analysis_object_copy.fresnel_object.ini_guess) == 2:
+            exclusion_new_fresnel_ini_guess = [exclusion_height_analysis_object_copy.fresnel_object.ini_guess, 0.01]
         exclusion_new_fresnel_ini_guess[0] = 1.38  # Swollen layer estimated hydration
         exclusion_new_fresnel_bounds = [(1.0, -np.inf, 0), (3.0, np.inf, 0.1)]
 
