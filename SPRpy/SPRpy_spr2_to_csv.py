@@ -1,7 +1,6 @@
 import re
 import os
 import numpy as np
-import math
 import tkinter
 import multiprocessing as mp
 from tkinter.filedialog import askopenfilename, askopenfilenames
@@ -12,7 +11,7 @@ from tkinter.filedialog import askopenfilename, askopenfilenames
 # Assumes all selected measurement files comes from the same instrument. Use multiple copies of spr2_to_csv_v2.py and
 # their associated SPR_poly_coeff_YY-MM-DD.csv file if working with multiple instruments.
 
-default_poly_file = r'SPR_poly_coeff_22-01-29.csv'
+default_poly_file = r'SPRpy_X_cal_values_24-07-24.csv'
 
 prism_n_635 = 1.5215  # Approximate prism RI based on Soda lime glass
 prism_n_650 = 1.5210  # Approximate prism RI based on Soda lime glass
@@ -45,7 +44,6 @@ def extract_parameters(content):
     # set P1500 - Laser channels start at index pos 15 (starting from 0), ends at 22
     # TIR angle calibration step values starts at 26 and ends at 33
     laser_channels = list(map(int, TIR_line.split(';')[15+(8-channels):23]))
-    TIR_step_values = list(map(int, TIR_line.split(';')[26:34-(8-channels)]))
 
     #  Starting position for measurement scans
     pos_pattern1 = re.compile(r'<ch number="\d" start_pos="\d+">')
@@ -72,10 +70,10 @@ def extract_parameters(content):
     print('Start position: ', start_pos)
     print('Scan speed: ', step_length)
 
-    return start_pos, step_length, channels, laser_channels, TIR_step_values, time_value_list, cal_scanspeed, cal_points, cal_start_pos
+    return start_pos, step_length, channels, laser_channels, time_value_list, cal_scanspeed, cal_points, cal_start_pos
 
 
-def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, scanspeed, cal_scanspeed, cal_points, cal_start_pos, time_values, laser_channels, spr2_file):
+def extract_spectra(content, c_ind, polycoff, start_pos, scanspeed, cal_scanspeed, cal_points, cal_start_pos, time_values, laser_channels, spr2_file):
     #  Extracts and calibrates spectra from .sp2 file, then saves it as .csv
 
     #  Get the spectra data (angles and intensity)
@@ -103,7 +101,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, scanspeed, 
 
     # Generation of angles and combining with spectra
     spectra_steps = np.arange(start_pos, (scanspeed * points) + start_pos, scanspeed)
-    spectra_angles = np.polyval(polycoff, spectra_steps) - TIR_offset
+    spectra_angles = np.polyval(polycoff, spectra_steps)
     spectra_full_array = np.vstack((spectra_angles, spectra_array))
 
     #  Get the calibration data
@@ -119,7 +117,7 @@ def extract_spectra(content, c_ind, polycoff, TIR_offset, start_pos, scanspeed, 
     
     calib_data = list(map(float, calib_data_string.split(';')))
     calib_steps = np.arange(float(cal_start_pos), float(cal_scanspeed*cal_points)+float(cal_start_pos), cal_scanspeed)
-    calib_angles = np.polyval(polycoff, calib_steps) - TIR_offset
+    calib_angles = np.polyval(polycoff, calib_steps)
     calib_array = np.vstack((calib_angles, calib_data))
 
     #  Start intensity calibration
@@ -163,7 +161,7 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
             content = f.read()
 
         #  Get various parameters from file
-        start_pos, scan_speed, channels, laser_channels, TIR_steps, time_value_list, cal_scanspeed, cal_points, cal_start_pos = extract_parameters(content)
+        start_pos, scan_speed, channels, laser_channels, time_value_list, cal_scanspeed, cal_points, cal_start_pos = extract_parameters(content)
 
         # Assume all selected files are from the same instrument and has the same polynomial coefficients
         if file_ind == 0:
@@ -191,33 +189,13 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
 
                 poly_path, poly_file_name = os.path.split(poly_file)
 
-        #  Calculate angle correction theoretical TIR angle in air according to Snell's law and prism refractive index at the given wavelength using for the TIR for each laser
-        angle_offsets = [0] * channels
-        for ind, wavelength in enumerate(laser_channels):
-            match wavelength:
-                case 635:
-                    TIR_theoretical = math.asin(1.00027651 / prism_n_635) * 180 / math.pi
-                case 650:
-                    TIR_theoretical = math.asin(1.00027632 / prism_n_650) * 180 / math.pi
-                case 670:
-                    TIR_theoretical = math.asin(1.00027610 / prism_n_670) * 180 / math.pi
-                case 785:
-                    TIR_theoretical = math.asin(1.00027514 / prism_n_785) * 180 / math.pi
-                case 850:
-                    TIR_theoretical = math.asin(1.00027477 / prism_n_850) * 180 / math.pi
-                case 980:
-                    TIR_theoretical = math.asin(1.00027423 / prism_n_980) * 180 / math.pi
-
-            angle_offsets[ind] = np.polyval(polycoeffs[ind], TIR_steps[ind]) - TIR_theoretical
-
         #  Extract and calibrate spectra for each laser
         jobs = []
         for i in range(channels):
-            pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], angle_offsets[i], start_pos, scan_speed, cal_scanspeed, cal_points, cal_start_pos, time_value_list, laser_channels, spr2_file))
+            pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], start_pos, scan_speed, cal_scanspeed, cal_points, cal_start_pos, time_value_list, laser_channels, spr2_file))
             jobs.append(pr)
             pr.start()
-            print('TIR angle correction offset', str(laser_channels[i]), ': ', angle_offsets[i], ' deg')
-            print('Working...')
+        print('Working...')
 
         # Wait for the first file to finish
         for job in jobs:

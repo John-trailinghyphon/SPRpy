@@ -6,7 +6,6 @@ if platform.system() != 'Windows':
 import sysconfig
 from win32com.client import Dispatch
 import os
-from __about__ import version
 
 
 def create_shortcut():
