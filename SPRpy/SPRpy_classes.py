@@ -344,6 +344,7 @@ class FresnelModel:
         self.bounds = [0, 50]  # or [(lb1, lb2), (ub1, ub2)] etc
         self.extinction_correction = 0
         self.y_offset = 0
+        self.fit_offset = True
         self.fit_prism_k = True
         self.fitted_data = None
         self.fitted_result = None
@@ -419,7 +420,11 @@ class FresnelModel:
 
         # Collect the results from least_squares object and calculate corresponding fresnel coefficients
         self.fitted_result = np.array(result['x'])
-        self.y_offset = self.fitted_result[1]
+
+        if self.fit_offset:
+            self.y_offset = self.fitted_result[1]
+        else:
+            self.y_offset = 0
 
         fresnel_coefficients = fresnel_calculation(self.fitted_result,
                                                    fitted_layer_index=self.sensor_object.fitted_layer_index,
@@ -793,20 +798,12 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
             full_probe_result = probe_connections[int(process_index/2)].recv()
             probe_RI_result = full_probe_result[0]
 
-        try:
-            if not exclusion_height_analysis_object.fit_offset:
-                exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
-            elif exclusion_height_analysis_object.fit_offset and not exclusion_height_analysis_object.fit_prism:
-                exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1]})
-            elif exclusion_height_analysis_object.fit_offset and exclusion_height_analysis_object.fit_prism:
-                exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1], 'buffer prism k': full_buffer_result[2], 'probe prism k': full_probe_result[2]})
-        except:
-            print('Buffer RI size: ' + str(len(buffer_RI_result)))  # 50
-            print('Probe RI size: ' + str(len(probe_RI_result)))  # 50
-            print('Buffer offset size: ' + str(len(full_buffer_result[1])))  # 100
-            print('Probe offset size: ' + str(len(full_probe_result[1])))  # 100
-            print('Buffer prism size: ' + str(len(full_buffer_result[2])))  # 0
-            print('Probe prism size: ' + str(len(full_probe_result[2])))  # 0
+        if not exclusion_height_analysis_object.fit_offset:
+            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
+        elif exclusion_height_analysis_object.fit_offset and not exclusion_height_analysis_object.fit_prism:
+            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1]})
+        elif exclusion_height_analysis_object.fit_offset and exclusion_height_analysis_object.fit_prism:
+            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1], 'buffer prism k': full_buffer_result[2], 'probe prism k': full_probe_result[2]})
 
         # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_results
         for height_ind in range(len(exclusion_height_analysis_object.height_steps)):

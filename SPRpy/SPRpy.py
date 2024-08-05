@@ -417,7 +417,7 @@ if __name__ == '__main__':
                             dbc.Table.from_dataframe(pd.DataFrame(
                                 default_sensor_values,
                             ), size='sm', striped=True, bordered=True, hover=True)
-                        ), style={'width': '650px'}),
+                        ), style={'width': '750px'}),
                     id='default-values-collapse',
                     is_open=False)
             ], style={'margin-top': '40px', 'margin-left': '10px'}),
@@ -709,12 +709,22 @@ if __name__ == '__main__':
                                                         ])
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
-                                                        dbc.Label('Elastomer extinction correction [1e-3]', width='auto'),
                                                         dbc.Col([
-                                                            dbc.Checkbox(id='fresnel-analysis-elastomer-fit',
-                                                                         label="Fit?",
-                                                                         value=True)
+                                                            dbc.Checkbox(
+                                                                id='fresnel-analysis-offset-fit',
+                                                                label="Fit reflectivity offset?",
+                                                                value=True)
                                                         ], width='auto', style={'padding-top': '20px'}),
+                                                        dbc.Col([
+                                                            dbc.Checkbox(
+                                                                id='fresnel-analysis-elastomer-fit',
+                                                                label="Fit prism k?",
+                                                                disabled=False,
+                                                                value=True)
+                                                        ], width='auto', style={'padding-top': '20px'}),
+                                                    ]),
+                                                    dbc.Row([
+                                                        dbc.Label('Manual prism k correction (iterative) [1e-3]', width='auto'),
                                                         dbc.Col([
                                                             dash.dcc.Slider(min=-0.0005, max=0.0005,
                                                                             step=0.00005,
@@ -724,11 +734,10 @@ if __name__ == '__main__':
                                                                                    0.0001: '1', 0.0002: '2',
                                                                                    0.0003: '3', 0.0004: '4',
                                                                                    0.0005: '5'},
-                                                                            tooltip={"placement": "top",
-                                                                                     "always_visible": True},
+                                                                            tooltip={"placement": "top"},
                                                                             id='fresnel-fit-option-extinctionslider')
-                                                        ])
-                                                    ], style={'margin-bottom': '10px'}),
+                                                        ], style={'margin-top': '15px'})
+                                                    ], id='fresnel-analysis-manual-prism-k-row', style={'margin-bottom': '10px', 'visibility': 'hidden'}),
                                                     dbc.Row([
                                                         dbc.Label('Fit result: ', id='fresnel-fit-result')
                                                     ], style={'margin-bottom': '10px'})
@@ -1771,7 +1780,7 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-option-iniguess', 'value'),
         dash.Output('fresnel-fit-option-lowerbound', 'value'),
         dash.Output('fresnel-fit-option-upperbound', 'value'),
-        dash.Output('fresnel-fit-option-extinctionslider', 'value'),
+        dash.Output('fresnel-fit-option-extinctionslider', 'value', allow_duplicate=True),
         dash.Output('fresnel-fit-result', 'children'),
         dash.Output('fresnel-fit-sensor', 'children'),
         dash.Output('exclusion-choose-background-dropdown', 'options'),
@@ -1781,6 +1790,8 @@ if __name__ == '__main__':
         dash.Output('fresnel-fit-datapath', 'children'),
         dash.Output('rename-fresnel-analysis-modal', 'is_open'),
         dash.Output('batch-fresnel-analysis-done', 'data'),
+        dash.Output('fresnel-analysis-offset-fit', 'value'),
+        dash.Output('fresnel-analysis-elastomer-fit', 'value', allow_duplicate=True),
         dash.Input('fresnel-reflectivity-run-model', 'n_clicks'),
         dash.Input('add-fresnel-analysis-button', 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
@@ -1808,13 +1819,14 @@ if __name__ == '__main__':
         dash.State('batch-fresnel-analysis-radio-selection', 'value'),
         dash.State('batch-fresnel-analysis-example-sensor-dropdown', 'value'),
         dash.State('batch-fresnel-analysis-example-analysis-dropdown', 'value'),
+        dash.State('fresnel-analysis-offset-fit', 'value'),
         dash.State('fresnel-analysis-elastomer-fit', 'value'),
         dash.State('fresnel-fit-option-pfactor', 'value'),
         prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_sensor_index, batch_analysis_index, elastomer_fit_flag, polarization_factor):
+                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_sensor_index, batch_analysis_index, offset_fit_flag, elastomer_fit_flag, polarization_factor):
 
         global current_fresnel_analysis
         global current_data_path
@@ -1879,7 +1891,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-run-model' == dash.ctx.triggered_id:
 
@@ -1887,15 +1899,23 @@ if __name__ == '__main__':
             current_fresnel_analysis.angle_range = rangeslider_state
             current_fresnel_analysis.polarization = polarization_factor
             current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
+            current_fresnel_analysis.fit_offset = offset_fit_flag
             current_fresnel_analysis.fit_prism_k = elastomer_fit_flag
 
-            if not current_fresnel_analysis.fit_prism_k:
+            # Determine number of simultaneous fitting variables
+            if current_fresnel_analysis.fit_offset and current_fresnel_analysis.fit_prism_k:
+                current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset, 0.001])
+                current_fresnel_analysis.bounds = [(lower_bound, -np.inf, 0), (upper_bound, np.inf, 0.1)]
+                current_fresnel_analysis.extinction_correction = 0
+
+            elif current_fresnel_analysis.fit_offset and not current_fresnel_analysis.fit_prism_k:
                 current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset])
                 current_fresnel_analysis.bounds = [(lower_bound, -np.inf), (upper_bound, np.inf)]
                 current_fresnel_analysis.extinction_correction = extinction_correction
-            else:
-                current_fresnel_analysis.ini_guess = np.array([ini_guess, current_fresnel_analysis.y_offset, 0.001])
-                current_fresnel_analysis.bounds = [(lower_bound, -np.inf, 0), (upper_bound, np.inf, 0.1)]
+
+            elif not current_fresnel_analysis.fit_offset:
+                current_fresnel_analysis.ini_guess = np.array([ini_guess])
+                current_fresnel_analysis.bounds = [lower_bound, upper_bound]
                 current_fresnel_analysis.extinction_correction = 0
 
             # Run calculations and modelling
@@ -1958,10 +1978,10 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return new_figure, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
@@ -1979,7 +1999,7 @@ if __name__ == '__main__':
             current_fresnel_analysis.y_offset = reflectivity_df['ydata'].min() - FR_y[1]  # Can't calculate only 1 angle, so use middle of 3 around minimum
 
             current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var), current_fresnel_analysis.y_offset])
-            current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] + current_fresnel_analysis.ini_guess[0] / 2, np.inf)]
+            current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] * 2, np.inf)]
             current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]]
 
             current_session.save_session()
@@ -2050,10 +2070,10 @@ if __name__ == '__main__':
                 upper_bound_ = current_fresnel_analysis.bounds[1][0]
 
             return new_figure, dash.no_update, analysis_options, dash.no_update, False, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
-            lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+            lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, 'Fit result: None', current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, current_fresnel_analysis.fit_offset, current_fresnel_analysis.fit_prism_k
 
         elif 'rename-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update
 
         elif 'rename-fresnel-analysis-confirm' == dash.ctx.triggered_id:
 
@@ -2070,10 +2090,10 @@ if __name__ == '__main__':
                                                      id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                                                      n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
-            return dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update
+            return dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-confirm' == dash.ctx.triggered_id:
             if len(current_session.fresnel_analysis_instances) > 1:
@@ -2164,7 +2184,7 @@ if __name__ == '__main__':
                     upper_bound_ = current_fresnel_analysis.bounds[1][0]
 
                 return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
-                    lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, False, dash.no_update
+                    lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, False, dash.no_update, current_fresnel_analysis.fit_offset, current_fresnel_analysis.fit_prism_k
 
             # If deleting the last fresnel analysis object
             else:
@@ -2175,10 +2195,10 @@ if __name__ == '__main__':
                 current_fresnel_analysis = None
                 current_session.save_session()
 
-                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return figure_object, dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'batch-fresnel-analysis-start' == dash.ctx.triggered_id:
             # Load the example sensor and fresnel model into memory for pulling base settings
@@ -2406,7 +2426,7 @@ if __name__ == '__main__':
                     id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
-            return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished'
+            return new_figure, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished', dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
@@ -2494,7 +2514,33 @@ if __name__ == '__main__':
                 upper_bound_ = current_fresnel_analysis.bounds[1][0]
 
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
-                lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update
+                lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, current_fresnel_analysis.fit_offset, current_fresnel_analysis.fit_prism_k
+
+
+    @dash.callback(
+        dash.Output('fresnel-analysis-manual-prism-k-row', 'style'),
+        dash.Output('fresnel-fit-option-extinctionslider', 'value'),
+        dash.Input('fresnel-analysis-elastomer-fit', 'value'),
+        dash.Input('fresnel-analysis-offset-fit', 'value'),
+        dash.State('fresnel-analysis-offset-fit', 'value'),
+        dash.State('fresnel-analysis-elastomer-fit', 'value'),
+        prevent_initial_call=True)
+    def fresnel_modelling_manual_prism_k_hide(in_elastomer_fit_flag, in_offset_fit_flag, state_offset, state_elastomer):
+        if in_elastomer_fit_flag or not state_offset:
+            return {'margin-bottom': '10px', 'visibility': 'hidden'}, 0
+        elif not state_elastomer and in_offset_fit_flag:
+            return {'margin-bottom': '10px', 'visibility': 'visible'}, dash.no_update
+
+    @dash.callback(
+        dash.Output('fresnel-analysis-elastomer-fit', 'disabled'),
+        dash.Output('fresnel-analysis-elastomer-fit', 'value'),
+        dash.Input('fresnel-analysis-offset-fit', 'value'),
+        prevent_initial_call=True)
+    def fresnel_modelling_offset_and_prism_k_boxes(offset_fit_flag):
+        if offset_fit_flag:
+            return False, dash.no_update
+        else:
+            return True, False
 
     @dash.callback(
         dash.Output('batch-fresnel-analysis-background-sensors-dropdown-row', 'style'),
