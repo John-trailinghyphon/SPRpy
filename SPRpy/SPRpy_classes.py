@@ -224,78 +224,95 @@ class Sensor:
     def set_default_optical_properties(self, sensor_metal):
 
         # These default parameters should be set based on material layer and wavelength from loaded .csv file
+        # Source Prism: Bionavis Layer solver manual
+        # Source Cr: A. Sytchkova, A. Belosludtsev, L. Volosevičienė, R. Juškėnas, R. Simniškis. Optical, structural and electrical properties of sputtered ultrathin chromium films, Opt. Mater. 121, 111530 (2021) (Numerical data kindly provided by Alexandr Belosludtsev)
+        # Source Au: D.I.Yakubovsky, A.V.Arsenin, Y.V.Stebunov, D.Yu.Fedyanin, V.S.Volkov.Optical constants and structural properties of thin gold films, Opt.Express 25, 25574 - 25587(2017)
+
         match sensor_metal:
             case 'Au' | 'gold' | 'Gold' | 'GOLD':
                 self.layer_thicknesses = np.array([np.nan, 2.00, 50.00, np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
-                        self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.4556, 3.9259, 0])
+                        self.refractive_indices = np.array([1.5202, 4.4409, 0.16194, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.6502, 3.9783, 0])
                     case 785:
-                        self.refractive_indices = np.array([1.5162, 3.3225, 0.2580, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.6148, 4.88, 0])
+                        self.refractive_indices = np.array([1.5162, 4.8286, 0.16088, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5548, 5.0525,  0])
+                    case 850:
+                        self.refractive_indices = np.array([1.5149, 4.9960, 0.17340, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5406, 5.6012, 0])
                     case 980:
-                        self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0])
+                        self.refractive_indices = np.array([1.5130, 5.2628, 0.20890, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5305, 6.6654, 0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],  # NOTE: sensor_object.optical_parameters will auto-update when changing sensor_object.layer_thicknesses, sensor_object.refractive_indices or sensor_object.extinction_coefficients
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
                                                              'k': self.extinction_coefficients})
 
             case 'sio2' | 'SiO2' | 'SIO2' | 'Glass' | 'glass' | 'silica':
-                # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez.
-                # Self-consistent optical constants of SiO2 and Ta2O5 films
-                # Opt. Mater. Express 6, 3622-3637 (2016) (Numerical data kindly provided by Juan Larruquert)
+                # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez. Self-consistent optical constants of SiO2 and Ta2O5 films. Opt. Mater. Express 6, 3622-3637 (2016)
                 self.layer_thicknesses = np.array([np.nan, 2.00, 50.00, 14.00, np.nan])
                 self.fitted_layer_index = (3, 1)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
-                        self.refractive_indices = np.array([1.5202, 3.3105, 0.2238, 1.4628, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.4556, 3.9259, 0, 0])
+                        self.refractive_indices = np.array([1.5202, 4.4409, 0.16194, 1.4628, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.6502, 3.9783, 0.0015675, 0])
                     case 785:
-                        self.refractive_indices = np.array([1.5162, 3.3225, 0.2580, 1.4610, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.6148, 4.88, 0, 0])
+                        self.refractive_indices = np.array([1.5162, 4.8286, 0.16088, 1.4610, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5548, 5.0525, 0.0013323, 0])
+                    case 850:
+                        self.refractive_indices = np.array([1.5149, 4.9960, 0.17340, 1.4603, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5406, 5.6012, 0.0012284, 0])
                     case 980:
-                        self.refractive_indices = np.array([1.5130, 3.4052, 0.28, 1.4592, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.5678, 6.7406, 0, 0])
+                        self.refractive_indices = np.array([1.5130, 5.2628, 0.20890, 1.4592, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5305, 6.6654, 0.0010630, 0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'],
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
                                                              'k': self.extinction_coefficients})
+
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
+                # Source Pd 670nm : Andersson, John, et al. "Surface plasmon resonance sensing with thin films of palladium and platinum–quantitative and real-time analysis." Physical Chemistry Chemical Physics 24.7 (2022): 4588-4594.
+                # Source Pd 785nm, 980nm: Similar procedure as Andersson, John et al., but these were not reported.
                 self.layer_thicknesses = np.array([np.nan, 2.00, 20.00, np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
-                        self.refractive_indices = np.array([1.5202, 3.3105, 2.25, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.4556, 4.60, 0])
+                        self.refractive_indices = np.array([1.5202, 4.4409, 2.25, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.6502, 4.60, 0])
                     case 785:
-                        self.refractive_indices = np.array([1.5162, 3.3225, 2.5467, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.6148, 5.1250, 0])
+                        self.refractive_indices = np.array([1.5162, 4.8286, 2.5467, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5548, 5.1250, 0])
+                    case 850:
+                        self.refractive_indices = np.array([1.5149, 4.9960, 2.7, 1.0003])  # Estimated values for Pd
+                        self.extinction_coefficients = np.array([0, 4.5406, 5.7, 0])  # Estimated values for Pd
                     case 980:
-                        self.refractive_indices = np.array([1.5130, 3.4052, 3.0331, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.5678, 6.1010, 0])
+                        self.refractive_indices = np.array([1.5130, 5.2628, 3.0331, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5305, 6.1010, 0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Pd', 'Bulk'],
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
                                                              'k': self.extinction_coefficients})
 
             case 'Pt' | 'platinum' | 'Platinum' | 'PLATINUM':
+                # Source Pt 670 nm: Andersson, John, et al. "Surface plasmon resonance sensing with thin films of palladium and platinum–quantitative and real-time analysis." Physical Chemistry Chemical Physics 24.7 (2022): 4588-4594.
+                # Source Pt 785, 850 and 980 nm: W. S. M. Werner, K. Glantschnig, C. Ambrosch-Draxl. Optical constants and inelastic electron-scattering data for 17 elemental metals, J. Phys Chem Ref. Data 38, 1013-1092 (2009)
                 self.layer_thicknesses = np.array([np.nan, 2.00, 20.00, np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
-                        self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
+                        self.refractive_indices = np.array([1.5202, 4.4409, 2.47, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.6502, 5.28, 0])
                     case 785:
-                        print('WARNING! Default values for Pt, platinum, at 785 and 980 nm not yet supported. Enter values manually')
-                        self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
+                        self.refractive_indices = np.array([1.5162, 4.8286, 2.5254, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5548, 5.6380, 0])
+                    case 850:
+                        self.refractive_indices = np.array([1.5149, 4.9960, 2.7193, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5406, 5.9555, 0])
                     case 980:
-                        print('WARNING! Default values for Pt, platinum, at 785 and 980 nm not yet supported. Enter values manually')
-                        self.refractive_indices = np.array([1.5202, 3.3105, 2.4687, 1.0003])
-                        self.extinction_coefficients = np.array([0, 3.4556, 5.2774, 0])
+                        self.refractive_indices = np.array([1.5130, 5.2628, 3.0598, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.5305, 6.4912, 0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Pt', 'Bulk'],
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
