@@ -692,7 +692,7 @@ if __name__ == '__main__':
                                                         dbc.Col([
                                                             dbc.Input(id='fresnel-fit-option-pfactor',
                                                                       value=1.0, type='number')
-                                                        ]),
+                                                        ], width=2),
                                                     ], style={'margin-bottom': '10px'}),
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
@@ -894,7 +894,7 @@ if __name__ == '__main__':
                                                             ], width=7)
                                                         ], style={'margin-bottom': '10px'}),
                                                         dbc.Row([
-                                                            dbc.Label('Resolution (#steps)', width='auto'),
+                                                            dbc.Label('Resolution', width='auto'),
                                                             dbc.Col([
                                                                 dbc.InputGroup([
                                                                     dbc.Input(id='exclusion-height-option-resolution',
