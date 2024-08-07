@@ -2,5 +2,5 @@ SPRpy/SPRpy sessions/
 venv
 venv_laptop
 dist
-pyproject.toml
+pyproject.toml.backup
 /dist archive/
