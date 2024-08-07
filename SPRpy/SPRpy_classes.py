@@ -206,10 +206,7 @@ class Sensor:
     """
 
     def __init__(self, data_path_, object_id_, object_name_='Gold sensor', sensor_metal='Au', data_type='R'):
-        """
-        :param data_path_: string
-        :param sensor_metal: string, see options in method "set_default_optical_properties"
-        """
+
         # Load sensor's default optical properties
         self.object_id = object_id_
         self.name = object_name_
@@ -224,9 +221,6 @@ class Sensor:
     def set_default_optical_properties(self, sensor_metal):
 
         # These default parameters should be set based on material layer and wavelength from loaded .csv file
-        # Source Prism: Bionavis Layer solver manual
-        # Source Cr: Bionavis Layer solver manual
-        # Source Au: D.I.Yakubovsky, A.V.Arsenin, Y.V.Stebunov, D.Yu.Fedyanin, V.S.Volkov.Optical constants and structural properties of thin gold films, Opt.Express 25, 25574 - 25587(2017)
 
         match sensor_metal:
             case 'Au' | 'gold' | 'Gold' | 'GOLD':
@@ -234,17 +228,17 @@ class Sensor:
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
-                        self.refractive_indices = np.array([1.5202, 3.5295, 0.16194, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.2683, 3.9783, 0])
+                        self.refractive_indices = np.array([1.5202, 3.5295, 0.2238, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.2683, 3.9259, 0])
                     case 785:
-                        self.refractive_indices = np.array([1.5162, 3.9729, 0.16088, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.1895, 5.0525,  0])
+                        self.refractive_indices = np.array([1.5162, 3.9729, 0.2580, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.1895, 4.88,  0])
                     case 850:
-                        self.refractive_indices = np.array([1.5149, 4.1254, 0.17340, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.1383, 5.6012, 0])
+                        self.refractive_indices = np.array([1.5149, 4.1254, 0.2653, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.1383, 5.5002, 0])
                     case 980:
-                        self.refractive_indices = np.array([1.5130, 4.2797, 0.20890, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.0770, 6.6654, 0])
+                        self.refractive_indices = np.array([1.5130, 4.2797, 0.2800, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.0770, 6.7406, 0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],  # NOTE: sensor_object.optical_parameters will auto-update when changing sensor_object.layer_thicknesses, sensor_object.refractive_indices or sensor_object.extinction_coefficients
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
@@ -256,17 +250,17 @@ class Sensor:
                 self.fitted_layer_index = (3, 1)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
-                        self.refractive_indices = np.array([1.5202, 3.5295, 0.16194, 1.4628, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.2683, 3.9783, 0.0015675, 0])
+                        self.refractive_indices = np.array([1.5202, 3.5295, 0.2238, 1.4628, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.2683, 3.9259, 0, 0])
                     case 785:
-                        self.refractive_indices = np.array([1.5162, 3.9729, 0.16088, 1.4610, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.1895, 5.0525, 0.0013323, 0])
+                        self.refractive_indices = np.array([1.5162, 3.9729, 0.2580, 1.4610, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.1895, 4.88, 0, 0])
                     case 850:
-                        self.refractive_indices = np.array([1.5149, 4.1254, 0.17340, 1.4603, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.1383, 5.6012, 0.0012284, 0])
+                        self.refractive_indices = np.array([1.5149, 4.1254, 0.2653, 1.4603, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.1383, 5.5002, 0, 0])
                     case 980:
-                        self.refractive_indices = np.array([1.5130, 4.2797, 0.20890, 1.4592, 1.0003])
-                        self.extinction_coefficients = np.array([0, 4.0770, 6.6654, 0.0010630, 0])
+                        self.refractive_indices = np.array([1.5130, 4.2797, 0.2800, 1.4592, 1.0003])
+                        self.extinction_coefficients = np.array([0, 4.0770, 6.7406, 0, 0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'],
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
@@ -364,14 +358,6 @@ class FresnelModel:
         return fresnel_coefficients_
 
     def model_reflectivity_trace(self):
-        """
-
-        :param ini_guess:
-        :param bounds:
-        :param TIR_range:
-        :param scanspeed:
-        :return:
-        """
 
         xdata_ = self.measurement_data['angles']
         ydata_ = self.measurement_data['ydata']

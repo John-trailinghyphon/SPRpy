@@ -417,7 +417,7 @@ if __name__ == '__main__':
                             dbc.Table.from_dataframe(pd.DataFrame(
                                 default_sensor_values,
                             ), size='sm', striped=True, bordered=True, hover=True)
-                        ), style={'width': '750px'}),
+                        ), style={'width': '800px'}),
                     id='default-values-collapse',
                     is_open=False)
             ], style={'margin-top': '40px', 'margin-left': '10px'}),
@@ -598,6 +598,11 @@ if __name__ == '__main__':
                                                                                         {'label': 'Add new layer to individually selected backgrounds', 'value': 1}],
                                                                                value=0,
                                                                                id='batch-fresnel-analysis-radio-selection'),
+                                                           dash.dcc.RadioItems(options=[{'label': 'Add layer to backgrounds directly', 'value': 0},
+                                                                                        {'label': 'Add layer and make new copy', 'value': 1}],
+                                                                               value=0,
+                                                                               id='batch-fresnel-analysis-newlayer-radio-selection',
+                                                                               style={'visibility': 'hidden'}),
                                                            dbc.Row([
                                                                dash.dcc.Dropdown(
                                                                    id='batch-fresnel-analysis-background-sensors-dropdown',
@@ -1817,6 +1822,7 @@ if __name__ == '__main__':
         dash.State('batch-fresnel-analysis-files', 'data'),
         dash.State('batch-fresnel-analysis-background-sensors', 'data'),
         dash.State('batch-fresnel-analysis-radio-selection', 'value'),
+        dash.State('batch-fresnel-analysis-newlayer-radio-selection', 'value'),
         dash.State('batch-fresnel-analysis-example-sensor-dropdown', 'value'),
         dash.State('batch-fresnel-analysis-example-analysis-dropdown', 'value'),
         dash.State('fresnel-analysis-offset-fit', 'value'),
@@ -1826,7 +1832,7 @@ if __name__ == '__main__':
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_sensor_index, batch_analysis_index, offset_fit_flag, elastomer_fit_flag, polarization_factor):
+                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_newlayer_radio_selection, batch_sensor_index, batch_analysis_index, offset_fit_flag, elastomer_fit_flag, polarization_factor):
 
         global current_fresnel_analysis
         global current_data_path
@@ -2214,7 +2220,7 @@ if __name__ == '__main__':
                     # Load data from measurement file using load_csv_data
                     _, _, _, _, _, next_reflectivity_df_ = load_csv_data(path=file_path)
 
-                    # Add copy of sensor object to session
+                    # Add copy of sensor object to session and set parameters
                     next_sensor = copy_sensor_backend(current_session, example_sensor_object)
                     try:
                         next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
@@ -2235,7 +2241,6 @@ if __name__ == '__main__':
                         fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                         fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
                     current_session.save_sensor(current_sensor.object_id)
-                    current_session.save_session()
 
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
@@ -2270,10 +2275,10 @@ if __name__ == '__main__':
                     current_fresnel_analysis.sensor_object_label = 'Sensor: ' + current_sensor.sensor_table_title
 
                     # Save session and analysis object
-                    current_session.save_session()
                     current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
+                    current_session.save_session()
 
-            elif batch_radio_selection == 1:  # Use specific backgrounds and add new layer
+            elif batch_radio_selection == 1:  # Use individual backgrounds and add new layer
 
                 # Use the same layer structure copied from selected example sensor object
                 for file_path, sensor_id in zip(batch_files, background_sensors):
@@ -2284,42 +2289,48 @@ if __name__ == '__main__':
                     # Select background sensor
                     background_sensor_object = current_session.sensor_instances[sensor_id]
 
-                    # Add copy of sensor object to session
-                    next_sensor = copy_sensor_backend(current_session, background_sensor_object)
-                    try:
-                        next_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
-                    except:
-                        next_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
+                    if batch_newlayer_radio_selection == 0:
+                        # Directly modify background sensor instance
+                        current_sensor = background_sensor_object
+
+                    elif batch_newlayer_radio_selection == 1:
+
+                        # Add copy of sensor object to session
+                        current_sensor = copy_sensor_backend(current_session, background_sensor_object)
+                        try:
+                            current_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                        except:
+                            current_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
 
                     # Add example layer row and values, also convert other parameters
-                    next_sensor.optical_parameters.loc[len(next_sensor.optical_parameters)-1.5] = example_sensor_object.optical_parameters.loc[len(example_sensor_object.optical_parameters) - 2]
-                    next_sensor.optical_parameters = next_sensor.optical_parameters.sort_index().reset_index(drop=True)
-                    next_sensor.layer_thicknesses = next_sensor.optical_parameters['d [nm]'].to_numpy()
-                    next_sensor.refractive_indices = next_sensor.optical_parameters['n'].to_numpy()
-                    next_sensor.extinction_coefficients = next_sensor.optical_parameters['k'].to_numpy()
+                    current_sensor.optical_parameters.loc[len(current_sensor.optical_parameters)-1.5] = example_sensor_object.optical_parameters.loc[len(example_sensor_object.optical_parameters) - 2]
+                    current_sensor.optical_parameters = current_sensor.optical_parameters.sort_index().reset_index(drop=True)
+                    current_sensor.layer_thicknesses = current_sensor.optical_parameters['d [nm]'].to_numpy()
+                    current_sensor.refractive_indices = current_sensor.optical_parameters['n'].to_numpy()
+                    current_sensor.extinction_coefficients = current_sensor.optical_parameters['k'].to_numpy()
 
-                    # Calculate TIR angle
+                    # Calculate TIR angle and update bulk RI
                     TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'],
                                                         example_analysis_object.TIR_range,
                                                         example_analysis_object.scanspeed)
-                    next_sensor.refractive_indices[-1] = next_sensor.refractive_indices[0] * np.sin(
+                    current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                         np.pi / 180 * TIR_angle)
-                    next_sensor.optical_parameters['n'] = next_sensor.refractive_indices
+                    current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
 
-                    next_sensor.fitted_layer_index = example_sensor_object.fitted_layer_index
-                    next_sensor.fitted_var = next_sensor.optical_parameters.iloc[next_sensor.fitted_layer_index]
+                    # Select correct variable to fit
+                    current_sensor.fitted_layer_index = example_sensor_object.fitted_layer_index
+                    current_sensor.fitted_var = current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index]
 
-                    current_sensor = next_sensor
+                    # Update sensor title
                     current_sensor.channel = file_path[-12:-4].replace('_', ' ')
-
                     current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
                         sensor_number=current_sensor.object_id,
                         sensor_name=current_sensor.name,
                         channel=current_sensor.channel,
                         fitted_layer=current_sensor.optical_parameters.iloc[current_sensor.fitted_layer_index[0], 0],
                         fitted_param=current_sensor.optical_parameters.columns[current_sensor.fitted_layer_index[1]])
+
                     current_session.save_sensor(current_sensor.object_id)
-                    current_session.save_session()
 
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
@@ -2516,6 +2527,15 @@ if __name__ == '__main__':
             return new_figure, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
                 lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, dash.no_update, angle_range_marks, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, dash.no_update, current_fresnel_analysis.fit_offset, current_fresnel_analysis.fit_prism_k
 
+    @dash.callback(
+        dash.Output('batch-fresnel-analysis-newlayer-radio-selection', 'style'),
+        dash.Input('batch-fresnel-analysis-radio-selection', 'value'),
+        prevent_initial_call=True)
+    def fresnel_modelling_batch_show_newlayer_settings(radio):
+        if radio == 0:
+            return {'visibility': 'hidden'}
+        else:
+            return {'visibility': 'visible'}
 
     @dash.callback(
         dash.Output('fresnel-analysis-manual-prism-k-row', 'style'),
