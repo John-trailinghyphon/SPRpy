@@ -597,7 +597,8 @@ if __name__ == '__main__':
                                                            dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
                                                                                         {'label': 'Add new layer to individually selected backgrounds', 'value': 1}],
                                                                                value=0,
-                                                                               id='batch-fresnel-analysis-radio-selection'),
+                                                                               id='batch-fresnel-analysis-radio-selection',
+                                                                               style={'margin-bottom': '30px'}),
                                                            dash.dcc.RadioItems(options=[{'label': 'Add layer to backgrounds directly', 'value': 0},
                                                                                         {'label': 'Add layer and make new copy', 'value': 1}],
                                                                                value=0,
@@ -2106,7 +2107,22 @@ if __name__ == '__main__':
 
                 # Pop out the current fresnel analysis object from the session, delete its .pickle file and make the first instance the current one
                 removed = current_fresnel_analysis
-                current_fresnel_analysis = current_session.fresnel_analysis_instances[1]
+
+                # TODO: Check that this works!
+                try:
+                    current_fresnel_analysis = current_session.fresnel_analysis_instances[1]
+                except KeyError:  # In case the first few instances have already been removed, try the next one
+                    failed = True
+                    attempted = 1
+                    max_attempts = len(current_session.fresnel_analysis_instances) + 1
+                    while failed and not attempted == max_attempts:
+                        attempted += 1
+                        try:
+                            current_fresnel_analysis = current_session.fresnel_analysis_instances[attempted+1]
+                        except KeyError:
+                            continue
+                        failed = False
+
                 current_session.remove_fresnel_analysis(removed.object_id)
                 current_session.save_session()
 
@@ -2297,10 +2313,11 @@ if __name__ == '__main__':
 
                         # Add copy of sensor object to session
                         current_sensor = copy_sensor_backend(current_session, background_sensor_object)
-                        try:
-                            current_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
-                        except:
-                            current_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
+
+                    try:
+                        current_sensor.name = file_path.split('/')[-1][15:-10].replace('_', ' ')
+                    except:
+                        current_sensor.name = background_sensor_object.name + ' + ' + example_sensor_object.optical_parameters.iloc[-2, 0]
 
                     # Add example layer row and values, also convert other parameters
                     current_sensor.optical_parameters.loc[len(current_sensor.optical_parameters)-1.5] = example_sensor_object.optical_parameters.loc[len(example_sensor_object.optical_parameters) - 2]
