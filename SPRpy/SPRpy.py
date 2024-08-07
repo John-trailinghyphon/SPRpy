@@ -1,18 +1,6 @@
 # This is the main file where SPRpy is initiated. It is run by executing the file in a Python interpreter.
 # The webapp is built using Dash (https://dash.plotly.com/), which is a Python framework for building webapps.
 
-# Plotly default discrete colors
-# 1 '#636EFA',
-# 2 '#EF553B',
-# 3 '#00CC96',
-# 4 '#AB63FA',
-# 5 '#FFA15A',
-# 6 '#19D3F3',
-# 7 '#FF6692',
-# 8 '#B6E880',
-# 9 '#FF97FF',
-# 10 '#FECB52'
-
 import time
 import tomllib
 import types
@@ -27,6 +15,18 @@ from __about__ import version
 # Dash app theme (you have to delete browser cookies before changing theme takes effect)
 dash_app_theme = dbc.themes.SPACELAB  # Options: CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX,
 # MATERIA, MINTY, MORPH, PULSE, QUARTZ, SANDSTONE, SIMPLEX, SKETCHY, SLATE, SOLAR, SPACELAB, SUPERHERO, UNITED, VAPOR, YETI, ZEPHYR.
+
+# Plotly default discrete colors
+# 1 '#636EFA',
+# 2 '#EF553B',
+# 3 '#00CC96',
+# 4 '#AB63FA',
+# 5 '#FFA15A',
+# 6 '#19D3F3',
+# 7 '#FF6692',
+# 8 '#B6E880',
+# 9 '#FF97FF',
+# 10 '#FECB52'
 
 if __name__ == '__main__':
 
