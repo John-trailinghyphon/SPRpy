@@ -10,9 +10,11 @@ by [Andreas Dahlin](https://www.adahlin.com/matlab-programs). The GUI elements a
 
 ## Installation
 
-SPRpy is available on [PyPI](https://pypi.org/project/SPRpy/) and can be installed using pip:
+SPRpy is written in Python 3.11. It is not yet compatible with python > 3.11 (dependency on package [bottleneck](https://pypi.org/project/Bottleneck/) <= python 3.11), and has not been tested on earlier versions of python (the source code is also available to clone from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy) instead). Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
 
-Windows:
+SPRpy is available on [PyPI](https://pypi.org/project/SPRpy/) and can be installed using pip (after installing python):
+
+Windows (in cmd or Powershell):
 ```python -m pip install SPRpy```
 
 Linux/Mac (always remove "python -m"):
@@ -24,13 +26,9 @@ To add a shortcut to the SPRpy folder to the desktop after installation, run the
 To update to a newer version of SPRpy (overwriting the previously installed version), run the following command:
 ```python -m pip --no-cache-dir install --upgrade SPRpy```
 
-To install an additional copy of a specific version (change X.Y.Z) of SPRpy, run the following command:
+To install an additional copy of a specific version of SPRpy, run the following command:
 ```python -m pip install SPRpy==X.Y.Z```
-This may be necessary to properly relaunch older SPRpy sessions no longer compatible with the latest release.
-
-#### Compatability and performance 
-
-SPRpy is written in Python 3.11. It is not yet compatible with python > 3.11 (dependency on package [bottleneck](https://pypi.org/project/Bottleneck/) <= python 3.11), and has not been tested on earlier versions of python (the source code is also available to clone from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy) instead). Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
+(change X.Y.Z) This may be necessary to properly open older SPRpy sessions no longer compatible with the latest release.
 
 Note that SPRpy is designed to leverage parallel computing where applicable, thus its performance will be heavily influenced by the number of logical processors of your CPU and their individual clock speeds. While running exclusion height modelling calculations, one can typically expect to see 100 % CPU usage on a 12th generation Intel i7 with 10 logical processors with a runtime of a few minutes. Low-end laptops with weaker CPUs can experience significatly longer computation times in comparison.
 
@@ -54,7 +52,9 @@ SPRpy is designed to perform the data analysis of multiple measurements within a
 
 Within each session, any number of *sensor* instances can be added. A sensor instance contains information corresponding to the type of sensor chip that was used in a SPR measurement via the parameters describing its optical layer structure (layer thicknesses and wavelength dependent refractive index values). By default, an initial gold sensor will be instanced when starting a new SPRpy session. Additional sensor instances may be quick-added as gold, SiO2, platinum or palladium, with refractive index values matching the wavelength of the currently loaded measurement file. However, any custom layer structure may be built by interacting with the layers of the sensor table in the GUI. The grey button can be used to bring up a temporary table of refractive index values (this can even be customized in the config.toml file for your own materials). Refractive index values for various materials can be found at  [refractiveindex.info](https://refractiveindex.info/). 
 
-Separate to the sensor instances are *analysis* instances for each type of analysis method (currently fresnel modelling (FM) and exclusion height determination (EH)). These keep track of selected additional model specfic parameters and the results. When a new analysis instance is added it draws its data and optical parameters from the currently loaded measurement file and the currently selected sensor. However, when selecting previous analysis instances with mismatching data paths to the currently loaded measurement file (indicated by green data trace instead of blue), rerunning calculations will pull data from the initial path (this can fail if the folders or file along the path has been moved or renamed since).
+Separate to the sensor instances are *analysis* instances for each type of analysis method (currently fresnel modelling (FM) and exclusion height determination (EH)). These keep track of selected additional model specfic parameters and the results. When a new analysis instance is added, it draws its data and optical parameters from the currently loaded measurement file and the currently selected sensor. However, when selecting previous analysis instances with mismatching data paths to the currently loaded measurement file (indicated by green data trace instead of blue), rerunning calculations will pull data from the initial path (this can fail if the folders or file along the path has been moved or renamed since).
+
+Sharing sensor or analysis instances between different sessions via their .pickle files is currently not supported.
 
 ### Session name and session log
 
@@ -81,7 +81,7 @@ The second analysis tab may be used for performing fresnel model fits of angular
 - The refractive index of each material layer is assumed to be equivalent to its dry bulk counterpart (good assumption in air)
 - The incoming light is monochromatic
 - The incoming light has no beam divergence
-- The incoming light is fully p-polarized (may be adjusted with the p-factor setting)
+- The incoming light is fully p-polarized (can be adjusted with the p-factor setting)
 
 Additionally, larger deviations in observed reflectivity and theoretically predicted reflectivity is assumed to be due to non-ideal optical conditions of the instrument and/or sensor glass. Perfectly compensating for these discrepancies in a physically accurate manner by tuning all available parameters within reasonable tolerances can be challenging and time-consuming. Fortunately, the reflectivity on its own generally carries little to no information about the thickness and refractive index of the sensor surface adlayer(s) of interests. Thus, in SPRpy, fitting is focused around the SPR minimum and a constant reflectvity offset of the fresnel coefficients is by default fitted together with the chosen layer variable to . Additionally, small corrections to the prism extinction coefficient, *k*, can be simultaneously fitted (also by default) to compensate for peak broadening around the SPR angle minimum with negligible influence on the adlayer properties (works for adlayer materials with k=0). 
 #### Experimental procedure
@@ -91,7 +91,7 @@ Additionally, larger deviations in observed reflectivity and theoretically predi
 #### Modelling procedure
 
 1) Load the desired measurement file and create a new sensor instance using the file and sensor controls. Alternatively, if you remeasure the same sensor after multiple treatments or layers, a previous sensor can be selected and used as is or after adding a new layer to it.
-2) Choose which parameter should be fitted. For clean metal sensors, choose the extinction coefficient, _k_, of the metal layer (the plasmonic metal layer thickness should usually not be altered). The thickness of the Cr layer may also need to be manually tuned by a few Å when fitting gold. For all other types of layers, select the surface layer thickness, *n* or *k*, as variable to be fitted.
+2) Choose which parameter should be fitted. For clean metal sensors, choose the extinction coefficient, _k_, of the metal layer (the plasmonic metal layer thickness should usually not be altered). The thickness of the Cr layer may also need to be manually tuned. For all other types of layers, select the surface layer thickness, *n* or *k*, as variable to be fitted.
 3) In the fresnel modelling tab, click "Add new fresnel analysis". 
 4) Adjust the initial guess and lower and upper bounds if needed. By default, the current value of the fitted variable is presented as an initial guess, with lower and upper bounds calculated as initial guess / 4 or initial guess * 2 respectively. 
 5) Then choose a suitable angle range to fit using the sliders, unless the initial automatic guess is already satisfactory. A suitable range should be covering say 20-60 % of the lower part of the SPR minimum. In the config.toml file one can tune how many points the automatic guess should include above and below the minimum value of the SPR dip.
@@ -126,7 +126,7 @@ Measure the SPR/TIR response from a surface containing your layer of interest wh
 
 1) Response quantification & Fresnel model tabs: It is necessary to first fresnel model a liquid scan from the same height probing measurement file. Use a scan immediately before the first probe injection starts for the modelling. The right scan can be selected by highlighting this part of the sensorgram in the response quantification tab with the hover lock unselected (be careful to move your cursor up and down without accidentally selecting the wrong part of the trace). Add a sensor layer corresponding to your swollen layer of interest, with *n* value of its dry bulk state (the thickness and *n* value doesn't actually matter, but make sure *k* is 0, non-negative *k* for swollen layers will likely not work with this method). Make sure to include the offset and prism k correction fits here, as this is will improve the result from the height exclusion height algorithm. Note that the obtained fitted result will not be physically accurate as it would correspond to a 0 % hydrated state (if that is what you set *n* to be), so its value should be ignored for now.
 2) Exclusion height determination tab: Click add new exclusion height analysis. A prompt will pop up asking for the required background fresnel object before proceeding.
-3) Check that the height bounds are reasonable for your expected swollen layer. By default they are calculated according to the 0 % hydrated state from the fresnel background and 6 times this value.
+3) Check that the height bounds are reasonable for your expected swollen layer. By default, they are calculated according to the 0 % hydrated state from the fresnel background and 6 times this value.
 4) Change to "Choose injection points" under the SPR sensorgram and click the SPR data trace before and after each probe injection (so 2 points per injection). These points will be used to plot the SPR angle vs TIR angle traces during probe injections, which may help to verify if the probe is truly non-interacting (linear relationship with low degree of hysteresis means non-interaction).
 5) Switch to "Choose buffer points". At this point it may help to click the legend of the TIR angle trace and injection point markers to hide them. A stable range of scans without probe present just before and after each injection should be selected, i.e. a total of 4 selected points per injection. 
 6) Next, switch to "Choose probe points". Choose a suitable stable range on top of the probe injection, i.e. a total of 2 points per injection.
