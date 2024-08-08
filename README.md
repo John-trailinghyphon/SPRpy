@@ -27,8 +27,9 @@ To update to a newer version of SPRpy (overwriting the previously installed vers
 ```python -m pip --no-cache-dir install --upgrade SPRpy```
 
 To install an additional copy of a specific version of SPRpy, run the following command:
-```python -m pip install SPRpy==X.Y.Z```
-(change X.Y.Z) This may be necessary to properly open older SPRpy sessions no longer compatible with the latest release.
+```python -m pip install --target ADD_FOLDER_PATH --ignore-installed SPRpy==X.Y.Z```
+
+(change ADD_FOLDER_PATH to desired folder and change X.Y.Z to desired version). This may be necessary to properly open older SPRpy sessions no longer compatible with the latest release.
 
 Note that SPRpy is designed to leverage parallel computing where applicable, thus its performance will be heavily influenced by the number of logical processors of your CPU and their individual clock speeds. While running exclusion height modelling calculations, one can typically expect to see 100 % CPU usage on a 12th generation Intel i7 with 10 logical processors with a runtime of a few minutes. Low-end laptops with weaker CPUs can experience significatly longer computation times in comparison.
 
