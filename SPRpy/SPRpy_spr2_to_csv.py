@@ -11,7 +11,7 @@ from tkinter.filedialog import askopenfilename, askopenfilenames
 # Assumes all selected measurement files comes from the same instrument. Use multiple copies of spr2_to_csv_v2.py and
 # their associated SPR_poly_coeff_YY-MM-DD.csv file if working with multiple instruments.
 
-default_poly_file = r'SPRpy_X_cal_values_24-07-24.csv'
+default_poly_file = r'DEFAULT_X_cal_values.csv'
 
 prism_n_635 = 1.5215  # Approximate prism RI based on Soda lime glass
 prism_n_650 = 1.5210  # Approximate prism RI based on Soda lime glass

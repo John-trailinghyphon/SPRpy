@@ -28,7 +28,7 @@ for dto_file in dto_files:
     data = np.loadtxt(dto_file, delimiter='\t').T
     angles = data[0, :]
     step_max = start_pos + scanspeed * len(angles)
-    steps = np.arange(start_pos, step_max)
+    steps = np.arange(start_pos, step_max, scanspeed)
     p = np.polyfit(steps, angles, 6)
     polycoffs.append(p)
     y_fit = np.polyval(p, steps)
