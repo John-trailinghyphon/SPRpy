@@ -153,38 +153,30 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
     TIR_ydata = ydata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
     TIR_xdata = xdata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
 
-    if scanspeed == 5 or scanspeed == 1:
-        # Filter the data with a moving-average filter to smoothen the signal
-        TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=7, min_count=1)
-        TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=7, min_count=1)
+    # Scanspeed dependent filtering and fitting
+    if scanspeed <= 5:
+        window_count = 7
+        fit_lower_ind = 4
+        fit_higher_ind = 5
+    elif scanspeed > 5:
+        window_count = 3
+        fit_lower_ind = 3
+        fit_higher_ind = 3
 
-        # Find maximum derivative
-        deriv_ydata = np.concatenate(([np.diff(TIR_ydata_filtered)[0]], np.diff(TIR_ydata_filtered)))  # Add extra value for dimensions
-        dTIR_i = np.argmax(deriv_ydata)
+    # Filter the data with a moving-average filter to smoothen the signal
+    TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=window_count, min_count=1)
+    TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=window_count, min_count=1)
 
-        # Fit against the derivative spike where the derivative is max, considering also -3 +2 nearest neighbors
-        poly_c = np.polyfit(TIR_xdata_filtered[dTIR_i-4:dTIR_i+5],
-                        deriv_ydata[dTIR_i-4:dTIR_i+5], 3)
+    # Find maximum derivative
+    deriv_ydata = np.concatenate(([np.diff(TIR_ydata_filtered)[0]], np.diff(TIR_ydata_filtered)))  # Add extra value for dimensions
+    dTIR_i = np.argmax(deriv_ydata)
 
-        # Recreate the curve with a lot more points
-        deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-4], TIR_xdata_filtered[dTIR_i+4], 2000)
+    # Fit against the derivative spike where the derivative is max, considering also nearest neighbors
+    poly_c = np.polyfit(TIR_xdata_filtered[dTIR_i-fit_lower_ind:dTIR_i+fit_higher_ind],
+                    deriv_ydata[dTIR_i-fit_lower_ind:dTIR_i+fit_higher_ind], 3)
 
-    else:
-        # Filter the data with a moving-average filter to smoothen the signal
-        TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=3, min_count=1)
-        TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=3, min_count=1)
-
-        # Find maximum derivative
-        deriv_ydata = np.concatenate(([0], np.diff(TIR_ydata_filtered)))  # Add extra 0 for dimensions
-        dTIR_i = np.argmax(deriv_ydata)
-
-        # Fit against the derivative spike where the derivative is max, considering also -3 +2 nearest neighbors
-        poly_c = np.polyfit(TIR_xdata_filtered[dTIR_i-3:dTIR_i+3],
-                        deriv_ydata[dTIR_i-3:dTIR_i+3], 3)
-
-        # Recreate the curve with a lot more points
-        deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-3], TIR_xdata_filtered[dTIR_i+3], 2000)
-
+    # Recreate the curve with a lot more points
+    deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-fit_lower_ind], TIR_xdata_filtered[dTIR_i+fit_lower_ind], 2000)
 
     # Find TIR from max of deriv fit
     deriv_TIR_fit_y = np.polyval(poly_c, deriv_TIR_fit_x)

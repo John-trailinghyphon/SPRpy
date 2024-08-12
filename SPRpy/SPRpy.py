@@ -42,6 +42,16 @@ if __name__ == '__main__':
     default_data_folder = config["default_data_folder"]
     session_host = config["session_host"]
     default_sensor_values = config["default_sensor_values"]
+    max_logical_cores = config["max_logical_cores"]
+
+    # Determine how many processes can be used for calculations at a time
+    if max_logical_cores == 0:
+        logical_cores = multiprocessing.cpu_count()
+    elif max_logical_cores > multiprocessing.cpu_count():
+        print('Warning: max_logical_cores exceeding system specifications. Using all available cores.')
+        logical_cores = multiprocessing.cpu_count()
+    else:
+        logical_cores = max_logical_cores
 
     load_session_flag = False
     if ask_for_previous_session is True:
@@ -3975,7 +3985,7 @@ if __name__ == '__main__':
             current_exclusion_height_analysis.mean_exclusion_RI_result = None
 
             # Run exclusion height calculations
-            process_all_exclusion_heights(current_exclusion_height_analysis)
+            process_all_exclusion_heights(current_exclusion_height_analysis, logical_cores)
 
             # Wait for all results to be in
             while 0 in current_exclusion_height_analysis.all_exclusion_results:

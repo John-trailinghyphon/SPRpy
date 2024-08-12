@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.1
+
+### Features
+- Added support for using fewer than the maximum number of available logical cores in parallel computing steps. Change "max_logical_cores" in config.toml
+
+### Fixes
+
+- Fixed X-calibration not accounting for scanspeed
+- Fixed Y-calibration error for calibration scans with reflectivity above 1.0 
+- Moved default X-cal filename to config.toml
+- Generalised TIR_determination() to work for any scanspeed (different filtering and fitting for scanspeeds below or above 5)
+
 ## v0.2.0
 
 ### Features

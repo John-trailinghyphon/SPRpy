@@ -2,6 +2,7 @@ import re
 import os
 import numpy as np
 import tkinter
+import tomllib
 import multiprocessing as mp
 from tkinter.filedialog import askopenfilename, askopenfilenames
 
@@ -11,7 +12,23 @@ from tkinter.filedialog import askopenfilename, askopenfilenames
 # Assumes all selected measurement files comes from the same instrument. Use multiple copies of spr2_to_csv_v2.py and
 # their associated SPR_poly_coeff_YY-MM-DD.csv file if working with multiple instruments.
 
-default_poly_file = r'DEFAULT_X_cal_values.csv'
+
+# Read configuration parameters
+with open('config.toml', 'r') as f:
+    config = tomllib.loads(f.read())
+
+default_poly_file = config["default_poly_file"]
+max_logical_cores = config["max_logical_cores"]
+
+# Determine how many processes can be used for calculations at a time
+if max_logical_cores == 0:
+    logical_cores = mp.cpu_count()
+elif max_logical_cores > mp.cpu_count():
+    print('Warning: max_logical_cores exceeding system specifications. Using all available cores.')
+    logical_cores = mp.cpu_count()
+else:
+    logical_cores = max_logical_cores
+
 
 def extract_parameters(content):
 
@@ -102,12 +119,11 @@ def extract_spectra(content, c_ind, polycoff, start_pos, scanspeed, cal_scanspee
 
     calib_data_pattern = re.compile(r'a>.*<')
     calib_data_string = calib_data_pattern.search(calib_channel_string).group()
-    
-    calib_data_string = calib_data_string.replace('a>', '0.')
+
+    calib_data_string = calib_data_string.strip('a>')
     calib_data_string = calib_data_string.strip('<')
-    calib_data_string = calib_data_string.replace(';', ';0.')
-    
-    calib_data = list(map(float, calib_data_string.split(';')))
+
+    calib_data = np.array(list(map(float, calib_data_string.split(';'))))/10000
     calib_steps = np.arange(float(cal_start_pos), float(cal_scanspeed*cal_points)+float(cal_start_pos), cal_scanspeed)
     calib_angles = np.polyval(polycoff, calib_steps)
     calib_array = np.vstack((calib_angles, calib_data))
@@ -168,9 +184,9 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
                 poly_path, poly_file_name = os.path.split(default_poly_file)
 
             except FileNotFoundError:
-                print('Polynomial coefficients not found in default location')
+                print('Error: Polynomial coefficients not found in default location')
 
-                poly_file = askopenfilename(title='Select polynomial coefficients (.csv)')
+                poly_file = askopenfilename(title='Error! Select correct polynomial coefficients (.csv)')
 
                 #  Read selected polynomial file
                 with open(poly_file, 'r') as p_file:
@@ -181,15 +197,42 @@ if __name__ == '__main__':  # This is important since mp.Process goes through th
 
                 poly_path, poly_file_name = os.path.split(poly_file)
 
-        #  Extract and calibrate spectra for each laser
+            except ValueError:
+                print('Error: Default polynomial coefficients not matching number of channels')
+
+                poly_file = askopenfilename(title='Error! Select correct polynomial coefficients (.csv)')
+
+                #  Read selected polynomial file
+                with open(poly_file, 'r') as p_file:
+                    polycoeffs = [0] * channels
+                    for p_ind in range(channels):
+                        coeff = p_file.readline().split('\t')
+                        polycoeffs[p_ind] = list(map(float, coeff))
+
+                poly_path, poly_file_name = os.path.split(poly_file)
+
+        #  Extract and calibrate spectra for each laser using parallel computing
         jobs = []
-        for i in range(channels):
-            pr = mp.Process(target=extract_spectra, args=(content, i, polycoeffs[i], start_pos, scan_speed, cal_scanspeed, cal_points, cal_start_pos, time_value_list, laser_channels, spr2_file))
+        process_step = 0
+        while process_step < min(channels, logical_cores):
+            pr = mp.Process(target=extract_spectra, args=(content, process_step, polycoeffs[process_step], start_pos, scan_speed, cal_scanspeed, cal_points, cal_start_pos, time_value_list, laser_channels, spr2_file))
             jobs.append(pr)
             pr.start()
-        print('Working...')
+            print('Started working on channel L' + str(process_step + 1) + ' ' + str(laser_channels[process_step]) + 'nm')
+            process_step += 1
 
-        # Wait for the first file to finish
+        # If there are fewer logical cores than channels, wait for the first few jobs to finish, then start new processes as they do
+        remaining_process_step = 0
+        while process_step < channels:
+            jobs[remaining_process_step].join()
+            pr = mp.Process(target=extract_spectra, args=(content, process_step, polycoeffs[process_step], start_pos, scan_speed, cal_scanspeed, cal_points, cal_start_pos, time_value_list, laser_channels, spr2_file))
+            jobs.append(pr)
+            pr.start()
+            print('Started working on channel L' + str(process_step + 1) + ' ' + str(laser_channels[process_step]) + 'nm')
+            process_step += 1
+            remaining_process_step += 1
+
+        # Wait for the jobs of the first file to finish
         for job in jobs:
             job.join()
 

@@ -1,4 +1,4 @@
-# This file contains all SPRpy classes and methods and functions that depend on the class objects
+# This file contains all SPRpy classes, and also methods and functions that depend on the class objects
 
 import datetime
 import os
@@ -550,7 +550,6 @@ class ExclusionHeight:
             # Next pair of probe point indices
             probepoint_index += 2
 
-
         # Create SPR vs TIR data frames
         injectionpoint_index = 0
         offset_SPR_sensorgram = self.sensorgram_data['SPR angle'] - self.sensorgram_data.loc[self.sensorgram_offset_ind, 'SPR angle']
@@ -694,13 +693,7 @@ def exclusion_height_process(exclusion_height_analysis_object_copy, buffer_or_pr
     connection.close()
 
 
-def process_all_exclusion_heights(exclusion_height_analysis_object):
-    """
-    This function initiates all processes, executes them and collects the results. All results are stored inside the exclusion height object.
-
-    :param exclusion_height_analysis_object: object that stores all required data and parameters
-    :return: None
-    """
+def process_all_exclusion_heights(exclusion_height_analysis_object, logical_cores):
 
     buffer_connections = []
     probe_connections = []
@@ -711,7 +704,8 @@ def process_all_exclusion_heights(exclusion_height_analysis_object):
     probe_index = 0
     process_step = 0
     required_processes = int(len(exclusion_height_analysis_object.injection_points) + len(exclusion_height_analysis_object.injection_points) / 2)
-    while process_step < min(required_processes, multiprocessing.cpu_count()-2):
+
+    while process_step < min(required_processes, logical_cores):
 
         # Setup buffer process
         buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
