@@ -13,14 +13,6 @@ from tkinter.filedialog import askopenfilename, askopenfilenames
 
 default_poly_file = r'DEFAULT_X_cal_values.csv'
 
-prism_n_635 = 1.5215  # Approximate prism RI based on Soda lime glass
-prism_n_650 = 1.5210  # Approximate prism RI based on Soda lime glass
-prism_n_670 = 1.5202  # From Bionavis
-prism_n_785 = 1.5162  # From Bionavis
-prism_n_850 = 1.5149  # From Bionavis
-prism_n_980 = 1.5129  # From Bionavis
-
-
 def extract_parameters(content):
 
     # Calibration data
