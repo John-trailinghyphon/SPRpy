@@ -169,7 +169,7 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
         # Recreate the curve with a lot more points
         deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-4], TIR_xdata_filtered[dTIR_i+4], 2000)
 
-    elif scanspeed == 10:
+    else:
         # Filter the data with a moving-average filter to smoothen the signal
         TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=3, min_count=1)
         TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=3, min_count=1)
@@ -185,8 +185,6 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
         # Recreate the curve with a lot more points
         deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-3], TIR_xdata_filtered[dTIR_i+3], 2000)
 
-    else:
-        raise ValueError('Invalid scanspeed value')
 
     # Find TIR from max of deriv fit
     deriv_TIR_fit_y = np.polyval(poly_c, deriv_TIR_fit_x)
