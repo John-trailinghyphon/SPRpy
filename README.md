@@ -8,6 +8,9 @@ Apart from launching SPRpy and selecting files in the file dialog windows, SPRpy
 Fresnel calculations are based on MATLAB implementations of the [transfer-matrix-method](https://en.wikipedia.org/wiki/Transfer-matrix_method_(optics)) 
 by [Andreas Dahlin](https://www.adahlin.com/matlab-programs). The GUI elements are built using [Plotly Dash](https://dash.plotly.com/).
 
+To cite this work, please use the following:
+**Andersson, J. (2024). SPRpy: GUI analysis methods for MP-SPR measurements[Computer software]. https://doi.org/10.5281/zenodo.13479400**
+
 ## Installation
 
 SPRpy is written in Python 3.11. It is not yet compatible with python > 3.11 (dependency on package [bottleneck](https://pypi.org/project/Bottleneck/) <= python 3.11), and has not been tested on earlier versions of python (the source code is also available to clone from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy) instead). Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
