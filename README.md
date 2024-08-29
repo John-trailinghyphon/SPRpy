@@ -1,4 +1,4 @@
-# SPRpy - Analysis of MP-SPR measurements with python and dash
+# SPRpy: GUI analysis methods for MP-SPR measurements
 
 This program can be used to perform data analysis methods on multi-parameter surface plasmon resonance (MP-SPR) measurements
 acquired using [Bionavis SPR instruments](https://www.bionavis.com/en/technology/why-choose-mpspr/). Specifically, fresnel modelling and exclusion height analysis of full angular scans is currently available.
