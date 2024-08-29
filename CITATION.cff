@@ -6,6 +6,6 @@ authors:
   orcid: "https://orcid.org/0000-0002-2977-8305"
 title: "SPRpy: GUI analysis methods for MP-SPR measurements"
 version: 0.2.1
-doi: 10.5281/zenodo.13479401
+doi: 10.5281/zenodo.13479400
 date-released: 2024-08-29
 url: "https://github.com/John-trailinghyphon/SPRpy"
