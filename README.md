@@ -8,7 +8,8 @@ Apart from launching SPRpy and selecting files in the file dialog windows, SPRpy
 Fresnel calculations are based on MATLAB implementations of the [transfer-matrix-method](https://en.wikipedia.org/wiki/Transfer-matrix_method_(optics)) 
 by [Andreas Dahlin](https://www.adahlin.com/matlab-programs). The GUI elements are built using [Plotly Dash](https://dash.plotly.com/).
 
-To cite this work, please use the following:
+To cite this work:
+
 **Andersson, J. (2024). SPRpy: GUI analysis methods for MP-SPR measurements[Computer software]. https://doi.org/10.5281/zenodo.13479400**
 
 ## Installation
