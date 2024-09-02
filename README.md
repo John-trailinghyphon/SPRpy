@@ -1,6 +1,6 @@
 # SPRpy: GUI analysis methods for MP-SPR measurements
 
-This program can be used to perform data analysis methods on multi-parameter surface plasmon resonance (MP-SPR) measurements
+This program can be used to perform data analysis on multi-parameter surface plasmon resonance (MP-SPR) measurements
 acquired using [Bionavis SPR instruments](https://www.bionavis.com/en/technology/why-choose-mpspr/). Specifically, fresnel modelling and exclusion height analysis of full angular scans is currently available.
 
 Apart from launching SPRpy and selecting files in the file dialog windows, SPRpy is designed to be a fully interactive graphical user interface (GUI) running inside a web browser, thus requiring no programming knowledge to operate (of course, the core functions of the code may be adapted for your own programming scripts). 
@@ -8,9 +8,9 @@ Apart from launching SPRpy and selecting files in the file dialog windows, SPRpy
 Fresnel calculations are based on MATLAB implementations of the [transfer-matrix-method](https://en.wikipedia.org/wiki/Transfer-matrix_method_(optics)) 
 by [Andreas Dahlin](https://www.adahlin.com/matlab-programs). The GUI elements are built using [Plotly Dash](https://dash.plotly.com/).
 
-To cite this work:
+To cite this work, navigate to the "Cite this repository" menu on the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy), or click this Zenodo badge:
 
-**Andersson, J. (2024). SPRpy: GUI analysis methods for MP-SPR measurements[Computer software]. https://doi.org/10.5281/zenodo.13479400**
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13479400.svg)](https://doi.org/10.5281/zenodo.13479400)
 
 ## Installation
 
