@@ -14,7 +14,7 @@ To cite this work:
 
 ## Installation
 
-SPRpy is written in Python 3.11. It is not yet compatible with python > 3.11 (dependency on package [bottleneck](https://pypi.org/project/Bottleneck/) <= python 3.11), and has not been tested on earlier versions of python (the source code is also available to clone from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy) instead). Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
+SPRpy is written in Python 3.11 and also works with 3.12. It is not yet compatible with python > 3.13 (issue with tkinter for python 3.13.0, should be fixed in 3.13.1), and has not been tested on earlier versions of python (the source code is also available to clone from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy) instead). Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
 
 SPRpy is available on [PyPI](https://pypi.org/project/SPRpy/) and can be installed using pip (after installing python):
 
@@ -26,6 +26,7 @@ Linux/Mac (always remove "python -m"):
 
 To add a shortcut to the SPRpy folder to the desktop after installation, run the following command in the command prompt (windows only):
 ```SPRpy-desktop-shortcut```
+NOTE: This doesn't work on python > 3.12 due to issue with pywin32 (https://github.com/mhammond/pywin32/issues/2415)
 
 To update to a newer version of SPRpy (overwriting the previously installed version), run the following command:
 ```python -m pip --no-cache-dir install --upgrade SPRpy```
