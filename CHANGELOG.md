@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.2
+## v0.2.3
 
 ### Fixes
 - Added support for python 3.12 (still problem with python 3.13.0 due to tkinter issue until patch 3.13.1)
