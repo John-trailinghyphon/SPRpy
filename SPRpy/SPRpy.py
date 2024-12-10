@@ -81,8 +81,11 @@ if __name__ == '__main__':
             current_session.name = current_session.location.split('/')[-1]
 
             # Load measurement data
-            current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(
-                path=current_session.current_data_path, default_data_folder=default_data_folder)
+            try:
+                current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(
+                    path=current_session.current_data_path, default_data_folder=default_data_folder)
+            except FileNotFoundError:
+                current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(prompt='Select the original data file matching '+current_session.current_data_path)
 
             # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
             if ydata_df.shape[0] > 50:

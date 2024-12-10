@@ -35,10 +35,10 @@ def select_files(prompt, prompt_folder=None, file_types=[('Pickle files', '*.pic
     return selected_files
 
 
-def load_csv_data(path=False, default_data_folder=None):
+def load_csv_data(path=False, default_data_folder=None, prompt='Select the measurement data file (.csv)'):
     if not path:
-        print('Select the measurement data file (.csv)')
-        data_path_ = select_file('Select the measurement data file', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
+        print(prompt)
+        data_path_ = select_file('Select the measurement data file (.csv)', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')])
     else:
         data_path_ = path
 
@@ -50,6 +50,7 @@ def load_csv_data(path=False, default_data_folder=None):
 
     except AttributeError:  # I think .group().strip() should return AttributeError if .search() returns None
         scanspeed = 5  # Assuming medium scanspeed if legacy spr2 to csv converter was used
+
 
     # Load in the measurement data from a .csv file
     data_frame_ = pd.read_csv(data_path_, delimiter=';', skiprows=1, header=None)
