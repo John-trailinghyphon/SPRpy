@@ -1124,14 +1124,13 @@ if __name__ == '__main__':
                         # the more common options, and then one that is fully customisable?
                         # To make persistent editable axis and titles -> https://community.plotly.com/t/allowing-users-to-edit-graph-properties-without-code-changes/72031'
                         # (but I would create an object for the summary maybe {or saved in the session object}? at least give that option so everything is saved.
-
                         dash.html.Div([
                             dash.html.Div([
-                                dash.html.H3(['Under construction. Coming in version 0.3.0']),
+                                dash.html.H3(['Result summary']),
 
                             ], style={'margin-top': '1.9rem', 'width': '65%'}),
                             dash.html.Div([
-                                dash.dcc.Graph(id='barplot-reflectivity-graph',
+                                dash.dcc.Graph(id='barplot-summary-graph',
                                                figure=go.Figure(go.Scatter()),
                                                mathjax=True),
                                 dbc.DropdownMenu(
@@ -1144,9 +1143,62 @@ if __name__ == '__main__':
                                         dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0)],
                                     style={'margin-left': '-5px'})
                             ], style={'margin-left': '30%'}),
-                        ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
+                            dash.html.Div([
+                                dash.html.H3(['Export result']),
+
+                            ], style={'margin-top': '1.9rem', 'width': '65%'}),
+                            dash.html.Div([
+                                dbc.Checkbox(
+                                    id='export-select-save-location',
+                                    label="Select export folder (default in SESSION_NAME/Results folder)",
+                                    value=False
+                                ),
+                                dbc.Collapse([
+                                    dbc.Label("Choose fresnel analysis export options"),
+                                    dbc.Checklist(
+                                        options=[
+                                            {"label": "Filename", "value": 1},
+                                            {"label": "Sensor name", "value": 2},
+                                            {"label": "Analysis name", "value": 3},
+                                            {"label": "Fitted value", "value": 4},
+                                            {"label": "All optical parameters", "value": 5}],
+                                        value=[1, 2, 3, 4, 5],
+                                        id="export-fresnel-checklist-summary",
+                                        inline=True,
+                                    ),
+                                    dbc.Label("Choose exclusion height export options"),
+                                    dbc.Checklist(
+                                        options=[
+                                            {"label": "Filename", "value": 1},
+                                            {"label": "Sensor name", "value": 2},
+                                            {"label": "Analysis name", "value": 3},
+                                            {"label": "Mean value", "value": 4},
+                                            {"label": "All values", "value": 5},
+                                            {"label": "All optical parameters", "value": 6}],
+                                        value=[1, 2, 3, 4, 5, 6],
+                                        id="export-exclusion-checklist-summary",
+                                        inline=True,
+                                    ),
+                                ], id='export-options-collapse', is_open=True),
+                                dbc.ButtonGroup([
+                                    dbc.Button('Show export options', id='export-options-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                    dbc.Button('Export results to single .csv file', id='export-single-file-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                    dbc.Button('Export results to multiple .csv files',
+                                               id='export-multiple-files-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                ]),
+                            ]),
+                        ], style={'width': '90%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
                     ], id='summary-tab-content')
-                ], label='Result summary', tab_id='summary-tab', style={'margin-top': '10px'}),
+                ], label='Result summary and export', tab_id='summary-tab', style={'margin-top': '10px'}),
             ], id='analysis-tabs', active_tab='quantification-tab'),
         ], style={'margin-left': '2%', 'margin-right': '2%'})
     ])
