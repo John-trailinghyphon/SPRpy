@@ -1150,9 +1150,33 @@ if __name__ == '__main__':
                             dash.html.Div([
                                 dbc.Checkbox(
                                     id='export-select-save-location',
-                                    label="Select export folder (default in SESSION_NAME/Results folder)",
+                                    label="Select export folder (or default to 'SPRpy/SESSION_NAME/Results' folder)",
                                     value=False
                                 ),
+                                dbc.Collapse([
+                                    dbc.Label('Select fresnel analyses to exclude'),
+                                    dash.dcc.Dropdown(
+                                        id='export-fresnel-exclude-dropdown',
+                                        multi=True,
+                                        clearable=True,
+                                        options=[{'label': 'FM' + str(fresnel_id) + ' ' +
+                                                           current_session.fresnel_analysis_instances[
+                                                               fresnel_id].name,
+                                                  'value': fresnel_id} for fresnel_id in
+                                                 current_session.fresnel_instances],
+                                        value=[fresnel_id for fresnel_id in current_session.fresnel_analysis_instances]),
+                                    dbc.Label('Select exclusion height analyses to exclude'),
+                                    dash.dcc.Dropdown(
+                                        id='export-exclusion-exclude-dropdown',
+                                        multi=True,
+                                        clearable=True,
+                                        options=[{'label': 'EH' + str(exclusion_id) + ' ' +
+                                                           current_session.exclusion_height_analysis_instances[
+                                                               exclusion_id].name,
+                                                  'value': exclusion_id} for exclusion_id in
+                                                 current_session.exclusion_height_analysis_instances],
+                                        value=[exclusion_id for exclusion_id in current_session.exclusion_height_analysis_instances])
+                                ], id='export-exclude-collapse', is_open=True),
                                 dbc.Collapse([
                                     dbc.Label("Choose fresnel analysis export options"),
                                     dbc.Checklist(
@@ -1181,7 +1205,11 @@ if __name__ == '__main__':
                                     ),
                                 ], id='export-options-collapse', is_open=True),
                                 dbc.ButtonGroup([
-                                    dbc.Button('Show export options', id='export-options-button',
+                                    dbc.Button('Exclude specific analyses', id='export-exclude-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                    dbc.Button('Show advanced export options', id='export-options-button',
                                                color='primary',
                                                n_clicks=0,
                                                disabled=False),

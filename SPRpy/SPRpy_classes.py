@@ -85,7 +85,7 @@ class Session:
         removed = self.exclusion_height_analysis_instances.pop(analysis_object_id)
         removed_file_path = self.location + r'\Analysis instances' + r'\EH{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
         os.remove(removed_file_path)
-        print('Removed the following analysis object: FM{id} {name}'.format(id=removed.object_id, name=removed.name))
+        print('Removed the following analysis object: EH{id} {name}'.format(id=removed.object_id, name=removed.name))
 
         return
 
