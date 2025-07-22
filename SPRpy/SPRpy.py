@@ -261,7 +261,6 @@ if __name__ == '__main__':
                 ),
             ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'space-between'}
         ),
-
         # TODO: Add an Interval component that updates the session log once per minute (when/if starting to add automatic log messages)
         # Session log div
         dash.html.Div([
@@ -475,6 +474,7 @@ if __name__ == '__main__':
                                 )
                             ], style={'margin-left': '13%'}),
                         ], style={'width': '35%'}),
+                        # TODO: Add option to plot our PureKinetics stuff in this graph window
                         dash.html.Div([
                             dash.dcc.Graph(id='quantification-sensorgram-graph',
                                            figure=sensorgram_fig,
@@ -1163,7 +1163,7 @@ if __name__ == '__main__':
                                                            current_session.fresnel_analysis_instances[
                                                                fresnel_id].name,
                                                   'value': fresnel_id} for fresnel_id in
-                                                 current_session.fresnel_instances],
+                                                 current_session.fresnel_analysis_instances],
                                         value=[fresnel_id for fresnel_id in current_session.fresnel_analysis_instances]),
                                     dbc.Label('Select exclusion height analyses to exclude'),
                                     dash.dcc.Dropdown(
@@ -1787,6 +1787,7 @@ if __name__ == '__main__':
         return figure_object
 
     # Update the sensorgram plot in the Response quantification tab
+    #TODO: Add our PureKinetics plot somewhere here as well
     @dash.callback(
         dash.Output('quantification-sensorgram-graph', 'figure'),
         dash.Input('quantification-sensorgram-save-png', 'n_clicks'),
