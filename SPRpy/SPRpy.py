@@ -470,7 +470,8 @@ if __name__ == '__main__':
                                     children=[
                                         dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
                                         dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0)],
+                                        dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0),
+                                        dbc.DropdownMenuItem('.csv', id='quantification-reflectivity-save-csv', n_clicks=0)],
                                 )
                             ], style={'margin-left': '13%'}),
                         ], style={'width': '35%'}),
@@ -490,7 +491,8 @@ if __name__ == '__main__':
                                     color='info',
                                     children=[dbc.DropdownMenuItem('.PNG', id='quantification-sensorgram-save-png', n_clicks=0),
                                               dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
-                                              dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0)],
+                                              dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0),
+                                              dbc.DropdownMenuItem('.csv', id='quantification-sensorgram-save-csv', n_clicks=0)],
                                     style={'margin-left': '100%'}),
                             ], style={'margin-left': '27.5%'}),
                         ], style={'width': '60%'})
@@ -787,7 +789,8 @@ if __name__ == '__main__':
                                     children=[
                                         dbc.DropdownMenuItem('.PNG', id='fresnel-reflectivity-save-png', n_clicks=0),
                                         dbc.DropdownMenuItem('.SVG', id='fresnel-reflectivity-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='fresnel-reflectivity-save-html', n_clicks=0)],
+                                        dbc.DropdownMenuItem('.HTML', id='fresnel-reflectivity-save-html', n_clicks=0),
+                                        dbc.DropdownMenuItem('.csv', id='fresnel-reflectivity-save-csv', n_clicks=0)],
                                     style={'margin-left': '-5px'})
                             ], style={'margin-left': '30%'}),
                         ], style={'width': '35%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
@@ -1011,7 +1014,8 @@ if __name__ == '__main__':
                                                       dbc.DropdownMenuItem('.SVG', id='exclusion-height-sensorgram-save-svg',
                                                                            n_clicks=0),
                                                       dbc.DropdownMenuItem('.HTML', id='exclusion-height-sensorgram-save-html',
-                                                                           n_clicks=0)])
+                                                                           n_clicks=0),
+                                                      dbc.DropdownMenuItem('.csv', id='exclusion-height-sensorgram-save-csv', n_clicks=0)])
                                     ], style={'display': 'flex', 'justify-content': 'left'}),
                                 ])
                             ], id='exclusion-height-sensorgram-collapse', is_open=False, style={'width': '60%', 'margin-left': '3%'})
@@ -1062,6 +1066,9 @@ if __name__ == '__main__':
                                                     dbc.DropdownMenuItem('.HTML',
                                                                          id='exclusion-height-SPRvsTIR-save-html',
                                                                          n_clicks=0)],
+                                                    dbc.DropdownMenuItem('.csv',
+                                                                         id='exclusion-height-SPRvsTIR-save-csv',
+                                                                         n_clicks=0)],
                                             )
                                         ], style={'margin-left': '13%'}),
                                     ], style={'width': '33%'}),
@@ -1080,8 +1087,10 @@ if __name__ == '__main__':
                                                     dbc.DropdownMenuItem('.SVG', id='exclusion-height-reflectivity-save-svg',
                                                                          n_clicks=0),
                                                     dbc.DropdownMenuItem('.HTML', id='exclusion-height-reflectivity-save-html',
-                                                                         n_clicks=0)],
-                                            )
+                                                                         n_clicks=0),
+                                                    dbc.DropdownMenuItem('.csv',
+                                                                         id='exclusion-height-reflectivity-save-csv',
+                                                                         n_clicks=0)])
                                         ], style={'margin-left': '13%'}),
                                     ], style={'width': '33%'}),
                                     dash.html.Div([
@@ -1102,6 +1111,9 @@ if __name__ == '__main__':
                                                                          n_clicks=0),
                                                     dbc.DropdownMenuItem('.HTML',
                                                                          id='exclusion-height-d-n-pair-save-html',
+                                                                         n_clicks=0)],
+                                                    dbc.DropdownMenuItem('.csv',
+                                                                         id='exclusion-height-d-n-pair-save-csv',
                                                                          n_clicks=0)],
                                             )
                                         ], style={'margin-left': '13%'}),
@@ -1140,7 +1152,8 @@ if __name__ == '__main__':
                                     children=[
                                         dbc.DropdownMenuItem('.PNG', id='barplot-save-png', n_clicks=0),
                                         dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0)],
+                                        dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0),
+                                        dbc.DropdownMenuItem('.csv', id='barplot-save-csv', n_clicks=0)],
                                     style={'margin-left': '-5px'})
                             ], style={'margin-left': '30%'}),
                             dash.html.Div([
@@ -1650,12 +1663,13 @@ if __name__ == '__main__':
         dash.Input('quantification-reflectivity-save-png', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-svg', 'n_clicks'),
         dash.Input('quantification-reflectivity-save-html', 'n_clicks'),
+        dash.Input('quantification-reflectivity-save-csv', 'n_clicks'),
         dash.Input('quantification-sensorgram-graph', 'hoverData'),
         dash.Input('loaded-new-measurement', 'data'),
         dash.State('quantification-reflectivity-graph', 'figure'),
         dash.State('hover-selection-switch', 'value'),
         prevent_initial_call=True)
-    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, clear_traces, save_png, save_svg, save_html, hoverData, loaded_new, figure_JSON, lock_hover):
+    def update_reflectivity_quantification_graph(add_data_trace, add_fresnel_trace, clear_traces, save_png, save_svg, save_html, save_csv, hoverData, loaded_new, figure_JSON, lock_hover):
 
         global ydata_df
         global angles_df
@@ -1775,16 +1789,23 @@ if __name__ == '__main__':
         elif 'quantification-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_html(figure_object, save_folder+r'\reflectivity_plot.html', include_mathjax='cdn')
+            raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-svg' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.svg', format='svg')
+            raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.png', format='png')
+            raise dash.exceptions.PreventUpdate
 
-        return figure_object
+        elif 'quantification-reflectivity-save-csv' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            fig_df = pd.DataFrame.from_dict({'x'+str(i): figure_object.data[i].x, 'y'+str(i): figure_object.data[i].y} for i in range(len(figure_object.data)))
+            fig_df.to_csv(save_folder+r'\reflectivity_plot.csv')
+            raise dash.exceptions.PreventUpdate
 
     # Update the sensorgram plot in the Response quantification tab
     #TODO: Add our PureKinetics plot somewhere here as well
@@ -1793,11 +1814,12 @@ if __name__ == '__main__':
         dash.Input('quantification-sensorgram-save-png', 'n_clicks'),
         dash.Input('quantification-sensorgram-save-svg', 'n_clicks'),
         dash.Input('quantification-sensorgram-save-html', 'n_clicks'),
+        dash.Input('quantification-sensorgram-save-csv', 'n_clicks'),
         dash.Input('quantification-sensorgram-graph', 'clickData'),
         dash.Input('loaded-new-measurement', 'data'),
         dash.State('quantification-sensorgram-graph', 'figure'),
         prevent_initial_call=True)  # Adding this fixed a weird bug with graph not updating after firing clickData callbacks
-    def update_sensorgram_quantification_tab(save_png, save_svg, save_html, clickData, data_update, figure_JSON):
+    def update_sensorgram_quantification_tab(save_png, save_svg, save_html, save_csv, clickData, data_update, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
         global sensorgram_df_selection
@@ -1858,21 +1880,25 @@ if __name__ == '__main__':
 
         elif 'quantification-sensorgram-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(figure_object, save_folder + r'\reflectivity_plot.html', include_mathjax='cdn')
-
-            return figure_object
+            plotly.io.write_html(figure_object, save_folder + r'\sensorgram_plot.html', include_mathjax='cdn')
+            raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-svg' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.svg', format='svg')
-
-            return figure_object
+            plotly.io.write_image(figure_object, save_folder + r'\sensorgram_plot.svg', format='svg')
+            raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder + r'\reflectivity_plot.png', format='png')
+            plotly.io.write_image(figure_object, save_folder + r'\sensorgram_plot.png', format='png')
+            raise dash.exceptions.PreventUpdate
 
-            return figure_object
+        elif 'quantification-sensorgram-save-csv' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            fig_df = pd.DataFrame.from_dict({'Time': figure_object.data[0].x, 'SPR': figure_object.data[0].y, 'TIR': figure_object.data[1].y})
+            fig_df.to_csv(save_folder + r'\sensorgram_plot.csv')
+            raise dash.exceptions.PreventUpdate
+
 
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(
@@ -1909,6 +1935,7 @@ if __name__ == '__main__':
         dash.Input('fresnel-reflectivity-save-png', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-svg', 'n_clicks'),
         dash.Input('fresnel-reflectivity-save-html', 'n_clicks'),
+        dash.Input('fresnel-reflectivity-save-csv', 'n_clicks'),
         dash.Input('rename-fresnel-analysis-button', 'n_clicks'),
         dash.Input('rename-fresnel-analysis-confirm', 'n_clicks'),
         dash.Input('batch-fresnel-analysis-start', 'data'),
@@ -1931,7 +1958,7 @@ if __name__ == '__main__':
         dash.State('fresnel-fit-option-pfactor', 'value'),
         prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
-                                          selected_fresnel_object, save_png, save_svg, save_html, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
+                                          selected_fresnel_object, save_png, save_svg, save_html, save_csv, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
                                           extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_newlayer_radio_selection, batch_sensor_index, batch_analysis_index, offset_fit_flag, elastomer_fit_flag, polarization_factor):
 
@@ -2571,6 +2598,12 @@ if __name__ == '__main__':
             plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.png', format='png')
             raise dash.exceptions.PreventUpdate
 
+        elif 'fresnel-reflectivity-save-csv' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            fig_df = pd.DataFrame.from_dict({'x'+str(i): figure_object.data[i].x, 'y'+str(i): figure_object.data[i].y} for i in range(len(figure_object.data)))
+            fig_df.to_csv(save_folder+r'\fresnel_plot.csv')
+            raise dash.exceptions.PreventUpdate
+
         # Updating the fresnel fit graph when a different model object is selected in the fresnel analysis list
         else:
             current_fresnel_analysis = current_session.fresnel_analysis_instances[
@@ -2804,15 +2837,19 @@ if __name__ == '__main__':
         dash.Input('exclusion-height-sensorgram-save-png', 'n_clicks'),
         dash.Input('exclusion-height-sensorgram-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-sensorgram-save-html', 'n_clicks'),
+        dash.Input('exclusion-height-sensorgram-save-csv', 'n_clicks'),
         dash.Input('exclusion-height-SPRvsTIR-save-png', 'n_clicks'),
         dash.Input('exclusion-height-SPRvsTIR-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-SPRvsTIR-save-html', 'n_clicks'),
+        dash.Input('exclusion-height-SPRvsTIR-save-csv', 'n_clicks'),
         dash.Input('exclusion-height-reflectivity-save-png', 'n_clicks'),
         dash.Input('exclusion-height-reflectivity-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-reflectivity-save-html', 'n_clicks'),
+        dash.Input('exclusion-height-reflectivity-save-csv', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-png', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-svg', 'n_clicks'),
         dash.Input('exclusion-height-d-n-pair-save-html', 'n_clicks'),
+        dash.Input('exclusion-height-d-n-pair-save-csv', 'n_clicks'),
         dash.Input('exclusion-height-result-pagination', 'active_page'),
         dash.Input('exclusion-height-d-n-pair-graph', 'hoverData'),
         dash.Input('exclusion-height-initialize-model', 'n_clicks'),
@@ -2827,9 +2864,9 @@ if __name__ == '__main__':
         prevent_initial_call=True)
     def exclusion_height_analysis_control(add_exclusion, confirm_exclusion, choose_exclusion, remove_analysis_button,
                                         remove_confirm, remove_cancel, clickData, clear_points, sensorgram_png,
-                                        sensorgram_svg, sensorgram_html, SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html,
-                                        reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html,
-                                        dnpair_save_png, dnpair_save_svg, dnpair_save_html, active_page, dnpair_hoverdata, initialize_model, analysis_name,
+                                        sensorgram_svg, sensorgram_html, sensorgram_csv, SPRvsTIR_png, SPRvsTIR_svg, SPRvsTIR_html, SPRvsTIR_csv,
+                                        reflectivity_save_png, reflectivity_save_svg, reflectivity_save_html,reflectivity_save_csv,
+                                        dnpair_save_png, dnpair_save_svg, dnpair_save_html, dnpair_save_csv, active_page, dnpair_hoverdata, initialize_model, analysis_name,
                                         action_selected, background_selected_id, sensorgram_figure_JSON, SPRvsTIR_figure_JSON, reflectivity_figure_JSON,
                                         dnpair_figure_JSON, active_page_state):
         """
@@ -3567,6 +3604,12 @@ if __name__ == '__main__':
                                  include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
+        elif 'exclusion-height-SPRvsTIR-save-csv' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            fig_df = pd.DataFrame.from_dict({'TIR': go.Figure(reflectivity_figure_JSON).data[0].x, 'SPR': go.Figure(reflectivity_figure_JSON).data[0].y})
+            fig_df.to_csv(save_folder + r'\SPRvsTIR_plot.csv')
+            raise dash.exceptions.PreventUpdate
+
         elif 'exclusion-height-reflectivity-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_folder + r'\exclusion_fit_plot.png', format='png')
@@ -3583,15 +3626,43 @@ if __name__ == '__main__':
                                  include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
+        elif 'exclusion-height-reflectivity-save-csv' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            fig_df = pd.DataFrame.from_dict({'x'+str(i): go.Figure(reflectivity_figure_JSON).data[i].x, 'y'+str(i): go.Figure(reflectivity_figure_JSON).data[i].y} for i in range(len(go.Figure(reflectivity_figure_JSON).data)))
+            fig_df.to_csv(save_folder + r'\exclusion_fit_plot.csv')
+            raise dash.exceptions.PreventUpdate
+
+        elif 'exclusion-height-sensorgram-save-png' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_folder + r'\exclusion_sensorgram_plot.png', format='png')
+            raise dash.exceptions.PreventUpdate
+
+        elif 'exclusion-height-sensorgram-save-svg' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_folder + r'\exclusion_sensorgram_plot.svg', format='svg')
+            raise dash.exceptions.PreventUpdate
+
+        elif 'exclusion-height-sensorgram-save-html' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            plotly.io.write_html(go.Figure(sensorgram_figure_JSON), save_folder + r'\exclusion_sensorgram_plot.html',
+                                 include_mathjax='cdn')
+            raise dash.exceptions.PreventUpdate
+
+        elif 'exclusion-height-sensorgram-save-csv' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            fig_df = pd.DataFrame.from_dict({'x'+str(i): go.Figure(sensorgram_figure_JSON).data[i].x, 'y'+str(i): go.Figure(sensorgram_figure_JSON).data[i].y} for i in range(len(go.Figure(sensorgram_figure_JSON).data)))
+            fig_df.to_csv(save_folder + r'\exclusion_sensorgram_plot.csv')
+            raise dash.exceptions.PreventUpdate
+
         elif 'exclusion-height-d-n-pair-save-png' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair__plot.png',
+            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair_plot.png',
                                   format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-svg' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair__plot.svg',
+            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair_plot.svg',
                                   format='svg')
             raise dash.exceptions.PreventUpdate
 
@@ -3599,6 +3670,12 @@ if __name__ == '__main__':
             save_folder = select_folder(prompt='Choose save location')
             plotly.io.write_html(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair_plot.html',
                                  include_mathjax='cdn')
+            raise dash.exceptions.PreventUpdate
+
+        elif 'exclusion-height-d-n-pair-save-csv' == dash.ctx.triggered_id:
+            save_folder = select_folder(prompt='Choose save location')
+            fig_df = pd.DataFrame.from_dict({'n_buffer': go.Figure(dnpair_figure_JSON).data[0].x, 'd_buffer': go.Figure(dnpair_figure_JSON).data[0].y, 'n_probe': go.Figure(dnpair_figure_JSON).data[1].x, 'd_probe': go.Figure(dnpair_figure_JSON).data[1].y})
+            fig_df.to_csv(save_folder + r'\d_n_pair_plot.csv')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-result-pagination' == dash.ctx.triggered_id:
