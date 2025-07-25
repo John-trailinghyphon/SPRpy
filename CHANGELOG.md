@@ -4,6 +4,7 @@
 
 ### Features
 - Data export now available in Result summary tab
+- Included .csv data saving option for all figures
 
 ### Fixes
 - Included pywin32 as dependency for Windows platforms (for command "SPRpy-desktop-shortcut")
