@@ -26,7 +26,6 @@ Linux/Mac (always remove "python -m"):
 
 To add a shortcut to the SPRpy folder to the desktop after installation, run the following command in the command prompt (windows only):
 ```SPRpy-desktop-shortcut```
-NOTE: This doesn't work on python > 3.12 due to issue with pywin32 (https://github.com/mhammond/pywin32/issues/2415)
 
 To update to a newer version of SPRpy (overwriting the previously installed version), run the following command:
 ```python -m pip --no-cache-dir install --upgrade SPRpy```

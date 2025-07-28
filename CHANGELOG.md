@@ -7,9 +7,9 @@
 - Included .csv data saving option for all figures
 
 ### Fixes
-- Included pywin32 as dependency for Windows platforms (for command "SPRpy-desktop-shortcut")
-- Limited dependency dash to v2.18.2 as graph changes in dash >= 3.0.0 cause CSS problems with indefinitely growing plots
-- Limited dependency dash-bootstrap-components to v1.7.2 as last compatible release to dash v2.18.2
+- Included pywin32 as dependency for Windows platforms (required for command "SPRpy-desktop-shortcut")
+- Limited dependency for dash to v2.18.2 as graph changes in dash >= 3.0.0 cause CSS problems with indefinitely growing plots
+- Limited dependency for dash-bootstrap-components to v1.7.2 as last compatible release to dash v2.18.2
 
 ## v0.2.3
 
