@@ -1674,7 +1674,6 @@ if __name__ == '__main__':
         global angles_df
         global current_sensor
         global reflectivity_df
-        global figure_object
 
         figure_object = go.Figure(figure_JSON)
 
@@ -3626,7 +3625,8 @@ if __name__ == '__main__':
 
         elif 'exclusion-height-SPRvsTIR-save-csv' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-            fig_df = pd.DataFrame(data={'TIR': list(go.Figure(reflectivity_figure_JSON).data[0].x["_inputArray"].values())[:-3], 'SPR': list(go.Figure(reflectivity_figure_JSON).data[0].y["_inputArray"].values())[:-3]})
+            SPRvsTIR_fig = go.Figure(SPRvsTIR_figure_JSON)
+            fig_df = pd.DataFrame(data={'TIR': list(SPRvsTIR_fig.data[0].x["_inputArray"].values())[:-3], 'SPR': list(SPRvsTIR_fig.data[0].y["_inputArray"].values())[:-3]})
             fig_df.to_csv(save_folder + r'\SPRvsTIR_plot.csv')
             raise dash.exceptions.PreventUpdate
 
@@ -3648,15 +3648,16 @@ if __name__ == '__main__':
 
         elif 'exclusion-height-reflectivity-save-csv' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-            fig_keys_x = ['x' + str(i) for i in range(len(go.Figure(reflectivity_figure_JSON).data))]
-            fig_keys_y = ['y' + str(i) for i in range(len(go.Figure(reflectivity_figure_JSON).data))]
+            reflectivity_fig = go.Figure(reflectivity_figure_JSON)
+            fig_keys_x = ['x' + str(i) for i in range(len(reflectivity_fig.data))]
+            fig_keys_y = ['y' + str(i) for i in range(len(reflectivity_fig.data))]
             fig_keys = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
             fig_values_x = []
-            for i in range(len(go.Figure(reflectivity_figure_JSON).data)):
-                fig_values_x.append(list(go.Figure(reflectivity_figure_JSON).data[i].x["_inputArray"].values())[:-3])
+            for i in range(len(reflectivity_fig.data)):
+                fig_values_x.append(list(reflectivity_fig.data[i].x["_inputArray"].values())[:-3])
             fig_values_y = []
-            for i in range(len(go.Figure(reflectivity_figure_JSON).data)):
-                fig_values_y.append(list(go.Figure(reflectivity_figure_JSON).data[i].y["_inputArray"].values())[:-3])
+            for i in range(len(reflectivity_fig.data)):
+                fig_values_y.append(list(reflectivity_fig.data[i].y["_inputArray"].values())[:-3])
             fig_values = [value for sublist in zip(fig_values_x, fig_values_y) for value in sublist]
             fig_df = pd.DataFrame(data={key:value for (key, value) in zip(fig_keys, fig_values)})
             fig_df.to_csv(save_folder + r'\exclusion_fit_plot.csv')
@@ -3680,18 +3681,29 @@ if __name__ == '__main__':
 
         elif 'exclusion-height-sensorgram-save-csv' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
-
-            fig_keys_x = ['x' + str(i) for i in range(len(go.Figure(sensorgram_figure_JSON).data))]
-            fig_keys_y = ['y' + str(i) for i in range(len(go.Figure(sensorgram_figure_JSON).data))]
-            fig_keys = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
+            sensorgram_fig = go.Figure(sensorgram_figure_JSON)
+            fig_keys_x = ['x' + str(i) for i in range(len(sensorgram_fig.data))]
+            fig_keys_y = ['y' + str(i) for i in range(len(sensorgram_fig.data))]
+            global fig_keys_excl
+            fig_keys_excl = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
             fig_values_x = []
-            for i in range(len(go.Figure(sensorgram_figure_JSON).data)):
-                fig_values_x.append(list(go.Figure(sensorgram_figure_JSON).data[i].x["_inputArray"].values())[:-3])
+            for i in range(len(sensorgram_fig.data)):
+                if not type(sensorgram_fig.data[i].x) == tuple:
+                    fig_values_x.append(list(sensorgram_fig.data[i].x["_inputArray"].values())[:-3])
+                else:
+                    fig_values_x.append(list(sensorgram_fig.data[i].x))
             fig_values_y = []
-            for i in range(len(go.Figure(sensorgram_figure_JSON).data)):
-                fig_values_y.append(list(go.Figure(sensorgram_figure_JSON).data[i].y["_inputArray"].values())[:-3])
-            fig_values = [value for sublist in zip(fig_values_x, fig_values_y) for value in sublist]
-            fig_df = pd.DataFrame(data={key: value for (key, value) in zip(fig_keys, fig_values)})
+            for i in range(len(sensorgram_fig.data)):
+                if not type(sensorgram_fig.data[i].y) == tuple:
+                    fig_values_y.append(list(sensorgram_fig.data[i].y["_inputArray"].values())[:-3])
+                else:
+                    fig_values_y.append(list(sensorgram_fig.data[i].y))
+            global fig_values_excl
+            fig_values_excl = [value for sublist in zip(fig_values_x, fig_values_y) for value in sublist]
+            for i in range(len(fig_values_excl)):
+                if len(fig_values_excl[i]) < len(fig_values_excl[0]):
+                    fig_values_excl[i] = fig_values_excl[i]+[0]*(len(fig_values_excl[0])-len(fig_values_excl[i]))
+            fig_df = pd.DataFrame(data={key: value for (key, value) in zip(fig_keys_excl, fig_values_excl)})
             fig_df.to_csv(save_folder + r'\exclusion_sensorgram_plot.csv')
 
             raise dash.exceptions.PreventUpdate
@@ -3715,9 +3727,9 @@ if __name__ == '__main__':
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-csv' == dash.ctx.triggered_id:
-
+            d_n_pair_fig = go.Figure(dnpair_figure_JSON)
             save_folder = select_folder(prompt='Choose save location')
-            fig_df = pd.DataFrame(data={'n_buffer': list(go.Figure(dnpair_figure_JSON).data[0].x["_inputArray"].values())[:-3], 'd_buffer': list(go.Figure(dnpair_figure_JSON).data[0].y["_inputArray"].values())[:-3], 'n_probe': list(go.Figure(dnpair_figure_JSON).data[1].x["_inputArray"].values())[:-3], 'd_probe': list(go.Figure(dnpair_figure_JSON).data[1].y["_inputArray"].values())[:-3]})
+            fig_df = pd.DataFrame(data={'n_buffer': list(d_n_pair_fig.data[0].x["_inputArray"].values())[:-3], 'd_buffer': list(d_n_pair_fig.data[0].y["_inputArray"].values())[:-3], 'n_probe': list(d_n_pair_fig.data[1].x["_inputArray"].values())[:-3], 'd_probe': list(d_n_pair_fig.data[1].y["_inputArray"].values())[:-3]})
             fig_df.to_csv(save_folder + r'\d_n_pair_plot.csv')
             raise dash.exceptions.PreventUpdate
 
