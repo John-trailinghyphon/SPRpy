@@ -1143,7 +1143,9 @@ if __name__ == '__main__':
                             dash.html.Div([
                                 dash.dcc.Graph(id='barplot-summary-graph',
                                                figure=go.Figure(go.Scatter()),
-                                               mathjax=True),
+                                               mathjax=True,
+                                               config=dict(editable=True)),
+                                dash.dcc.Store(id="barplotfig-store", storage_type='local'),
                                 dbc.DropdownMenu(
                                     id='barplot-save-dropdown',
                                     label='Save as...',
@@ -1156,15 +1158,35 @@ if __name__ == '__main__':
                                     style={'margin-left': '-5px'})
                             ], style={'margin-left': '30%'}),
                             dash.html.Div([
-                                dash.html.H3(['Export result']),
+                                dbc.ButtonGroup([
+                                    dbc.Button('Update barplot', id='barplot-summary-update-button',
+                                               color='success',
+                                               n_clicks=0,
+                                               disabled=False),
+                                    dbc.Button('Exclude specific analyses', id='summary-exclude-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                    dbc.Button('Show advanced export options', id='summary-options-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                    dbc.Button('Export results to single .csv file', id='export-single-file-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                    dbc.Button('Export results to multiple .csv files',
+                                               id='export-multiple-files-button',
+                                               color='primary',
+                                               n_clicks=0,
+                                               disabled=False),
+                                ]),
+                            ], style={'margin-left': '30%'}),
+                            dash.html.Div([
+                                dash.html.H3(['Result settings']),
 
                             ], style={'margin-top': '1.9rem', 'width': '65%'}),
                             dash.html.Div([
-                                dbc.Checkbox(
-                                    id='export-select-save-location',
-                                    label="Select export folder (or default to 'SPRpy/SESSION_NAME/Results' folder)",
-                                    value=False
-                                ),
                                 dbc.Collapse([
                                     dbc.Label('Select fresnel analyses to exclude'),
                                     dash.dcc.Dropdown(
@@ -1188,53 +1210,34 @@ if __name__ == '__main__':
                                                   'value': exclusion_id} for exclusion_id in
                                                  current_session.exclusion_height_analysis_instances],
                                         value=[exclusion_id for exclusion_id in current_session.exclusion_height_analysis_instances])
-                                ], id='export-exclude-collapse', is_open=True),
+                                ], id='summary-exclude-collapse', is_open=True),
                                 dbc.Collapse([
                                     dbc.Label("Choose fresnel analysis export options"),
                                     dbc.Checklist(
                                         options=[
-                                            {"label": "Filename", "value": 1},
-                                            {"label": "Sensor name", "value": 2},
-                                            {"label": "Analysis name", "value": 3},
-                                            {"label": "Fitted value", "value": 4},
-                                            {"label": "All optical parameters", "value": 5}],
-                                        value=[1, 2, 3, 4, 5],
+                                            {"label": "Analysis name", "value": 1},
+                                            {"label": "Fitted value", "value": 2},
+                                            {"label": "All optical parameters", "value": 3},
+                                            {"label": "Sensor name", "value": 4},
+                                            {"label": "Measurement filename", "value": 5}],
+                                        value=[1, 2],
                                         id="export-fresnel-checklist-summary",
                                         inline=True,
                                     ),
                                     dbc.Label("Choose exclusion height export options"),
                                     dbc.Checklist(
                                         options=[
-                                            {"label": "Filename", "value": 1},
-                                            {"label": "Sensor name", "value": 2},
-                                            {"label": "Analysis name", "value": 3},
-                                            {"label": "Mean value", "value": 4},
-                                            {"label": "All values", "value": 5},
-                                            {"label": "All optical parameters", "value": 6}],
-                                        value=[1, 2, 3, 4, 5, 6],
+                                            {"label": "Analysis name", "value": 1},
+                                            {"label": "Mean value", "value": 2},
+                                            {"label": "All values", "value": 3},
+                                            {"label": "All optical parameters", "value": 4},
+                                            {"label": "Sensor name", "value": 5},
+                                            {"label": "Measurement filename", "value": 6}],
+                                        value=[1, 2, 3],
                                         id="export-exclusion-checklist-summary",
                                         inline=True,
                                     ),
-                                ], id='export-options-collapse', is_open=True),
-                                dbc.ButtonGroup([
-                                    dbc.Button('Exclude specific analyses', id='export-exclude-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                    dbc.Button('Show advanced export options', id='export-options-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                    dbc.Button('Export results to single .csv file', id='export-single-file-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                    dbc.Button('Export results to multiple .csv files',
-                                               id='export-multiple-files-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                ]),
+                                ], id='summary-settings-collapse', is_open=True),
                             ]),
                         ], style={'width': '90%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
                     ], id='summary-tab-content')
@@ -3684,7 +3687,6 @@ if __name__ == '__main__':
             sensorgram_fig = go.Figure(sensorgram_figure_JSON)
             fig_keys_x = ['x' + str(i) for i in range(len(sensorgram_fig.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(sensorgram_fig.data))]
-            global fig_keys_excl
             fig_keys_excl = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
             fig_values_x = []
             for i in range(len(sensorgram_fig.data)):
@@ -3698,7 +3700,6 @@ if __name__ == '__main__':
                     fig_values_y.append(list(sensorgram_fig.data[i].y["_inputArray"].values())[:-3])
                 else:
                     fig_values_y.append(list(sensorgram_fig.data[i].y))
-            global fig_values_excl
             fig_values_excl = [value for sublist in zip(fig_values_x, fig_values_y) for value in sublist]
             for i in range(len(fig_values_excl)):
                 if len(fig_values_excl[i]) < len(fig_values_excl[0]):
@@ -4337,5 +4338,28 @@ if __name__ == '__main__':
             current_exclusion_height_analysis.abort_flag = True
 
             return {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
+
+    # Storing user edits for barplot in result summary in a local storage
+    @dash.callback(
+        dash.Output('barplotfig-store', 'data'),
+        dash.Input('barplot-summary-graph', 'relayoutData'),
+        dash.State('barplot-summary-graph', 'figure'),
+        prevent_initial_call=True)
+    def update_summary_barplot_edit_data(relayoutData, fig):
+        return fig
+
+    # This callback generates the summary barplot graph in the result summary tab
+    @dash.callback(
+        dash.Output('barplot-summary-graph', 'figure'),
+        dash.Input('barplotfig-store', 'data'),
+        dash.Input('barplot-summary-update-button','n_clicks'))
+    def update_summary_barplot_graph(barplot_user_edited_fig, barplot_button):
+
+        if 'barplot-summary-update-button' == dash.ctx.triggered_id:
+            pass
+            return
+
+        elif 'barplotfig-store' == dash.ctx.triggered_id:
+            return barplot_user_edited_fig
 
     app.run(debug=True, use_reloader=False, host=session_host, port=8050)
