@@ -1141,104 +1141,121 @@ if __name__ == '__main__':
 
                             ], style={'margin-top': '1.9rem', 'width': '65%'}),
                             dash.html.Div([
-                                dash.dcc.Graph(id='barplot-summary-graph',
-                                               figure=go.Figure(go.Scatter()),
-                                               mathjax=True,
-                                               config=dict(editable=True)),
-                                dash.dcc.Store(id="barplotfig-store", storage_type='local'),
-                                dbc.DropdownMenu(
-                                    id='barplot-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[
-                                        dbc.DropdownMenuItem('.PNG', id='barplot-save-png', n_clicks=0),
-                                        dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0),
-                                        dbc.DropdownMenuItem('.csv', id='barplot-save-csv', n_clicks=0)],
-                                    style={'margin-left': '-5px'})
-                            ], style={'margin-left': '30%'}),
-                            dash.html.Div([
-                                dbc.ButtonGroup([
-                                    dbc.Button('Update barplot', id='barplot-summary-update-button',
-                                               color='success',
-                                               n_clicks=0,
-                                               disabled=False),
-                                    dbc.Button('Exclude specific analyses', id='summary-exclude-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                    dbc.Button('Show advanced export options', id='summary-options-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                    dbc.Button('Export results to single .csv file', id='export-single-file-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                    dbc.Button('Export results to multiple .csv files',
-                                               id='export-multiple-files-button',
-                                               color='primary',
-                                               n_clicks=0,
-                                               disabled=False),
-                                ]),
-                            ], style={'margin-left': '30%'}),
-                            dash.html.Div([
-                                dash.html.H3(['Result settings']),
+                                dash.html.Div([
+                                    dbc.Table.from_dataframe(pd.DataFrame(
+                                        {'Analysis name': [''], 'Fitted layer': [''], 'Fitted result': ['']}),
+                                                             # #     fitted_layer=current_sensor.optical_parameters.iloc[
+                                        #
+                                        #     #                                                                     current_sensor.fitted_layer_index[0], 0],
+                                        #     #                                                                 fitted_param=current_sensor.optical_parameters.columns[
+                                        #     #                                                                     current_sensor.fitted_layer_index[1]]),
+                                                             bordered=True, id='result-summary-table')
+                                ], style={'margin-right': '20px'}),
+                                dash.html.Div([
+                                    dash.html.Div([
+                                        dbc.ButtonGroup([
+                                            dbc.Button('Export results to single .csv file', id='export-single-file-button',
+                                                       color='primary',
+                                                       n_clicks=0,
+                                                       disabled=False),
+                                            dbc.Button('Export results to multiple .csv files',
+                                                       id='export-multiple-files-button',
+                                                       color='primary',
+                                                       n_clicks=0,
+                                                       disabled=False),
+                                            dbc.Button('Exclude specific analyses', id='summary-exclude-button',
+                                                       color='primary',
+                                                       n_clicks=0,
+                                                       disabled=False),
+                                            dbc.Button('Show advanced export options', id='summary-options-button',
+                                                       color='primary',
+                                                       n_clicks=0,
+                                                       disabled=False),
+                                            dbc.Button('Update barplot', id='barplot-summary-update-button',
+                                                       color='success',
+                                                       n_clicks=0,
+                                                       disabled=False),
+                                        ]),
+                                    ], style={'margin-left': '30%'}),
+                                    dash.html.Div([
+                                        dash.html.H3(['Result settings']),
 
-                            ], style={'margin-top': '1.9rem', 'width': '65%'}),
-                            dash.html.Div([
-                                dbc.Collapse([
-                                    dbc.Label('Select fresnel analyses to exclude'),
-                                    dash.dcc.Dropdown(
-                                        id='export-fresnel-exclude-dropdown',
-                                        multi=True,
-                                        clearable=True,
-                                        options=[{'label': 'FM' + str(fresnel_id) + ' ' +
-                                                           current_session.fresnel_analysis_instances[
-                                                               fresnel_id].name,
-                                                  'value': fresnel_id} for fresnel_id in
-                                                 current_session.fresnel_analysis_instances],
-                                        value=[fresnel_id for fresnel_id in current_session.fresnel_analysis_instances]),
-                                    dbc.Label('Select exclusion height analyses to exclude'),
-                                    dash.dcc.Dropdown(
-                                        id='export-exclusion-exclude-dropdown',
-                                        multi=True,
-                                        clearable=True,
-                                        options=[{'label': 'EH' + str(exclusion_id) + ' ' +
-                                                           current_session.exclusion_height_analysis_instances[
-                                                               exclusion_id].name,
-                                                  'value': exclusion_id} for exclusion_id in
-                                                 current_session.exclusion_height_analysis_instances],
-                                        value=[exclusion_id for exclusion_id in current_session.exclusion_height_analysis_instances])
-                                ], id='summary-exclude-collapse', is_open=True),
-                                dbc.Collapse([
-                                    dbc.Label("Choose fresnel analysis export options"),
-                                    dbc.Checklist(
-                                        options=[
-                                            {"label": "Analysis name", "value": 1},
-                                            {"label": "Fitted value", "value": 2},
-                                            {"label": "All optical parameters", "value": 3},
-                                            {"label": "Sensor name", "value": 4},
-                                            {"label": "Measurement filename", "value": 5}],
-                                        value=[1, 2],
-                                        id="export-fresnel-checklist-summary",
-                                        inline=True,
-                                    ),
-                                    dbc.Label("Choose exclusion height export options"),
-                                    dbc.Checklist(
-                                        options=[
-                                            {"label": "Analysis name", "value": 1},
-                                            {"label": "Mean value", "value": 2},
-                                            {"label": "All values", "value": 3},
-                                            {"label": "All optical parameters", "value": 4},
-                                            {"label": "Sensor name", "value": 5},
-                                            {"label": "Measurement filename", "value": 6}],
-                                        value=[1, 2, 3],
-                                        id="export-exclusion-checklist-summary",
-                                        inline=True,
-                                    ),
-                                ], id='summary-settings-collapse', is_open=True),
-                            ]),
+                                    ], style={'margin-top': '1.9rem', 'width': '65%'}),
+                                    dash.html.Div([
+                                        dbc.Collapse([
+                                            dbc.Label('Select fresnel analyses to exclude'),
+                                            dash.dcc.Dropdown(
+                                                id='export-fresnel-exclude-dropdown',
+                                                multi=True,
+                                                clearable=True,
+                                                options=[{'label': 'FM' + str(fresnel_id) + ' ' +
+                                                                   current_session.fresnel_analysis_instances[
+                                                                       fresnel_id].name,
+                                                          'value': fresnel_id} for fresnel_id in
+                                                         current_session.fresnel_analysis_instances],
+                                                value=[fresnel_id for fresnel_id in
+                                                       current_session.fresnel_analysis_instances]),
+                                            dbc.Label('Select exclusion height analyses to exclude'),
+                                            dash.dcc.Dropdown(
+                                                id='export-exclusion-exclude-dropdown',
+                                                multi=True,
+                                                clearable=True,
+                                                options=[{'label': 'EH' + str(exclusion_id) + ' ' +
+                                                                   current_session.exclusion_height_analysis_instances[
+                                                                       exclusion_id].name,
+                                                          'value': exclusion_id} for exclusion_id in
+                                                         current_session.exclusion_height_analysis_instances],
+                                                value=[exclusion_id for exclusion_id in
+                                                       current_session.exclusion_height_analysis_instances])
+                                        ], id='summary-exclude-collapse', is_open=True),
+                                        dbc.Collapse([
+                                            dbc.Label("Choose fresnel analysis export options"),
+                                            dbc.Checklist(
+                                                options=[
+                                                    {"label": "Analysis name", "value": 1},
+                                                    {"label": "Fitted layer", "value": 2},
+                                                    {"label": "Fitted result", "value": 3},
+                                                    {"label": "Sensor name", "value": 4},
+                                                    {"label": "Measurement filename", "value": 5},
+                                                    {"label": "All optical parameters", "value": 6}],
+                                                value=[1, 2, 3],
+                                                id="export-fresnel-checklist-summary",
+                                                inline=True,
+                                            ),
+                                            dbc.Label("Choose exclusion height export options"),
+                                            dbc.Checklist(
+                                                options=[
+                                                    {"label": "Analysis name", "value": 1},
+                                                    {"label": "Mean value", "value": 2},
+                                                    {"label": "All values", "value": 3},
+                                                    {"label": "Sensor name", "value": 4},
+                                                    {"label": "Measurement filename", "value": 5},
+                                                    {"label": "All optical parameters", "value": 6}],
+                                                value=[1, 2, 3],
+                                                id="export-exclusion-checklist-summary",
+                                                inline=True,
+                                            ),
+                                        ], id='summary-settings-collapse', is_open=True),
+                                    ]),
+                                    dash.html.Div([
+                                        dash.dcc.Graph(id='barplot-summary-graph',
+                                                       figure=go.Figure(go.Scatter()),
+                                                       mathjax=True,
+                                                       config=dict(editable=True)),
+                                        dash.dcc.Store(id="barplotfig-store", storage_type='local'),
+                                        dbc.DropdownMenu(
+                                            id='barplot-save-dropdown',
+                                            label='Save as...',
+                                            color='info',
+                                            children=[
+                                                dbc.DropdownMenuItem('.PNG', id='barplot-save-png', n_clicks=0),
+                                                dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
+                                                dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0),
+                                                dbc.DropdownMenuItem('.csv', id='barplot-save-csv', n_clicks=0)],
+                                            style={'margin-left': '-5px'})
+                                    ], style={'margin-left': '30%'}),
+                                ]),
+                            ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'center'}),
                         ], style={'width': '90%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
                     ], id='summary-tab-content')
                 ], label='Result summary and export', tab_id='summary-tab', style={'margin-top': '10px'}),

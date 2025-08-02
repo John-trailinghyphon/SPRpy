@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.4
+## v0.3.0
 
 ### Features
 - Data export now available in Result summary tab
@@ -10,6 +10,7 @@
 - Included pywin32 as dependency for Windows platforms (required for command "SPRpy-desktop-shortcut")
 - Limited dependency for dash to v2.18.2 as graph changes in dash >= 3.0.0 cause CSS problems with indefinitely growing plots
 - Limited dependency for dash-bootstrap-components to v1.7.2 as last compatible release to dash v2.18.2
+- Fresnel analysis object now makes uniwue
 
 ## v0.2.3
 

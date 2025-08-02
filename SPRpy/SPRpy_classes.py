@@ -316,8 +316,7 @@ class Sensor:
 
 class FresnelModel:
     """
-    This class defines how a modelled reflectivity trace behaves. Note that a different sensor object should be used for
-    each layer added to the sensor!
+    This class defines how a modelled reflectivity trace behaves.
 
     TODO: Each object should also have a .csv export function.
 
@@ -342,6 +341,7 @@ class FresnelModel:
         self.fit_prism_k = True
         self.fitted_data = None
         self.fitted_result = None
+        self.fitted_layer_index = copy.deepcopy(self.sensor_object.fitted_layer_index)  # Deepcopy to not overwrite if fitting multiple layers in the same sensor object
 
     def calculate_fresnel_trace(self):
 
