@@ -222,16 +222,39 @@ if __name__ == '__main__':
     d_n_pair_fig.update_xaxes(mirror=True, showline=True)
     d_n_pair_fig.update_yaxes(mirror=True, showline=True)
 
-    result_barplot_fig = go.Figure(go.Bar(x=[0], y=[0]))
-    result_barplot_fig.update_layout(
-        yaxis_title=r'$\large{\text{Fitted value}}$',
-        font_family='Balto',
-        font_size=19,
-        margin_r=25,
-        margin_l=60,
-        margin_t=40,
-        template='simple_white',
-        uirevision=True)
+    try:
+        x_barplot = [[current_session.fresnel_analysis_instances[
+                          fresnel_inst].fitted_layer for
+                      fresnel_inst in current_session.fresnel_analysis_instances],
+                     [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                      current_session.fresnel_analysis_instances]]
+        y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
+                     fresnel_inst in current_session.fresnel_analysis_instances]
+        result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
+        result_barplot_fig.update_layout(
+            yaxis_title=r'$\large{\text{Fitted value}}$',
+            font_family='Balto',
+            font_size=19,
+            margin_r=25,
+            margin_l=60,
+            margin_t=40,
+            template='simple_white',
+            uirevision=True)
+        result_barplot_fig.update_xaxes(mirror=True, showline=True)
+        result_barplot_fig.update_yaxes(mirror=True, showline=True)
+    except:
+        result_barplot_fig = go.Figure(go.Bar(x=[0], y=[0]))
+        result_barplot_fig.update_layout(
+            yaxis_title=r'$\large{\text{Fitted value}}$',
+            font_family='Balto',
+            font_size=19,
+            margin_r=25,
+            margin_l=60,
+            margin_t=40,
+            template='simple_white',
+            uirevision=True)
+        result_barplot_fig.update_xaxes(mirror=True, showline=True)
+        result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
     # Dash webapp layout
     app.layout = dash.html.Div([
@@ -1158,7 +1181,7 @@ if __name__ == '__main__':
                                     dbc.Table.from_dataframe(pd.DataFrame(
                                         {'Analysis': [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances],
                                         'Variable': ['{layer}|{parameter}-{channel}'.format(
-                                             layer=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.iloc[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[0], 0],
+                                             layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
                                              channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel) for fresnel_inst in current_session.fresnel_analysis_instances],
                                         'Value': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]}),
@@ -1523,12 +1546,12 @@ if __name__ == '__main__':
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
 
         elif 'remove-sensor-confirm' == dash.ctx.triggered_id:
-
+            # TODO: Fix this, it goes by dict so removing sensors doesn't work properly
             # Only allow removing sensors if there are at least 1 sensor in the list, otherwise do nothing
             if len(current_session.sensor_instances) > 1:
 
                 removed = current_sensor
-                current_sensor = current_session.sensor_instances[1]
+                current_sensor = current_session.sensor_instances[-1]
                 current_session.remove_sensor(removed.object_id)
                 current_session.save_session()
 
@@ -2094,12 +2117,29 @@ if __name__ == '__main__':
 
             table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
             table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td('{layer}|{parameter}-{channel}'.format(
-                                             layer=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.iloc[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[0], 0],
+                                             layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
                                              channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel)), dash.html.Td(round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3))]) for fresnel_inst in current_session.fresnel_analysis_instances])]
             fresnel_result_summary_dataframe = table_header + table_body
 
-            return new_figure, fresnel_result_summary_dataframe, dash.no_update, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            x_barplot = [[current_session.fresnel_analysis_instances[
+                          fresnel_inst].fitted_layer for
+                      fresnel_inst in current_session.fresnel_analysis_instances],[current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances]]
+            y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]
+            result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
+            result_barplot_fig.update_layout(
+                yaxis_title=r'$\large{\text{Fitted value}}$',
+                font_family='Balto',
+                font_size=19,
+                margin_r=25,
+                margin_l=60,
+                margin_t=40,
+                template='simple_white',
+                uirevision=True)
+            result_barplot_fig.update_xaxes(mirror=True, showline=True)
+            result_barplot_fig.update_yaxes(mirror=True, showline=True)
+
+            return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -2216,9 +2256,7 @@ if __name__ == '__main__':
             table_body = [dash.html.Tbody([dash.html.Tr(
                 [dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name),
                  dash.html.Td('{layer}|{parameter}-{channel}'.format(
-                     layer=
-                     current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.iloc[
-                         current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[0], 0],
+                     layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                      parameter=
                      current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[
                          current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
@@ -2227,7 +2265,27 @@ if __name__ == '__main__':
                                            fresnel_inst in current_session.fresnel_analysis_instances])]
             fresnel_result_summary_dataframe = table_header + table_body
 
-            return dash.no_update, fresnel_result_summary_dataframe, dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update
+            x_barplot = [[current_session.fresnel_analysis_instances[
+                          fresnel_inst].fitted_layer for
+                      fresnel_inst in current_session.fresnel_analysis_instances],
+                         [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                          current_session.fresnel_analysis_instances]]
+            y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
+                         fresnel_inst in current_session.fresnel_analysis_instances]
+            result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
+            result_barplot_fig.update_layout(
+                yaxis_title=r'$\large{\text{Fitted value}}$',
+                font_family='Balto',
+                font_size=19,
+                margin_r=25,
+                margin_l=60,
+                margin_t=40,
+                template='simple_white',
+                uirevision=True)
+            result_barplot_fig.update_xaxes(mirror=True, showline=True)
+            result_barplot_fig.update_yaxes(mirror=True, showline=True)
+
+            return dash.no_update, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-button' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -2340,9 +2398,7 @@ if __name__ == '__main__':
                 table_body = [dash.html.Tbody([dash.html.Tr(
                     [dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name),
                      dash.html.Td('{layer}|{parameter}-{channel}'.format(
-                         layer=
-                         current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.iloc[
-                             current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[0], 0],
+                         layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                          parameter=current_session.fresnel_analysis_instances[
                              fresnel_inst].sensor_object.optical_parameters.columns[
                              current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
@@ -2351,7 +2407,27 @@ if __name__ == '__main__':
                                                for fresnel_inst in current_session.fresnel_analysis_instances])]
                 fresnel_result_summary_dataframe = table_header + table_body
 
-                return new_figure, fresnel_result_summary_dataframe, dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
+                x_barplot = [[current_session.fresnel_analysis_instances[
+                          fresnel_inst].fitted_layer for
+                      fresnel_inst in current_session.fresnel_analysis_instances],
+                             [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                              current_session.fresnel_analysis_instances]]
+                y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
+                             fresnel_inst in current_session.fresnel_analysis_instances]
+                result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
+                result_barplot_fig.update_layout(
+                    yaxis_title=r'$\large{\text{Fitted value}}$',
+                    font_family='Balto',
+                    font_size=19,
+                    margin_r=25,
+                    margin_l=60,
+                    margin_t=40,
+                    template='simple_white',
+                    uirevision=True)
+                result_barplot_fig.update_xaxes(mirror=True, showline=True)
+                result_barplot_fig.update_yaxes(mirror=True, showline=True)
+
+                return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
                     lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, False, dash.no_update, current_fresnel_analysis.fit_offset, current_fresnel_analysis.fit_prism_k
 
             # If deleting the last fresnel analysis object
@@ -2606,8 +2682,7 @@ if __name__ == '__main__':
                 [dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name),
                  dash.html.Td('{layer}|{parameter}-{channel}'.format(
                      layer=
-                     current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.iloc[
-                         current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[0], 0],
+                     current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                      parameter=
                      current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[
                          current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
@@ -2616,7 +2691,27 @@ if __name__ == '__main__':
                                            fresnel_inst in current_session.fresnel_analysis_instances])]
             fresnel_result_summary_dataframe = table_header + table_body
 
-            return new_figure, fresnel_result_summary_dataframe, dash.no_update, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished', dash.no_update, dash.no_update
+            x_barplot = [[current_session.fresnel_analysis_instances[
+                          fresnel_inst].fitted_layer for
+                      fresnel_inst in current_session.fresnel_analysis_instances],
+                         [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                          current_session.fresnel_analysis_instances]]
+            y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
+                         fresnel_inst in current_session.fresnel_analysis_instances]
+            result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
+            result_barplot_fig.update_layout(
+                yaxis_title=r'$\large{\text{Fitted value}}$',
+                font_family='Balto',
+                font_size=19,
+                margin_r=25,
+                margin_l=60,
+                margin_t=40,
+                template='simple_white',
+                uirevision=True)
+            result_barplot_fig.update_xaxes(mirror=True, showline=True)
+            result_barplot_fig.update_yaxes(mirror=True, showline=True)
+
+            return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished', dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
             save_folder = select_folder(prompt='Choose save location')
