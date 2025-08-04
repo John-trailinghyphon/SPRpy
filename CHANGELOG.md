@@ -3,14 +3,16 @@
 ## v0.3.0
 
 ### Features
-- Data export now available in Result summary tab
-- Included .csv data saving option for all figures
+- Result summary tab with barplot for fresnel data and data export as .csv now available 
+- Included .csv data saving option for all figures and changed to filedialog window for choosing filenames
 
 ### Fixes
 - Included pywin32 as dependency for Windows platforms (required for command "SPRpy-desktop-shortcut")
 - Limited dependency for dash to v2.18.2 as graph changes in dash >= 3.0.0 cause CSS problems with indefinitely growing plots
 - Limited dependency for dash-bootstrap-components to v1.7.2 as last compatible release to dash v2.18.2
-- Fresnel analysis object now makes uniwue
+- Fixed sensor remove logic similarly to removal of fresnel objects
+- Added compatibility fix for loading older session versions. NOTE: Will still cause erroneous results in result summary tab if multiple layers were fitted for one sensor object
+- Clarified text for batch fresnel modelling options
 
 ## v0.2.3
 
