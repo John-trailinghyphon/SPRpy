@@ -77,6 +77,12 @@ if __name__ == '__main__':
                       'currently used SPRpy version is ' + version + '.')
                 print('In case of errors, consider pip installing the version of SPRpy (python -m pip install SPRpy==' + current_session.version + ') that was used to create the session file in a separate virtual environment and run SPRpy from there instead.')
 
+                # Compatibility fix for loading older sessions. NOTE: Will still cause erroneous results in result summary tab if multiple layers were fitted for one sensor object
+                if current_session.version < '0.3.0' and current_session.fresnel_analysis_instances != {}:
+                    for analysis_instance in current_session.fresnel_analysis_instances:
+                        current_session.fresnel_analysis_instances[analysis_instance].fitted_layer_index = copy.deepcopy(current_session.fresnel_analysis_instances[analysis_instance].sensor_object.fitted_layer_index)
+                        current_session.fresnel_analysis_instances[analysis_instance].fitted_layer = copy.deepcopy(current_session.fresnel_analysis_instances[analysis_instance].sensor_object.optical_parameters.iloc[current_session.fresnel_analysis_instances[analysis_instance].fitted_layer_index[0], 0])
+
             # Make sure the location and name of the session file is updated
             current_session.location = os.path.dirname(session_file)
             current_session.name = current_session.location.split('/')[-1]
@@ -645,13 +651,13 @@ if __name__ == '__main__':
                                                                             fresnel_analysis_id in
                                                                             current_session.fresnel_analysis_instances])
                                                            ], id='batch-fresnel-analysis-example-row'),
-                                                           dash.dcc.RadioItems(options=[{'label': 'Copy example background', 'value': 0},
-                                                                                        {'label': 'Add new layer to individually selected backgrounds', 'value': 1}],
+                                                           dash.dcc.RadioItems(options=[{'label': 'Use copies of the example background sensor', 'value': 0},
+                                                                                        {'label': 'Match several background sensors individually', 'value': 1}],
                                                                                value=0,
                                                                                id='batch-fresnel-analysis-radio-selection',
                                                                                style={'margin-bottom': '30px'}),
-                                                           dash.dcc.RadioItems(options=[{'label': 'Add layer to backgrounds directly', 'value': 0},
-                                                                                        {'label': 'Add layer and make new copy', 'value': 1}],
+                                                           dash.dcc.RadioItems(options=[{'label': 'Add layer to sensor backgrounds directly', 'value': 0},
+                                                                                        {'label': 'Use new copy of sensor backgrounds, then add layer', 'value': 1}],
                                                                                value=0,
                                                                                id='batch-fresnel-analysis-newlayer-radio-selection',
                                                                                style={'visibility': 'hidden'}),
@@ -1546,12 +1552,25 @@ if __name__ == '__main__':
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
 
         elif 'remove-sensor-confirm' == dash.ctx.triggered_id:
-            # TODO: Fix this, it goes by dict so removing sensors doesn't work properly
+
             # Only allow removing sensors if there are at least 1 sensor in the list, otherwise do nothing
             if len(current_session.sensor_instances) > 1:
 
                 removed = current_sensor
-                current_sensor = current_session.sensor_instances[-1]
+                try:
+                    current_sensor = current_session.sensor_instances[1]
+                except KeyError:  # In case the first few instances have already been removed, try the next one
+                    failed = True
+                    attempted = 1
+                    max_attempts = len(current_session.sensor_instances) + 1
+                    while failed and not attempted == max_attempts:
+                        attempted += 1
+                        try:
+                            current_sensor = current_session.sensor_instances[attempted+1]
+                        except KeyError:
+                            continue
+                        failed = False
+
                 current_session.remove_sensor(removed.object_id)
                 current_session.save_session()
 
