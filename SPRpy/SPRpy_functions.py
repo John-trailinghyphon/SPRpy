@@ -2,7 +2,7 @@
 
 import numpy as np
 import tkinter
-from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory
+from tkinter.filedialog import askopenfilename, askopenfilenames, askdirectory, asksaveasfilename
 import pandas as pd
 import re
 from fresnel_transfer_matrix import TIR_determination
@@ -33,6 +33,15 @@ def select_files(prompt, prompt_folder=None, file_types=[('Pickle files', '*.pic
     selected_files = askopenfilenames(title=prompt, filetypes=file_types, initialdir=prompt_folder, parent=root)
     root.destroy()
     return selected_files
+
+
+def save_file(prompt, prompt_folder=None, file_types=[('CSV files', '*.csv')], default_extension='.csv'):
+    root = tkinter.Tk()
+    root.attributes("-topmost", 1)
+    root.withdraw()
+    save_file = asksaveasfilename(title=prompt, filetypes=file_types, defaultextension=default_extension, initialdir=prompt_folder, parent=root)
+    root.destroy()
+    return save_file
 
 
 def load_csv_data(path=False, default_data_folder=None, prompt='Select the measurement data file (.csv)'):

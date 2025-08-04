@@ -238,28 +238,30 @@ if __name__ == '__main__':
                      fresnel_inst in current_session.fresnel_analysis_instances]
         result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
         result_barplot_fig.update_layout(
-            yaxis_title=r'$\large{\text{Fitted value}}$',
+            yaxis_title='Fitted value',
             font_family='Balto',
             font_size=19,
             margin_r=25,
             margin_l=60,
             margin_t=40,
             template='simple_white',
-            uirevision=True)
-        result_barplot_fig.update_xaxes(mirror=True, showline=True)
+            uirevision=True,
+            height=600)
+        result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
         result_barplot_fig.update_yaxes(mirror=True, showline=True)
     except:
         result_barplot_fig = go.Figure(go.Bar(x=[0], y=[0]))
         result_barplot_fig.update_layout(
-            yaxis_title=r'$\large{\text{Fitted value}}$',
+            yaxis_title='Fitted value',
             font_family='Balto',
             font_size=19,
             margin_r=25,
             margin_l=60,
             margin_t=40,
             template='simple_white',
-            uirevision=True)
-        result_barplot_fig.update_xaxes(mirror=True, showline=True)
+            uirevision=True,
+            height=600)
+        result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
         result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
     # Dash webapp layout
@@ -1167,23 +1169,14 @@ if __name__ == '__main__':
                 # Result summary tab
                 dbc.Tab([
                     dash.html.Div([
-                        #TODO: Use a form to create an initial window containing the different options to choose from,
-                        # first one should select what type of plot maybe? Then dropdowns containing checklists to
-                        # select which model objects to pull results from (default all?). Also buttons for different
-                        # plot styling options and what kind of statistics (STD, SE, Confidence interval etc). Barplot
-                        # option to make stacked barplots or grouped barplots. Should be dynamic added options that
-                        # are adding dropdowns to select from? Or how to do this conveniently... Maybe I can add some of
-                        # the more common options, and then one that is fully customisable?
-                        # To make persistent editable axis and titles -> https://community.plotly.com/t/allowing-users-to-edit-graph-properties-without-code-changes/72031'
-                        # (but I would create an object for the summary maybe {or saved in the session object}? at least give that option so everything is saved.
                         dash.html.Div([
                             dash.html.Div([
-                                dash.html.H3(['Result summary']),
-
-                            ], style={'margin-top': '1.9rem', 'width': '65%'}),
-                            dash.html.Div([
                                 dash.html.Div([
-                                    dash.html.H5(['Fresnel modelling results']),
+                                    dash.html.H4(['Fresnel modelling results']),
+                                        dbc.Button('Export into .csv file', id='export-single-file-button',
+                                                   color='primary',
+                                                   n_clicks=0,
+                                                   disabled=False),
                                     dbc.Table.from_dataframe(pd.DataFrame(
                                         {'Analysis': [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances],
                                         'Variable': ['{layer}|{parameter}-{channel}'.format(
@@ -1192,7 +1185,7 @@ if __name__ == '__main__':
                                              channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel) for fresnel_inst in current_session.fresnel_analysis_instances],
                                         'Value': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]}),
                                         bordered=True, id='result-summary-fresnel-table'),
-                                    dash.html.H5(['Exclusion height results']),
+                                    dash.html.H4(['Exclusion height results']),
                                     dbc.Table.from_dataframe(pd.DataFrame(
                                         {'Analysis': [current_session.exclusion_height_analysis_instances[exclusion_inst].name
                                                            for exclusion_inst in
@@ -1200,27 +1193,12 @@ if __name__ == '__main__':
                                          'Exclusion height mean [all]': ['{mean_} {all_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_height_result[0], 2), all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :], decimals=2))) for exclusion_inst in current_session.exclusion_height_analysis_instances],
                                          'Exclusion RI mean [all]': ['{mean_} {all_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0], 4), all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :], decimals=4))) for exclusion_inst in current_session.exclusion_height_analysis_instances]}),
                                         bordered=True, id='result-summary-exclusion-table')
-                                ], style={'margin-right': '20px', 'flex': '0 0 400px'}),
+                                ], style={'margin-right': '100px', 'flex': '0 0 400px'}),
                                 dash.html.Div([
-                                    dash.html.Div([
-                                        dbc.ButtonGroup([
-                                            dbc.Button('Export into single file', id='export-single-file-button',
-                                                       color='primary',
-                                                       n_clicks=0,
-                                                       disabled=False),
-                                            dbc.Button('Export into split files',
-                                                       id='export-split-files-button',
-                                                       color='primary',
-                                                       n_clicks=0,
-                                                       disabled=False),
-                                        ]),
-                                    ], style={'margin-top': '32px'}),
                                     dash.html.Div([
                                         dash.dcc.Graph(id='summary-fresnel-barplot-graph',
                                                        figure=result_barplot_fig,
                                                        mathjax=True),
-                                        # config=dict(editable=True)),
-                                        # dash.dcc.Store(id="barplotfig-store", storage_type='session'),
                                         dbc.DropdownMenu(
                                             id='barplot-save-dropdown',
                                             label='Save as...',
@@ -1230,11 +1208,12 @@ if __name__ == '__main__':
                                                 dbc.DropdownMenuItem('.SVG', id='barplot-save-svg', n_clicks=0),
                                                 dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0),
                                                 dbc.DropdownMenuItem('.csv', id='barplot-save-csv', n_clicks=0)],
-                                            style={'margin-left': '-5px'})
+                                            style={'margin-left': '299px'}
+                                        )
                                     ]),
                                 ]),
                             ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'center'}),
-                        ], style={'width': '90%', 'margin-top': '1.9rem', 'margin-left': '5%'}),
+                        ], style={'width': '95%' , 'margin-top': '1.9rem', 'margin-left': '5%'}),
                     ], id='summary-tab-content')
                 ], label='Result summary and export', tab_id='summary-tab', style={'margin-top': '10px'}),
             ], id='analysis-tabs', active_tab='quantification-tab'),
@@ -1797,22 +1776,22 @@ if __name__ == '__main__':
             return new_figure
 
         elif 'quantification-reflectivity-save-html' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(figure_object, save_folder+r'\reflectivity_plot.html', include_mathjax='cdn')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(figure_object, save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-svg' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.svg', format='svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            plotly.io.write_image(figure_object, save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-png' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder+r'\reflectivity_plot.png', format='png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('PNG files', '*.png')], default_extension='.png')
+            plotly.io.write_image(figure_object, save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-csv' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
             fig_keys_x = ['x' + str(i) for i in range(len(figure_object.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(figure_object.data))]
             fig_keys = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
@@ -1824,7 +1803,7 @@ if __name__ == '__main__':
                 fig_values_y.append(list(figure_object.data[i].y["_inputArray"].values())[:-3])
             fig_values = [value for sublist in zip(fig_values_x, fig_values_y) for value in sublist]
             fig_df = pd.DataFrame(data={key:value for (key, value) in zip(fig_keys, fig_values)})
-            fig_df.to_csv(save_folder+r'\reflectivity_plot.csv')
+            fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
 
     # Update the sensorgram plot in the Response quantification tab
@@ -1899,24 +1878,27 @@ if __name__ == '__main__':
             return new_sensorgram_fig
 
         elif 'quantification-sensorgram-save-html' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(figure_object, save_folder + r'\sensorgram_plot.html', include_mathjax='cdn')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(figure_object, save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-svg' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder + r'\sensorgram_plot.svg', format='svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            plotly.io.write_image(figure_object, save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-png' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder + r'\sensorgram_plot.png', format='png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('PNG files', '*.png')], default_extension='.png')
+            plotly.io.write_image(figure_object, save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-csv' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
             fig_df = pd.DataFrame(data={'Time': list(figure_object.data[0].x["_inputArray"].values())[:-3], 'SPR': list(figure_object.data[0].y["_inputArray"].values())[:-3], 'TIR': list(figure_object.data[1].y["_inputArray"].values())[:-3]})
-            fig_df.to_csv(save_folder + r'\sensorgram_plot.csv')
+            fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
 
 
@@ -2147,15 +2129,16 @@ if __name__ == '__main__':
             y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]
             result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
             result_barplot_fig.update_layout(
-                yaxis_title=r'$\large{\text{Fitted value}}$',
+                yaxis_title='Fitted value',
                 font_family='Balto',
                 font_size=19,
                 margin_r=25,
                 margin_l=60,
                 margin_t=40,
                 template='simple_white',
-                uirevision=True)
-            result_barplot_fig.update_xaxes(mirror=True, showline=True)
+                uirevision=True,
+                height=600)
+            result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
             return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -2293,15 +2276,16 @@ if __name__ == '__main__':
                          fresnel_inst in current_session.fresnel_analysis_instances]
             result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
             result_barplot_fig.update_layout(
-                yaxis_title=r'$\large{\text{Fitted value}}$',
+                yaxis_title='Fitted value',
                 font_family='Balto',
                 font_size=19,
                 margin_r=25,
                 margin_l=60,
                 margin_t=40,
                 template='simple_white',
-                uirevision=True)
-            result_barplot_fig.update_xaxes(mirror=True, showline=True)
+                uirevision=True,
+                height=600)
+            result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
             return dash.no_update, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update
@@ -2435,15 +2419,16 @@ if __name__ == '__main__':
                              fresnel_inst in current_session.fresnel_analysis_instances]
                 result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
                 result_barplot_fig.update_layout(
-                    yaxis_title=r'$\large{\text{Fitted value}}$',
+                    yaxis_title='Fitted value',
                     font_family='Balto',
                     font_size=19,
                     margin_r=25,
                     margin_l=60,
                     margin_t=40,
                     template='simple_white',
-                    uirevision=True)
-                result_barplot_fig.update_xaxes(mirror=True, showline=True)
+                    uirevision=True,
+                    height=600)
+                result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
                 result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
                 return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
@@ -2719,36 +2704,40 @@ if __name__ == '__main__':
                          fresnel_inst in current_session.fresnel_analysis_instances]
             result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
             result_barplot_fig.update_layout(
-                yaxis_title=r'$\large{\text{Fitted value}}$',
+                yaxis_title='Fitted value',
                 font_family='Balto',
                 font_size=19,
                 margin_r=25,
                 margin_l=60,
                 margin_t=40,
                 template='simple_white',
-                uirevision=True)
-            result_barplot_fig.update_xaxes(mirror=True, showline=True)
+                uirevision=True,
+                height=600)
+            result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
             return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished', dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(figure_object, save_folder + r'\fresnel_plot.html', include_mathjax='cdn')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(figure_object, save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'fresnel-reflectivity-save-svg' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.svg', format='svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            plotly.io.write_image(figure_object, save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'fresnel-reflectivity-save-png' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(figure_object, save_folder + r'\fresnel_plot.png', format='png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('PNG files', '*.png')], default_extension='.png')
+            plotly.io.write_image(figure_object, save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'fresnel-reflectivity-save-csv' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
             fig_keys_x = ['x' + str(i) for i in range(len(figure_object.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(figure_object.data))]
             fig_keys = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
@@ -2760,7 +2749,7 @@ if __name__ == '__main__':
                 fig_values_y.append(list(figure_object.data[i].y["_inputArray"].values())[:-3])
             fig_values = [value for sublist in zip(fig_values_x, fig_values_y) for value in sublist]
             fig_df = pd.DataFrame(data={key:value for (key, value) in zip(fig_keys, fig_values)})
-            fig_df.to_csv(save_folder+r'\fresnel_plot.csv')
+            fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
 
         # Updating the fresnel fit graph when a different model object is selected in the fresnel analysis list
@@ -3764,46 +3753,50 @@ if __name__ == '__main__':
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_folder + r'\SPRvsTIR_plot.png', format='png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('PNG files', '*.png')], default_extension='.png')
+            plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-svg' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_folder + r'\SPRvsTIR_plot.svg', format='svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-html' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(go.Figure(SPRvsTIR_figure_JSON), save_folder + r'\SPRvsTIR_plot.html',
-                                 include_mathjax='cdn')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(go.Figure(SPRvsTIR_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-csv' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
             SPRvsTIR_fig = go.Figure(SPRvsTIR_figure_JSON)
             fig_df = pd.DataFrame(data={'TIR': list(SPRvsTIR_fig.data[0].x["_inputArray"].values())[:-3], 'SPR': list(SPRvsTIR_fig.data[0].y["_inputArray"].values())[:-3]})
-            fig_df.to_csv(save_folder + r'\SPRvsTIR_plot.csv')
+            fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-png' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_folder + r'\exclusion_fit_plot.png', format='png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('PNG files', '*.png')], default_extension='.png')
+            plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-svg' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_folder + r'\exclusion_fit_plot.svg', format='svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-html' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(go.Figure(reflectivity_figure_JSON), save_folder + r'\exclusion_fit_plot.html',
-                                 include_mathjax='cdn')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(go.Figure(reflectivity_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-csv' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
             reflectivity_fig = go.Figure(reflectivity_figure_JSON)
             fig_keys_x = ['x' + str(i) for i in range(len(reflectivity_fig.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(reflectivity_fig.data))]
@@ -3816,27 +3809,29 @@ if __name__ == '__main__':
                 fig_values_y.append(list(reflectivity_fig.data[i].y["_inputArray"].values())[:-3])
             fig_values = [value for sublist in zip(fig_values_x, fig_values_y) for value in sublist]
             fig_df = pd.DataFrame(data={key:value for (key, value) in zip(fig_keys, fig_values)})
-            fig_df.to_csv(save_folder + r'\exclusion_fit_plot.csv')
+            fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-png' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_folder + r'\exclusion_sensorgram_plot.png', format='png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('PNG files', '*.png')], default_extension='.png')
+            plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-svg' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_folder + r'\exclusion_sensorgram_plot.svg', format='svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-html' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(go.Figure(sensorgram_figure_JSON), save_folder + r'\exclusion_sensorgram_plot.html',
-                                 include_mathjax='cdn')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(go.Figure(sensorgram_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-csv' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
             sensorgram_fig = go.Figure(sensorgram_figure_JSON)
             fig_keys_x = ['x' + str(i) for i in range(len(sensorgram_fig.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(sensorgram_fig.data))]
@@ -3858,33 +3853,33 @@ if __name__ == '__main__':
                 if len(fig_values_excl[i]) < len(fig_values_excl[0]):
                     fig_values_excl[i] = fig_values_excl[i]+[0]*(len(fig_values_excl[0])-len(fig_values_excl[i]))
             fig_df = pd.DataFrame(data={key: value for (key, value) in zip(fig_keys_excl, fig_values_excl)})
-            fig_df.to_csv(save_folder + r'\exclusion_sensorgram_plot.csv')
+            fig_df.to_csv(save_filename, sep=';')
 
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-png' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair_plot.png',
-                                  format='png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('PNG files', '*.png')], default_extension='.png')
+            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-svg' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair_plot.svg',
-                                  format='svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-html' == dash.ctx.triggered_id:
-            save_folder = select_folder(prompt='Choose save location')
-            plotly.io.write_html(go.Figure(dnpair_figure_JSON), save_folder + r'\d_n_pair_plot.html',
-                                 include_mathjax='cdn')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+                                      file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(go.Figure(dnpair_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-csv' == dash.ctx.triggered_id:
-            d_n_pair_fig = go.Figure(dnpair_figure_JSON)
-            save_folder = select_folder(prompt='Choose save location')
-            fig_df = pd.DataFrame(data={'n_buffer': list(d_n_pair_fig.data[0].x["_inputArray"].values())[:-3], 'd_buffer': list(d_n_pair_fig.data[0].y["_inputArray"].values())[:-3], 'n_probe': list(d_n_pair_fig.data[1].x["_inputArray"].values())[:-3], 'd_probe': list(d_n_pair_fig.data[1].y["_inputArray"].values())[:-3]})
-            fig_df.to_csv(save_folder + r'\d_n_pair_plot.csv')
+            d_n_pair_fig_csv = go.Figure(dnpair_figure_JSON)
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            fig_df = pd.DataFrame(data={'n_buffer': list(d_n_pair_fig_csv.data[0].x["_inputArray"].values())[:-3], 'd_buffer': list(d_n_pair_fig_csv.data[0].y["_inputArray"].values())[:-3], 'n_probe': list(d_n_pair_fig_csv.data[1].x["_inputArray"].values())[:-3], 'd_probe': list(d_n_pair_fig_csv.data[1].y["_inputArray"].values())[:-3]})
+            fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-result-pagination' == dash.ctx.triggered_id:
@@ -4511,27 +4506,39 @@ if __name__ == '__main__':
 
             return {'visibility': 'hidden', 'margin-top': '10px', 'margin-right': '10px', 'width': '2rem', 'height': '2rem'}, True
 
-    # # Storing user edits for barplot in result summary in a local storage
-    # @dash.callback(
-    #     dash.Output('barplotfig-store', 'data'),
-    #     dash.Input('barplot-summary-graph', 'relayoutData'),
-    #     dash.State('barplot-summary-graph', 'figure'),
-    #     prevent_initial_call=True)
-    # def update_summary_barplot_edit_data(relayoutData, fig):
-    #     return fig
+    @dash.callback(
+        dash.Input('export-single-file-button', 'n_clicks'),
+        prevent_initial_call=True)
+    def export_result_summary(single_file):
+        global current_session
 
-    # # This callback generates the summary barplot graph in the result summary tab
-    # @dash.callback(
-    #     dash.Output('barplot-summary-graph', 'figure'),
-    #     dash.Input('barplotfig-store', 'data'), # ERROR: This breaks Mozilla
-    #     dash.Input('barplot-summary-update-button','n_clicks'))
-    # def update_summary_barplot_graph(barplot_user_edited_fig, barplot_button):
-    #
-    #     if 'barplot-summary-update-button' == dash.ctx.triggered_id:
-    #         pass
-    #         return
-    #
-    #     elif 'barplotfig-store' == dash.ctx.triggered_id:
-    #         return barplot_user_edited_fig
+        if 'export-single-file-button' == dash.ctx.triggered_id:
+            fresnel_df = pd.DataFrame(
+                                        {'Analysis': [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances],
+                                        'Variable': ['{layer}|{parameter}-{channel}'.format(
+                                             layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
+                                             parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
+                                             channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel) for fresnel_inst in current_session.fresnel_analysis_instances],
+                                        'Value': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]})
+
+            exclusion_df = pd.DataFrame(
+                {'Analysis': [current_session.exclusion_height_analysis_instances[exclusion_inst].name
+                              for exclusion_inst in
+                              current_session.exclusion_height_analysis_instances],
+                 'Exclusion height mean [all]': ['{mean_} {all_}'.format(mean_=round(
+                     current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_height_result[
+                         0], 2), all_=str(np.round(
+                     current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :],
+                     decimals=2))) for exclusion_inst in current_session.exclusion_height_analysis_instances],
+                 'Exclusion RI mean [all]': ['{mean_} {all_}'.format(mean_=round(
+                     current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0],
+                     4), all_=str(np.round(
+                     current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :],
+                     decimals=4))) for exclusion_inst in current_session.exclusion_height_analysis_instances]})
+
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+
+            fresnel_df.to_csv(save_filename[:-4] + '_fresnel' + '.csv', sep=';')
+            exclusion_df.to_csv(save_filename[:-4] + '_exclusion' + '.csv', sep=';')
 
     app.run(debug=True, use_reloader=False, host=session_host, port=8050)
