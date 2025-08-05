@@ -232,7 +232,7 @@ if __name__ == '__main__':
         x_barplot = [[current_session.fresnel_analysis_instances[
                           fresnel_inst].fitted_layer for
                       fresnel_inst in current_session.fresnel_analysis_instances],
-                     [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                     ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
                       current_session.fresnel_analysis_instances]]
         y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
                      fresnel_inst in current_session.fresnel_analysis_instances]
@@ -246,7 +246,8 @@ if __name__ == '__main__':
             margin_t=40,
             template='simple_white',
             uirevision=True,
-            height=600)
+            height=600,
+            autosize=True)
         result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
         result_barplot_fig.update_yaxes(mirror=True, showline=True)
     except:
@@ -260,7 +261,8 @@ if __name__ == '__main__':
             margin_t=40,
             template='simple_white',
             uirevision=True,
-            height=600)
+            height=600,
+            autosize=True)
         result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
         result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -1177,8 +1179,12 @@ if __name__ == '__main__':
                                                    color='primary',
                                                    n_clicks=0,
                                                    disabled=False),
+                                    # table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+                                    #             table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td('S'+ str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name), dash.html.Td('{layer}|{parameter}-{channel}'.format(
+                                    #
                                     dbc.Table.from_dataframe(pd.DataFrame(
-                                        {'Analysis': [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances],
+                                        {'Analysis': ['FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances],
+                                        'Sensor': ['S'+ str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name for fresnel_inst in current_session.fresnel_analysis_instances],
                                         'Variable': ['{layer}|{parameter}-{channel}'.format(
                                              layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
@@ -1213,7 +1219,7 @@ if __name__ == '__main__':
                                     ]),
                                 ]),
                             ], style={'margin-top': '20px', 'display': 'flex', 'justify-content': 'center'}),
-                        ], style={'width': '95%' , 'margin-top': '1.9rem', 'margin-left': '5%'}),
+                        ], style={'margin-top': '1.9rem', 'margin-left': '5%'}),
                     ], id='summary-tab-content')
                 ], label='Result summary and export', tab_id='summary-tab', style={'margin-top': '10px'}),
             ], id='analysis-tabs', active_tab='quantification-tab'),
@@ -2116,8 +2122,8 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
-            table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td('{layer}|{parameter}-{channel}'.format(
+            table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+            table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td('S'+ str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name), dash.html.Td('{layer}|{parameter}-{channel}'.format(
                                              layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
                                              channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel)), dash.html.Td(round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3))]) for fresnel_inst in current_session.fresnel_analysis_instances])]
@@ -2125,7 +2131,7 @@ if __name__ == '__main__':
 
             x_barplot = [[current_session.fresnel_analysis_instances[
                           fresnel_inst].fitted_layer for
-                      fresnel_inst in current_session.fresnel_analysis_instances],[current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances]]
+                      fresnel_inst in current_session.fresnel_analysis_instances],['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in current_session.fresnel_analysis_instances]]
             y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]
             result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
             result_barplot_fig.update_layout(
@@ -2137,7 +2143,8 @@ if __name__ == '__main__':
                 margin_t=40,
                 template='simple_white',
                 uirevision=True,
-                height=600)
+                height=600,
+                autosize=True)
             result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -2253,10 +2260,12 @@ if __name__ == '__main__':
                                                      id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                                                      n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
-            table_header = [dash.html.Thead(
-                dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+            table_header = [dash.html.Thead(dash.html.Tr(
+                [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
             table_body = [dash.html.Tbody([dash.html.Tr(
-                [dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name),
+                [dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td(
+                    'S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' +
+                    current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name),
                  dash.html.Td('{layer}|{parameter}-{channel}'.format(
                      layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                      parameter=
@@ -2270,7 +2279,7 @@ if __name__ == '__main__':
             x_barplot = [[current_session.fresnel_analysis_instances[
                           fresnel_inst].fitted_layer for
                       fresnel_inst in current_session.fresnel_analysis_instances],
-                         [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                         ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
                           current_session.fresnel_analysis_instances]]
             y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
                          fresnel_inst in current_session.fresnel_analysis_instances]
@@ -2284,7 +2293,8 @@ if __name__ == '__main__':
                 margin_t=40,
                 template='simple_white',
                 uirevision=True,
-                height=600)
+                height=600,
+                autosize=True)
             result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -2396,10 +2406,14 @@ if __name__ == '__main__':
                     lower_bound_ = current_fresnel_analysis.bounds[0][0]
                     upper_bound_ = current_fresnel_analysis.bounds[1][0]
 
-                table_header = [dash.html.Thead(
-                    dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+                table_header = [dash.html.Thead(dash.html.Tr(
+                    [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'),
+                     dash.html.Th('Value')]))]
                 table_body = [dash.html.Tbody([dash.html.Tr(
-                    [dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name),
+                    [dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td(
+                        'S' + str(
+                            current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' +
+                        current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name),
                      dash.html.Td('{layer}|{parameter}-{channel}'.format(
                          layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                          parameter=current_session.fresnel_analysis_instances[
@@ -2413,7 +2427,7 @@ if __name__ == '__main__':
                 x_barplot = [[current_session.fresnel_analysis_instances[
                           fresnel_inst].fitted_layer for
                       fresnel_inst in current_session.fresnel_analysis_instances],
-                             [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                             ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
                               current_session.fresnel_analysis_instances]]
                 y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
                              fresnel_inst in current_session.fresnel_analysis_instances]
@@ -2427,7 +2441,8 @@ if __name__ == '__main__':
                     margin_t=40,
                     template='simple_white',
                     uirevision=True,
-                    height=600)
+                    height=600,
+                    autosize=True)
                 result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
                 result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -2680,13 +2695,14 @@ if __name__ == '__main__':
                     id={'type': 'fresnel-analysis-list', 'index': fresnel_id},
                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
-            table_header = [dash.html.Thead(
-                dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+            table_header = [dash.html.Thead(dash.html.Tr(
+                [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
             table_body = [dash.html.Tbody([dash.html.Tr(
-                [dash.html.Td(current_session.fresnel_analysis_instances[fresnel_inst].name),
+                [dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td(
+                    'S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' +
+                    current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name),
                  dash.html.Td('{layer}|{parameter}-{channel}'.format(
-                     layer=
-                     current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
+                     layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                      parameter=
                      current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[
                          current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
@@ -2698,7 +2714,7 @@ if __name__ == '__main__':
             x_barplot = [[current_session.fresnel_analysis_instances[
                           fresnel_inst].fitted_layer for
                       fresnel_inst in current_session.fresnel_analysis_instances],
-                         [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in
+                         ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
                           current_session.fresnel_analysis_instances]]
             y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
                          fresnel_inst in current_session.fresnel_analysis_instances]
@@ -2712,7 +2728,8 @@ if __name__ == '__main__':
                 margin_t=40,
                 template='simple_white',
                 uirevision=True,
-                height=600)
+                height=600,
+                autosize=True)
             result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -4514,7 +4531,8 @@ if __name__ == '__main__':
 
         if 'export-single-file-button' == dash.ctx.triggered_id:
             fresnel_df = pd.DataFrame(
-                                        {'Analysis': [current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances],
+                                        {'Analysis': ['FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name for fresnel_inst in current_session.fresnel_analysis_instances],
+                                        'Sensor': ['S'+ str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name for fresnel_inst in current_session.fresnel_analysis_instances],
                                         'Variable': ['{layer}|{parameter}-{channel}'.format(
                                              layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
