@@ -247,7 +247,7 @@ if __name__ == '__main__':
             template='simple_white',
             uirevision=True,
             height=600,
-            autosize=True)
+            width=900)
         result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
         result_barplot_fig.update_yaxes(mirror=True, showline=True)
     except:
@@ -262,7 +262,7 @@ if __name__ == '__main__':
             template='simple_white',
             uirevision=True,
             height=600,
-            autosize=True)
+            width=900)
         result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
         result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -2144,7 +2144,7 @@ if __name__ == '__main__':
                 template='simple_white',
                 uirevision=True,
                 height=600,
-                autosize=True)
+                width=900)
             result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -2294,7 +2294,7 @@ if __name__ == '__main__':
                 template='simple_white',
                 uirevision=True,
                 height=600,
-                autosize=True)
+                width=900)
             result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -2442,7 +2442,7 @@ if __name__ == '__main__':
                     template='simple_white',
                     uirevision=True,
                     height=600,
-                    autosize=True)
+                    width=900)
                 result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
                 result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
@@ -2729,7 +2729,7 @@ if __name__ == '__main__':
                 template='simple_white',
                 uirevision=True,
                 height=600,
-                autosize=True)
+                width=900)
             result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
             result_barplot_fig.update_yaxes(mirror=True, showline=True)
 
