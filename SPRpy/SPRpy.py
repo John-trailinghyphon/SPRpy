@@ -1196,8 +1196,11 @@ if __name__ == '__main__':
                                         {'Analysis': [current_session.exclusion_height_analysis_instances[exclusion_inst].name
                                                            for exclusion_inst in
                                                            current_session.exclusion_height_analysis_instances],
-                                         'Exclusion height mean [all]': ['{mean_} {all_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_height_result[0], 2), all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :], decimals=2))) for exclusion_inst in current_session.exclusion_height_analysis_instances],
-                                         'Exclusion RI mean [all]': ['{mean_} {all_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0], 4), all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :], decimals=4))) for exclusion_inst in current_session.exclusion_height_analysis_instances]}),
+                                         'Exclusion height mean': ['{mean_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_height_result[0], 2)) for exclusion_inst in current_session.exclusion_height_analysis_instances],
+                                         'Exclusion height all': ['{all_}'.format(all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :], decimals=2))) for exclusion_inst in current_session.exclusion_height_analysis_instances],
+                                         'Exclusion RI mean': ['{mean_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0], 4)) for exclusion_inst in current_session.exclusion_height_analysis_instances],
+                                         'Exclusion RI all': ['{all_}'.format(all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :], decimals=4))) for exclusion_inst in current_session.exclusion_height_analysis_instances]
+                                         }),
                                         bordered=True, id='result-summary-exclusion-table')
                                 ], style={'margin-right': '100px', 'flex': '0 0 400px'}),
                                 dash.html.Div([
@@ -3737,11 +3740,13 @@ if __name__ == '__main__':
                     num_injection_steps = dash.no_update
 
                 table_header = [dash.html.Thead(
-                    dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Exclusion height mean [all]'), dash.html.Th('Exclusion RI mean [all]')]))]
+                    dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Exclusion height mean'), dash.html.Th('Exclusion height all'), dash.html.Th('Exclusion RI mean'), dash.html.Th('Exclusion RI all')]))]
                 table_body = [dash.html.Tbody([dash.html.Tr(
                     [dash.html.Td(current_session.exclusion_height_analysis_instances[exclusion_inst].name),
                      dash.html.Td('{mean_} {all_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_height_result[0], 2), all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :], decimals=2)))),
-                     dash.html.Td('{mean_} {all_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0], 4), all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :], decimals=4))))])
+                     dash.html.Td('{all_}'.format(all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :], decimals=2)))),
+                     dash.html.Td('{mean_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0], 4))),
+                     dash.html.Td('{all_}'.format(all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :], decimals=4))))])
                     for exclusion_inst in current_session.exclusion_height_analysis_instances])]
                 exclusion_result_summary_dataframe = table_header + table_body
 
@@ -3757,9 +3762,9 @@ if __name__ == '__main__':
                 current_session.save_session()
 
                 table_header = [dash.html.Thead(
-                    dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Exclusion height mean [all]'),
-                                  dash.html.Th('Exclusion RI mean [all]')]))]
-                table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(''), dash.html.Td(''), dash.html.Td('')])])]
+                    dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Exclusion height mean'), dash.html.Th('Exclusion height all'),
+                                  dash.html.Th('Exclusion RI mean'), dash.html.Th('Exclusion RI all')]))]
+                table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(''), dash.html.Td(''), dash.html.Td(''), dash.html.Td(''), dash.html.Td('')])])]
                 exclusion_result_summary_dataframe = table_header + table_body
 
                 return dash.no_update, exclusion_result_summary_dataframe, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, '', '', '', dash.no_update, dash.no_update
@@ -4476,8 +4481,9 @@ if __name__ == '__main__':
                                          showline=True)
 
             table_header = [dash.html.Thead(
-                dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Exclusion height mean [all]'),
-                              dash.html.Th('Exclusion RI mean [all]')]))]
+                dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Exclusion height mean'),
+                              dash.html.Th('Exclusion height all'), dash.html.Th('Exclusion RI mean'),
+                              dash.html.Th('Exclusion RI all')]))]
             table_body = [dash.html.Tbody([dash.html.Tr(
                 [dash.html.Td(current_session.exclusion_height_analysis_instances[exclusion_inst].name),
                  dash.html.Td('{mean_} {all_}'.format(mean_=round(
@@ -4485,9 +4491,13 @@ if __name__ == '__main__':
                          0], 2), all_=str(np.round(
                      current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :],
                      decimals=2)))),
-                 dash.html.Td('{mean_} {all_}'.format(mean_=round(
+                 dash.html.Td('{all_}'.format(all_=str(np.round(
+                     current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :],
+                     decimals=2)))),
+                 dash.html.Td('{mean_}'.format(mean_=round(
                      current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0],
-                     4), all_=str(np.round(
+                     4))),
+                 dash.html.Td('{all_}'.format(all_=str(np.round(
                      current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :],
                      decimals=4))))])
                 for exclusion_inst in current_session.exclusion_height_analysis_instances])]
@@ -4540,19 +4550,14 @@ if __name__ == '__main__':
                                         'Value': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]})
 
             exclusion_df = pd.DataFrame(
-                {'Analysis': [current_session.exclusion_height_analysis_instances[exclusion_inst].name
-                              for exclusion_inst in
-                              current_session.exclusion_height_analysis_instances],
-                 'Exclusion height mean [all]': ['{mean_} {all_}'.format(mean_=round(
-                     current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_height_result[
-                         0], 2), all_=str(np.round(
-                     current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :],
-                     decimals=2))) for exclusion_inst in current_session.exclusion_height_analysis_instances],
-                 'Exclusion RI mean [all]': ['{mean_} {all_}'.format(mean_=round(
-                     current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0],
-                     4), all_=str(np.round(
-                     current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :],
-                     decimals=4))) for exclusion_inst in current_session.exclusion_height_analysis_instances]})
+                                        {'Analysis': [current_session.exclusion_height_analysis_instances[exclusion_inst].name
+                                                           for exclusion_inst in
+                                                           current_session.exclusion_height_analysis_instances],
+                                         'Exclusion height mean': ['{mean_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_height_result[0], 2)) for exclusion_inst in current_session.exclusion_height_analysis_instances],
+                                         'Exclusion height all': ['{all_}'.format(all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[0, :], decimals=2))) for exclusion_inst in current_session.exclusion_height_analysis_instances],
+                                         'Exclusion RI mean': ['{mean_}'.format(mean_=round(current_session.exclusion_height_analysis_instances[exclusion_inst].mean_exclusion_RI_result[0], 4)) for exclusion_inst in current_session.exclusion_height_analysis_instances],
+                                         'Exclusion RI all': ['{all_}'.format(all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :], decimals=4))) for exclusion_inst in current_session.exclusion_height_analysis_instances]
+                                         })
 
             save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
 
