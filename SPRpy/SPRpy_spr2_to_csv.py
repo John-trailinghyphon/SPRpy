@@ -105,7 +105,7 @@ def extract_spectra(content, c_ind, polycoff, start_pos, scanspeed, cal_scanspee
         try:
             spectra_array[row, :] = list(map(float, spectra.split(';')))
         except ValueError:
-            print('Row ', str(row), ': Mismatch in angle range compared to last scan. This scan will be skipped.')
+            print('Row ', str(row), ': Mismatch in angular resolution compared to last scan. This scan will be skipped.')
             continue
 
     # Generation of angles and combining with spectra
