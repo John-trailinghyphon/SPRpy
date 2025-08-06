@@ -44,6 +44,9 @@ if __name__ == '__main__':
     session_host = config["session_host"]
     default_sensor_values = config["default_sensor_values"]
     max_logical_cores = config["max_logical_cores"]
+    evanescent_decay_length = config["evanescent_decay_length"]
+    instrument_SPR_sensitivity = config["instrument_SPR_sensitivity"]
+    instrument_TIR_sensitivity = config["instrument_TIR_sensitivity"]
 
     # Determine how many processes can be used for calculations at a time
     if max_logical_cores == 0:
