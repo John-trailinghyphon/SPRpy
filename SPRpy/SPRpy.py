@@ -1,6 +1,6 @@
 # This is the main file where SPRpy is initiated. It is run by executing the file in a Python interpreter.
 # The webapp is built using Dash (https://dash.plotly.com/), which is a Python framework for building webapps.
-
+import math
 import time
 import tomllib
 import types
@@ -112,6 +112,9 @@ if __name__ == '__main__':
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
                                                    sensorgram_df_selection['TIR angle'][0]
 
+            # Calculate bulk correction
+            corrected_sensorgram_df_selection = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection['TIR angle']*instrument_SPR_sensitivity[current_data_path[-9:-6]]/instrument_TIR_sensitivity*math.exp(-2*0/evanescent_decay_length[current_data_path[-9:-6]])
+
             # Set current sensor and analysis objects to be the latest one of the session (highest index value)
             current_sensor = current_session.sensor_instances[max(current_session.sensor_instances.keys())]
 
@@ -152,6 +155,11 @@ if __name__ == '__main__':
                                                sensorgram_df_selection['SPR angle'][0]
         sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
                                                sensorgram_df_selection['TIR angle'][0]
+
+        # Calculate bulk correction
+        corrected_sensorgram_df_selection = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection[
+            'TIR angle'] * instrument_SPR_sensitivity[current_data_path[-9:-6]] / instrument_TIR_sensitivity * math.exp(
+            -2 * 0 / evanescent_decay_length[current_data_path[-9:-6]])
 
         # Add sensor object based on chosen measurement data
         current_sensor = add_sensor_backend(current_session, current_data_path)
@@ -198,6 +206,9 @@ if __name__ == '__main__':
     sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
                                         y=sensorgram_df_selection['TIR angle'],
                                         name='TIR angle'))
+    sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
+                                        y=corrected_sensorgram_df_selection,
+                                        name='Bulk corrected'))
     sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
                                  yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
                                  font_family='Balto',
@@ -492,59 +503,111 @@ if __name__ == '__main__':
                 dbc.Tab([
                     dash.html.Div([
                         dash.html.Div([
-                            dash.dcc.Graph(id='quantification-reflectivity-graph',
-                                           figure=reflectivity_fig,
-                                           mathjax=True),
-                            dbc.ButtonGroup([
-                                dbc.Button('Add data trace',
-                                           id='quantification-reflectivity-add-data-trace',
-                                           n_clicks=0,
-                                           color='danger',
-                                           title='Add a measurement trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
-                                dbc.Button('Add fresnel trace',
-                                           id='quantification-reflectivity-add-fresnel-trace',
-                                           n_clicks=0,
-                                           color='success',
-                                           title='Add a fresnel calculation trace to the figure based on current sensor values.'),
-                                dbc.Button('Clear traces',
-                                           id='quantification-reflectivity-clear-traces',
-                                           n_clicks=0,
-                                           color='warning',
-                                           title='Clear added traces (required to regain sensorgram hover data selection).'),
-                                dbc.DropdownMenu(
-                                    id='reflectivity-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[
-                                        dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
-                                        dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
-                                        dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0),
-                                        dbc.DropdownMenuItem('.csv', id='quantification-reflectivity-save-csv', n_clicks=0)],
-                                )
-                            ], style={'margin-left': '13%'}),
-                        ], style={'width': '35%'}),
-                        # TODO: Add option to plot our PureKinetics stuff in this graph window
+                            dash.html.Div([
+                                dash.dcc.Graph(id='quantification-reflectivity-graph',
+                                               figure=reflectivity_fig,
+                                               mathjax=True),
+                                dbc.ButtonGroup([
+                                    dbc.Button('Add data trace',
+                                               id='quantification-reflectivity-add-data-trace',
+                                               n_clicks=0,
+                                               color='danger',
+                                               title='Add a measurement trace to the figure from an external dry scan .csv file. The most recent scan in the file is used.'),
+                                    dbc.Button('Add fresnel trace',
+                                               id='quantification-reflectivity-add-fresnel-trace',
+                                               n_clicks=0,
+                                               color='success',
+                                               title='Add a fresnel calculation trace to the figure based on current sensor values.'),
+                                    dbc.Button('Clear traces',
+                                               id='quantification-reflectivity-clear-traces',
+                                               n_clicks=0,
+                                               color='warning',
+                                               title='Clear added traces (required to regain sensorgram hover data selection).'),
+                                    dbc.DropdownMenu(
+                                        id='reflectivity-save-dropdown',
+                                        label='Save as...',
+                                        color='info',
+                                        children=[
+                                            dbc.DropdownMenuItem('.PNG', id='quantification-reflectivity-save-png', n_clicks=0),
+                                            dbc.DropdownMenuItem('.SVG', id='quantification-reflectivity-save-svg', n_clicks=0),
+                                            dbc.DropdownMenuItem('.HTML', id='quantification-reflectivity-save-html', n_clicks=0),
+                                            dbc.DropdownMenuItem('.csv', id='quantification-reflectivity-save-csv', n_clicks=0)],
+                                    )
+                                ], style={'margin-left': '13%'}),
+                            ], style={'width': '35%'}),
+                            # TODO: Add option to plot our PureKinetics stuff in this graph window
+                            dash.html.Div([
+                                dash.dcc.Graph(id='quantification-sensorgram-graph',
+                                               figure=sensorgram_fig,
+                                               mathjax=True),
+                                dbc.ButtonGroup([
+                                    dbc.Switch(
+                                        id='hover-selection-switch',
+                                        label='Lock hover selection',
+                                        value=False),
+                                    dbc.DropdownMenu(
+                                        id='sensorgram-save-dropdown',
+                                        label='Save as...',
+                                        color='info',
+                                        children=[dbc.DropdownMenuItem('.PNG', id='quantification-sensorgram-save-png', n_clicks=0),
+                                                  dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
+                                                  dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0),
+                                                  dbc.DropdownMenuItem('.csv', id='quantification-sensorgram-save-csv', n_clicks=0)],
+                                        style={'margin-left': '100%'}),
+                                ], style={'margin-left': '27.5%'}),
+                            ], style={'width': '60%'}),
+                        ], style={'display': 'flex', 'justify-content': 'center'}),
                         dash.html.Div([
-                            dash.dcc.Graph(id='quantification-sensorgram-graph',
-                                           figure=sensorgram_fig,
-                                           mathjax=True),
-                            dbc.ButtonGroup([
-                                dbc.Switch(
-                                    id='hover-selection-switch',
-                                    label='Lock hover selection',
-                                    value=False),
-                                dbc.DropdownMenu(
-                                    id='sensorgram-save-dropdown',
-                                    label='Save as...',
-                                    color='info',
-                                    children=[dbc.DropdownMenuItem('.PNG', id='quantification-sensorgram-save-png', n_clicks=0),
-                                              dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
-                                              dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0),
-                                              dbc.DropdownMenuItem('.csv', id='quantification-sensorgram-save-csv', n_clicks=0)],
-                                    style={'margin-left': '100%'}),
-                            ], style={'margin-left': '27.5%'}),
-                        ], style={'width': '60%'})
-                    ], id='quantification-tab-content', style={'display': 'flex', 'justify-content': 'center'})
+                            dash.html.H4('Bulk correction parameters'),
+                            dbc.Form([
+                                dash.dcc.Markdown(
+                                    '''
+                                    $$\\Large{\\Delta\\theta_{SPR}^{*}=\\Delta\\theta_{SPR}-\\Delta\\theta_{TIR}\\frac{S_{SPR}}{S_{TIR}}}\\Large{e^{\\frac{-2d}{\\delta}}}$$
+                                    ''',
+                                    mathjax=True),
+                                dbc.Row([
+                                    dbc.Col([
+                                        dash.dcc.Markdown(
+                                            '$d=$',
+                                            mathjax=True)
+                                    ], width='auto'),
+                                    dbc.Col([
+                                        dbc.Input(id='sensorgram-correction-layer-thickness', value=0, type='number')
+                                    ], width=2),
+                                    dbc.Col([
+                                        dash.dcc.Markdown(
+                                            '$S_{SPR}=$',
+                                            mathjax=True)
+                                    ], width='auto'),
+                                    dbc.Col([
+                                        dbc.Input(id='sensorgram-correction-layer-S_SPR',
+                                                  value=instrument_SPR_sensitivity[current_data_path[-9:-6]],
+                                                  type='number')
+                                    ], width=2),
+                                    dbc.Col([
+                                        dash.dcc.Markdown(
+                                            '$S_{TIR}=$',
+                                            mathjax=True)
+                                    ], width='auto'),
+                                    dbc.Col([
+                                        dbc.Input(id='sensorgram-correction-layer-S_TIR',
+                                                  value=instrument_TIR_sensitivity,
+                                                  type='number')
+                                    ], width=2),
+                                    dbc.Col([
+                                        dash.dcc.Markdown(
+                                            '$\delta=$',
+                                            mathjax=True)
+                                    ], width='auto'),
+                                    dbc.Col([
+                                        dbc.Input(id='sensorgram-correction-layer-decay-length',
+                                                  value=evanescent_decay_length[current_data_path[-9:-6]],
+                                                  type='number')
+                                    ], width=2)
+                                ])
+                            ])
+                        ], style={'margin-left': '40%', 'margin-top': '30px', 'margin-bot': '50px'}),
+                    ], id='quantification-tab-content')
                 ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
 
                 # Fresnel modelling tab
@@ -1280,6 +1343,7 @@ if __name__ == '__main__':
         global reflectivity_df
         global sensorgram_df
         global sensorgram_df_selection
+        global corrected_sensorgram_df_selection
         global TIR_range_water_or_long_measurement
         global TIR_range_air_or_few_scans
         global TIR_range
@@ -1305,6 +1369,10 @@ if __name__ == '__main__':
                                                    sensorgram_df_selection['SPR angle'][0]
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
                                                    sensorgram_df_selection['TIR angle'][0]
+
+            # Calculate bulk correction
+            corrected_sensorgram_df_selection = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection[
+                'TIR angle'] * instrument_SPR_sensitivity[current_data_path[-9:-6]] / instrument_TIR_sensitivity * math.exp(-2 * 0 / evanescent_decay_length[current_data_path[-9:-6]])
 
             return 'signal', ['Current measurement file:    ', current_data_path.split('/')[-1]], dash.no_update
 
@@ -1834,20 +1902,27 @@ if __name__ == '__main__':
 
         figure_object = go.Figure(figure_JSON)
         global sensorgram_df_selection
+        global current_data_path
 
         if 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
 
             offset_index = clickData['points'][0]['pointIndex']
-
+            SPR_angle_offset = sensorgram_df_selection['SPR angle']-sensorgram_df_selection['SPR angle'].loc[offset_index]
+            TIR_angle_offset = sensorgram_df_selection['TIR angle']-sensorgram_df_selection['TIR angle'].loc[offset_index]
             new_sensorgram_fig = go.Figure(go.Scatter(x=sensorgram_df_selection['time'],
-                                                      y=sensorgram_df_selection['SPR angle']-sensorgram_df_selection['SPR angle'].loc[offset_index],
+                                                      y=SPR_angle_offset,
                                                       name='SPR angle',
                                                       line_color='#636efa'))
 
             new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
-                                                    y=sensorgram_df_selection['TIR angle']-sensorgram_df_selection['TIR angle'].loc[offset_index],
+                                                    y=TIR_angle_offset,
                                                     name='TIR angle',
                                                     line_color='#ef553b'))
+            # TODO: Change bulk correction to use state of controls in layout
+            new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
+                                                    y=SPR_angle_offset - TIR_angle_offset*instrument_SPR_sensitivity[current_data_path[-9:-6]]/instrument_TIR_sensitivity*math.exp(-2*0/evanescent_decay_length[current_data_path[-9:-6]]),
+                                                    name='Bulk corrected',
+                                                    line_color='#00CC96'))
 
             new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
                                              yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',

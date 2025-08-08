@@ -8,12 +8,7 @@ ask_for_previous_session = true  # Default: true | Set to 'false' if you don't w
 session_host = '127.0.0.1'  # Default: '127.0.0.1' | Increment the last digit before running each extra session if you want to have several open simultaneously. Remember to change it also in the browser address in that case.
 default_poly_file = 'DEFAULT_X_cal_values.csv'  # Default filename of X-calibration values used in SPRpy_spr2_to_csv.py
 max_logical_cores = 0  # Default: 0 (no restriction) | Set to an integer value below your maximum logical processor count if you wish to restrict parallel computing to this number of simultaneous processes
-
-[evanescent_decay_length]  # nm (field based -> exp(-2*height/decay_length))
-670 = 226
-785 = 342
-850 = 416
-980 = 570
+instrument_TIR_sensitivity = 74  # default 79 deg/RIU
 
 [instrument_SPR_sensitivity]  # deg/RIU
 670 = 116  # default 124
@@ -21,7 +16,11 @@ max_logical_cores = 0  # Default: 0 (no restriction) | Set to an integer value b
 850 = 93  # default 98
 980 = 87  # default 92
 
-instrument_TIR_sensitivity = 74  # default 79 deg/RIU
+[evanescent_decay_length]  # nm (field based -> exp(-2*height/decay_length))
+670 = 226
+785 = 342
+850 = 416
+980 = 570
 
 [default_sensor_values]  # Here you can edit each column of the "Show default values" button. Make sure you have the same number of entries (and matching positions) on all columns.
 Layer = ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt', 'PEG', 'Protein', 'DNA']
