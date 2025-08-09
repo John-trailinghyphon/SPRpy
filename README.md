@@ -146,9 +146,12 @@ Measure the SPR/TIR response from a surface containing your layer of interest wh
 8) Finally, click "Start calculations". The exclusion height will then be calculated for each "step" in the response: the buffer -> injected probe (step up), and, probe -> buffer rinse (step down). Thus, 2 exclusion heights are calculated for each probe injection, and all of them are also averaged into a single value with a standard deviation. Once the calculations are finished, new plots of possible fitted pairs of thickness and refractive index for both the buffer and probe averaged scans are presented for each step. The exclusion height is found where these curves graphically intersect (this is automatically detected, but good to verify it worked correctly if the values seem odd). If the exclusion height values differ significantly between different steps, there could be problems with the selected points (try again with a new set of points). Problems may also occur if the probe interacts with something on the sample over time, partly adsorbs to the surface, or needs longer time to rinse properly from the flow cell (shift buffer range to further after probe rinsing). Sometimes no intersection occurs for a data set no matter which points are selected, then one has to retry the experiment, and if this still doesn't work deeper investigation are needed, alternatively the swollen layer or probe may not be suitable for the non-interacting probe method. Note that the calculations may take several minutes. If they take way too long, the "Resolution" setting can be lowered to gain some speed if needed (at a loss of accuracy). While generally not needed, the fitting may be further improved across all points of the thickness/refractive index pairs by checking the two "Refitting" options (again at the expense of slightly longer computation times). Remember to press "Initialize model" again before rerunning calculations if any settings has been changed since.
 
 
-### Result summary (Planned feature, WIP)
+### Result summary
 
-Here you can select various results and export and plot them in different ways.
+The results from fresnel modelling and exclusion height determination are presented in two tables in the left-most column and can be exported into a .csv format using the button at the top.
+
+The right barplot groups and plots fresnel model results based on what sensor object was used as background and all its layers that were fitted.
+NOTE: For session files < v1.0.0 only the label for the latest fitted layer is available, but the value will correctly represent earlier layers (you can verify with the analysis column in the table to the left).
 
 ### The dual-wavelength method (Planned feature, WIP) 
 The dual-wavelength method can be used to determine the extension of swollen layers with unknown refractive index, 
