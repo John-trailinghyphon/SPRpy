@@ -77,7 +77,14 @@ New layers can be added to the sensor table with the "Add layer" button and laye
 
 The first tab amoung the analysis options shows two figures for the loaded measurement file. The first left figure shows the angular trace for the last scan of the measurement file by default. The currently presented trace of this figure corresponds to the data that is used for fresnel modelling. Below it is a button that allows for loading more angular scan traces to the figure from other .csv files. Additionally, a second button can be used to plot theoretical fresnel model traces based on the values present in the currently selected sensor data table.
 
-The right plot shows the full measurement sensorgram, including the SPR and TIR angle traces. When hovering the cursor over particular data points in the sensorgram, the left figure updates with the corresponding angular trace (unless the hover lock toggle is activated). This may be used to select exactly which angular trace to use for fresnel modelling from the loaded measurement. Additionally, clicking a datapoint in the sensorgram will create a new offset in the Y-axis at this timepoint. Clicking the legend of any of the data traces will hide it (this goes for all figures in general).
+The right plot shows the full measurement sensorgram, including the SPR, TIR and bulk corrected angle traces. When hovering the cursor over particular data points in the sensorgram, the left figure updates with the corresponding angular trace (unless the hover lock toggle is activated). This may be used to select exactly which angular trace to use for fresnel modelling from the loaded measurement. Additionally, clicking a datapoint in the sensorgram will create a new offset in the Y-axis at this timepoint. Clicking the legend of any of the data traces will hide it (this goes for all figures in general). The bulk corrected trace is calculated according to the formula presented at the bottom of the page, where each parameter may be adjusted (defaults can be changed in config.toml).
+
+Further reading for the bulk correction method: 
+
+Accurate Correction of the “Bulk Response” in Surface Plasmon Resonance Sensing Provides New Insights on Interactions Involving Lysozyme and Poly(ethylene glycol)
+Justas Svirelis, John Andersson, Anna Stradner, and Andreas Dahlin
+ACS Sensors 2022 7 (4), 1175-1182
+https://doi.org/10.1021/acssensors.2c00273
 
 ### Fresnel modelling
 

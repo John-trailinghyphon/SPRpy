@@ -553,60 +553,61 @@ if __name__ == '__main__':
                                                   dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
                                                   dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0),
                                                   dbc.DropdownMenuItem('.csv', id='quantification-sensorgram-save-csv', n_clicks=0)],
-                                        style={'margin-left': '100%'}),
+                                        style={'margin-left': '70%'}),
                                 ], style={'margin-left': '27.5%'}),
                             ], style={'width': '60%'}),
                         ], style={'display': 'flex', 'justify-content': 'center'}),
                         dash.html.Div([
-                            dash.html.H4('Bulk correction parameters'),
+                            dash.html.H4('Bulk correction parameters', style={'text-align': 'center'}),
                             dbc.Form([
                                 dash.dcc.Markdown(
                                     '''
-                                    $$\\Large{\\Delta\\theta_{SPR}^{*}=\\Delta\\theta_{SPR}-\\Delta\\theta_{TIR}\\frac{S_{SPR}}{S_{TIR}}}\\Large{e^{\\frac{-2d}{\\delta}}}$$
+                                    $$\\Delta\\theta_{SPR}^{*}=\\Delta\\theta_{SPR}-\\Delta\\theta_{TIR}\\frac{S_{SPR}}{S_{TIR}}\\Large{e^{\\frac{-2d}{\\delta}}}$$
                                     ''',
-                                    mathjax=True),
+                                    mathjax=True,
+                                    style={'text-align': 'center'}),
                                 dbc.Row([
                                     dbc.Col([
                                         dash.dcc.Markdown(
-                                            '$d=$',
+                                            '$d[nm]=$',
                                             mathjax=True)
-                                    ], width='auto'),
+                                    ], style={'padding-top': '7px', 'padding-left': '10px'}, width='auto'),
                                     dbc.Col([
                                         dbc.Input(id='sensorgram-correction-layer-thickness', value=0, type='number')
-                                    ], width=2),
+                                    ], style={'width': '150px'}),
                                     dbc.Col([
                                         dash.dcc.Markdown(
-                                            '$S_{SPR}=$',
+                                            '$S_{SPR}[deg/RIU]=$',
                                             mathjax=True)
-                                    ], width='auto'),
+                                    ], style={'padding-top': '7px', 'padding-left': '10px'}, width='auto'),
                                     dbc.Col([
                                         dbc.Input(id='sensorgram-correction-layer-S_SPR',
                                                   value=instrument_SPR_sensitivity[current_data_path[-9:-6]],
                                                   type='number')
-                                    ], width=2),
+                                    ], style={'width': '150px'}),
                                     dbc.Col([
                                         dash.dcc.Markdown(
-                                            '$S_{TIR}=$',
+                                            '$S_{TIR}[deg/RIU]=$',
                                             mathjax=True)
-                                    ], width='auto'),
+                                    ], style={'padding-top': '7px', 'padding-left': '10px'}, width='auto'),
                                     dbc.Col([
                                         dbc.Input(id='sensorgram-correction-layer-S_TIR',
                                                   value=instrument_TIR_sensitivity,
                                                   type='number')
-                                    ], width=2),
+                                    ], style={'width': '150px'}),
                                     dbc.Col([
                                         dash.dcc.Markdown(
-                                            '$\delta=$',
+                                            '$\delta[nm]=$',
                                             mathjax=True)
-                                    ], width='auto'),
+                                    ], style={'padding-top': '7px', 'padding-left': '10px'}, width='auto'),
                                     dbc.Col([
                                         dbc.Input(id='sensorgram-correction-layer-decay-length',
                                                   value=evanescent_decay_length[current_data_path[-9:-6]],
                                                   type='number')
-                                    ], width=2)
-                                ])
+                                    ], style={'width': '150px'})
+                                ], style={'textAlign': 'center'})
                             ])
-                        ], style={'margin-left': '40%', 'margin-top': '30px', 'margin-bot': '50px'}),
+                        ], style={'padding-top':'50px', 'margin': 'auto', 'width': '70%'}),
                     ], id='quantification-tab-content')
                 ], label='Response quantification', tab_id='quantification-tab', style={'margin-top': '10px'}),
 
@@ -1887,7 +1888,6 @@ if __name__ == '__main__':
             raise dash.exceptions.PreventUpdate
 
     # Update the sensorgram plot in the Response quantification tab
-    #TODO: Add our PureKinetics plot somewhere here as well
     @dash.callback(
         dash.Output('quantification-sensorgram-graph', 'figure'),
         dash.Input('quantification-sensorgram-save-png', 'n_clicks'),
@@ -1896,49 +1896,24 @@ if __name__ == '__main__':
         dash.Input('quantification-sensorgram-save-csv', 'n_clicks'),
         dash.Input('quantification-sensorgram-graph', 'clickData'),
         dash.Input('loaded-new-measurement', 'data'),
+        dash.Input('sensorgram-correction-layer-thickness', 'value'),
+        dash.Input('sensorgram-correction-layer-S_SPR', 'value'),
+        dash.Input('sensorgram-correction-layer-S_TIR', 'value'),
+        dash.Input('sensorgram-correction-layer-decay-length', 'value'),
+        dash.State('quantification-sensorgram-graph', 'clickData'),
+        dash.State('sensorgram-correction-layer-thickness', 'value'),
+        dash.State('sensorgram-correction-layer-S_SPR', 'value'),
+        dash.State('sensorgram-correction-layer-S_TIR', 'value'),
+        dash.State('sensorgram-correction-layer-decay-length', 'value'),
         dash.State('quantification-sensorgram-graph', 'figure'),
         prevent_initial_call=True)  # Adding this fixed a weird bug with graph not updating after firing clickData callbacks
-    def update_sensorgram_quantification_tab(save_png, save_svg, save_html, save_csv, clickData, data_update, figure_JSON):
+    def update_sensorgram_quantification_tab(save_png, save_svg, save_html, save_csv, clickData, data_update, layer_thickness, S_SPR, S_TIR, decay_length, clickData_state, layer_thickness_state, S_SPR_state, S_TIR_state, decay_length_state, figure_JSON):
 
         figure_object = go.Figure(figure_JSON)
         global sensorgram_df_selection
         global current_data_path
 
-        if 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
-
-            offset_index = clickData['points'][0]['pointIndex']
-            SPR_angle_offset = sensorgram_df_selection['SPR angle']-sensorgram_df_selection['SPR angle'].loc[offset_index]
-            TIR_angle_offset = sensorgram_df_selection['TIR angle']-sensorgram_df_selection['TIR angle'].loc[offset_index]
-            new_sensorgram_fig = go.Figure(go.Scatter(x=sensorgram_df_selection['time'],
-                                                      y=SPR_angle_offset,
-                                                      name='SPR angle',
-                                                      line_color='#636efa'))
-
-            new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
-                                                    y=TIR_angle_offset,
-                                                    name='TIR angle',
-                                                    line_color='#ef553b'))
-            # TODO: Change bulk correction to use state of controls in layout
-            new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
-                                                    y=SPR_angle_offset - TIR_angle_offset*instrument_SPR_sensitivity[current_data_path[-9:-6]]/instrument_TIR_sensitivity*math.exp(-2*0/evanescent_decay_length[current_data_path[-9:-6]]),
-                                                    name='Bulk corrected',
-                                                    line_color='#00CC96'))
-
-            new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
-                                             yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
-                                             font_family='Balto',
-                                             font_size=19,
-                                             margin_r=25,
-                                             margin_l=60,
-                                             margin_t=40,
-                                             template='simple_white',
-                                             uirevision=True)
-            new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
-            new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
-
-            return new_sensorgram_fig
-
-        elif 'loaded-new-measurement' == dash.ctx.triggered_id:
+        if 'loaded-new-measurement' == dash.ctx.triggered_id:
 
             new_sensorgram_fig = go.Figure(go.Scatter(x=sensorgram_df_selection['time'],
                                                       y=sensorgram_df_selection['SPR angle'],
@@ -1949,6 +1924,12 @@ if __name__ == '__main__':
                                                     y=sensorgram_df_selection['TIR angle'],
                                                     name='TIR angle',
                                                     line_color='#ef553b'))
+
+            new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
+                                                    y=sensorgram_df_selection['SPR angle'] - sensorgram_df_selection['TIR angle'] * S_SPR_state / S_TIR_state * math.exp(
+                                                        -2 * layer_thickness_state / decay_length_state),
+                                                    name='Bulk corrected',
+                                                    line_color='#00CC96'))
 
             new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
                                              yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
@@ -1984,9 +1965,52 @@ if __name__ == '__main__':
 
         elif 'quantification-sensorgram-save-csv' == dash.ctx.triggered_id:
             save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
-            fig_df = pd.DataFrame(data={'Time': list(figure_object.data[0].x["_inputArray"].values())[:-3], 'SPR': list(figure_object.data[0].y["_inputArray"].values())[:-3], 'TIR': list(figure_object.data[1].y["_inputArray"].values())[:-3]})
+            fig_df = pd.DataFrame(data={'Time': list(figure_object.data[0].x["_inputArray"].values())[:-3], 'SPR': list(figure_object.data[0].y["_inputArray"].values())[:-3], 'TIR': list(figure_object.data[1].y["_inputArray"].values())[:-3], 'Bulk corrected': list(figure_object.data[2].y["_inputArray"].values())[:-3]})
             fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
+
+        else:
+            if 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
+                offset_index = clickData['points'][0]['pointIndex']
+            else:
+                if clickData_state:
+                    offset_index = clickData_state['points'][0]['pointIndex']
+                else:
+                    offset_index = 0
+
+            SPR_angle_offset = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection['SPR angle'].loc[
+                offset_index]
+            TIR_angle_offset = sensorgram_df_selection['TIR angle'] - sensorgram_df_selection['TIR angle'].loc[
+                offset_index]
+            new_sensorgram_fig = go.Figure(go.Scatter(x=sensorgram_df_selection['time'],
+                                                      y=SPR_angle_offset,
+                                                      name='SPR angle',
+                                                      line_color='#636efa'))
+
+            new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
+                                                    y=TIR_angle_offset,
+                                                    name='TIR angle',
+                                                    line_color='#ef553b'))
+
+            new_sensorgram_fig.add_trace(go.Scatter(x=sensorgram_df_selection['time'],
+                                                    y=SPR_angle_offset - TIR_angle_offset * S_SPR_state / S_TIR_state * math.exp(
+                                                        -2 * layer_thickness_state / decay_length_state),
+                                                    name='Bulk corrected',
+                                                    line_color='#00CC96'))
+
+            new_sensorgram_fig.update_layout(xaxis_title=r'$\large{\text{Time [min]}}$',
+                                             yaxis_title=r'$\large{\text{Angular shift [ }^{\circ}\text{ ]}}$',
+                                             font_family='Balto',
+                                             font_size=19,
+                                             margin_r=25,
+                                             margin_l=60,
+                                             margin_t=40,
+                                             template='simple_white',
+                                             uirevision=True)
+            new_sensorgram_fig.update_xaxes(mirror=True, showline=True)
+            new_sensorgram_fig.update_yaxes(mirror=True, showline=True)
+
+            return new_sensorgram_fig
 
 
     # Update the reflectivity plot in the Fresnel fitting tab

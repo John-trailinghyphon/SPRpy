@@ -1,10 +1,11 @@
 # Changelog
 
-## v0.3.0
+## v1.0.0
 
 ### Features
 - Result summary tab with barplot for fresnel data and data export as .csv now available 
 - Included .csv data saving option for all figures and changed to filedialog window for choosing filenames
+- Included bulk correction to sensorgram in quantification tab
 
 ### Fixes
 - Included pywin32 as dependency for Windows platforms (required for command "SPRpy-desktop-shortcut")
