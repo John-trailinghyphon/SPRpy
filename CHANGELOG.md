@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.1
+
+### Fixes
+- Add data trace and fresnel calculation now correctly updates the reflectivity figure
+
 ## v1.0.0
 
 ### Features

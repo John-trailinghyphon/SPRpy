@@ -1792,7 +1792,8 @@ if __name__ == '__main__':
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
                                                y=trace_reflectivity_df['ydata'],
                                                mode='lines',
-                                               showlegend=False))
+                                               showlegend=True))
+            return figure_object
 
         # This adds a fresnel calculation trace to the reflectivity plot
         elif 'quantification-reflectivity-add-fresnel-trace' == dash.ctx.triggered_id:
@@ -1809,7 +1810,8 @@ if __name__ == '__main__':
             figure_object.add_trace(go.Scatter(x=reflectivity_df['angles'],
                                                y=fresnel_coefficients,
                                                mode='lines',
-                                               showlegend=False))
+                                               showlegend=True))
+            return figure_object
 
         # Clear added traces from the reflectivity plot
         elif 'quantification-reflectivity-clear-traces' == dash.ctx.triggered_id:
