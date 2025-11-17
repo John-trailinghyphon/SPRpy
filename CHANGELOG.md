@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.2
+
+### Features
+- Optical parameters for sensor tables are now loaded from values entered in "[default_sensor_values]" in config.toml
+
+### Fixes
+-
+
 ## v1.0.1
 
 ### Fixes
