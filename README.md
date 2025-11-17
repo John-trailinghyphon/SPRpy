@@ -14,18 +14,20 @@ To cite this work, navigate to the "Cite this repository" menu on the [SPRpy git
 
 ## Installation
 
-SPRpy is written in Python 3.11 and also works with 3.12. It is not yet compatible with python > 3.13 (issue with tkinter for python 3.13.0, should be fixed in 3.13.1), and has not been tested on earlier versions of python (the source code is also available to clone from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy) instead). Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
+SPRpy is written in Python 3.11 and also works with 3.12. It is not yet compatible with python > 3.13 (issue with tkinter for python 3.13.0, should be fixed in 3.13.1), and has not been tested on earlier versions of python. Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
 
 SPRpy is available on [PyPI](https://pypi.org/project/SPRpy/) and can be installed using pip (after installing python):
 
 Windows (in cmd or Powershell):
 ```python -m pip install SPRpy```
+(the source code is also available to clone from the [SPRpy github repository](https://github.com/John-trailinghyphon/SPRpy))
 
 Linux/Mac (always remove "python -m"):
 ```pip install SPRpy```
 
 To add a shortcut to the SPRpy folder to the desktop after installation, run the following command in the command prompt (windows only):
 ```SPRpy-desktop-shortcut```
+(If the shortcut still does not appear, for Windows you can usually find the installation folder by pasting ```%USERPROFILE%\AppData\Local\Programs\Python\Python311\Lib\site-packages\SPRpy``` 
 
 To update to a newer version of SPRpy (overwriting the previously installed version), run the following command:
 ```python -m pip --no-cache-dir install --upgrade SPRpy```
@@ -41,7 +43,7 @@ Note that SPRpy is designed to leverage parallel computing where applicable, thu
 
 Before running SPRpy, you need to convert your MP-SPR measurement files (.spr2) to a specific .csv format. This can be achieved by running two separate scripts (simply double-click):
 1) "SPRpy_X_cal.py", a script which generally only needs to be run once to convert the stepper motor values to angles for a particular Bionavis instrument (depending on its setup). Requires a full range scan at highest angular resolution (slow scan), along with its .spr2 file and corresponding exported .dto files from the Bionavis Viewer for each instrument wavelength. The script produces a .csv file that is used by the second script in 2).
-2) "SPRpy_spr2_to_csv.py", a script that is used to convert measurements (.spr2) to a specific .csv format used by SPRpy. You will be prompted to select a .spr2 measurement file to convert (and X_cal.csv, file unless the script finds the default). One .csv file will be created for each wavelength in the same folder as the original file with the filename of the original + channel and wavelength information (NOTE! The appended part of the file name must not be changed, it is used by SPRpy). Also note that the runtime is heavily reduced for lower scanspeeds (increased angular resolution).
+2) "SPRpy_spr2_to_csv.py", a script that is used to convert measurements (.spr2) to a specific .csv format used by SPRpy. You will be prompted to select a .spr2 measurement file to convert (and X_cal.csv, file unless the script finds the default). One .csv file will be created for each wavelength in the same folder as the original file with the filename of the original + channel and wavelength information (NOTE! The appended part of the file name must not be changed, it is used by SPRpy). Also note that the runtime is heavily increased for lower scanspeeds (increased angular resolution).
 
 A text configuration file can be found as "config.toml" that contain some settings that can be tuned. The path in "default_data_folder" can be set to a folder of your choice where you will be initially prompted when loading new data. To run SPRpy, double-click "SPRpy.py" from the SPRpy folder or run it inside a python interpreter.
 
