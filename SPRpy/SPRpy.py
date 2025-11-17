@@ -162,7 +162,7 @@ if __name__ == '__main__':
             -2 * 0 / evanescent_decay_length[current_data_path[-9:-6]])
 
         # Add sensor object based on chosen measurement data
-        current_sensor = add_sensor_backend(current_session, current_data_path)
+        current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values)
 
         # Calculate TIR angle and update current_sensor.refractive_indices accordingly
         TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
@@ -1438,7 +1438,7 @@ if __name__ == '__main__':
         global TIR_range
 
         if 'new-sensor-gold' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Au')
+            current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values, sensor_metal='Au')
             current_sensor.name = 'Gold sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
@@ -1468,7 +1468,7 @@ if __name__ == '__main__':
             return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-glass' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='SiO2')
+            current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values, sensor_metal='SiO2')
             current_sensor.name = 'Glass sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
@@ -1498,7 +1498,7 @@ if __name__ == '__main__':
             return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-palladium' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pd')
+            current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values, sensor_metal='Pd')
             current_sensor.name = 'Palladium sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
@@ -1528,7 +1528,7 @@ if __name__ == '__main__':
             return data_rows, current_sensor.sensor_table_title, sensor_options, False, dash.no_update
 
         elif 'new-sensor-platinum' == dash.ctx.triggered_id:
-            current_sensor = add_sensor_backend(current_session, current_data_path, sensor_metal='Pt')
+            current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values, sensor_metal='Pt')
             current_sensor.name = 'Platinum sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
