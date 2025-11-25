@@ -535,7 +535,6 @@ if __name__ == '__main__':
                                     )
                                 ], style={'margin-left': '13%'}),
                             ], style={'width': '35%'}),
-                            # TODO: Add option to plot our PureKinetics stuff in this graph window
                             dash.html.Div([
                                 dash.dcc.Graph(id='quantification-sensorgram-graph',
                                                figure=sensorgram_fig,
@@ -545,6 +544,10 @@ if __name__ == '__main__':
                                         id='hover-selection-switch',
                                         label='Lock hover selection',
                                         value=False),
+                                    dbc.Switch('Show TIR/SPR fitting options',
+                                               id='quantification-show-SPR-TIR-fit-options-switch',
+                                               value=False,
+                                               title='Show fit options for TIR and SPR sensorgram'),
                                     dbc.DropdownMenu(
                                         id='sensorgram-save-dropdown',
                                         label='Save as...',
@@ -561,15 +564,55 @@ if __name__ == '__main__':
                             dbc.Collapse(
                                 dbc.Card(
                                     dbc.Cardbody(
-                                        dbc.Button('Refit TIR/SPR sensorgram',
-                                                   id='',
+                                        dbc.Form([
+                                            dbc.Row([
+                                                dbc.Label('TIR fit options:', width='auto'),
+                                                dbc.Col([
+                                                    dbc.InputGroup([
+                                                        dbc.Input(id='TIR-fit-option-window',
+                                                                  value=int(7),
+                                                                  type='number',
+                                                                  label='smoothening window size'),
+                                                        dbc.Input(id='TIR-fit-option-lowerbound',
+                                                                  value=int(4),
+                                                                  type='number',
+                                                                  label='points below max'),
+                                                        dbc.Input(id='TIR-fit-option-upperbound',
+                                                                  value=int(5),
+                                                                  type='number',
+                                                                  label='points above max')
+                                                    ])
+                                                ], width=7)
+                                            ]),
+                                            dbc.Row([
+                                                dbc.Label('SPR fit options:', width='auto'),
+                                                dbc.Col([
+                                                    dbc.InputGroup([
+                                                        dbc.Input(id='SPR-fit-option-points',
+                                                                  value=int(4000),
+                                                                  type='number',
+                                                                  label='nr of points'),
+                                                        dbc.Input(id='SPR-fit-option-lowerbound',
+                                                                  value=int(70),
+                                                                  type='number',
+                                                                  label='points below min'),
+                                                        dbc.Input(id='SPR-fit-option-upperbound',
+                                                                  value=int(70),
+                                                                  type='number',
+                                                                  label='points above min')
+                                                    ])
+                                                ], width=7)
+                                            ])
+                                        ], style={'margin-bottom': '10px'}),
+                                        dbc.Button('Apply TIR/SPR fit options',
+                                                   id='quantification-apply-fitting-SPR-TIR-button',
                                                    n_clicks=0,
-                                                   color='warning',
-                                                   title='Apply new fit settings to TIR and SPR sensorgrams' )
+                                                   color='success',
+                                                   title='Apply new fit settings to TIR and SPR sensorgrams')
                                     )
                                 ),
                                 id='quantification-TIR-SPR-fit-collapse', is_open=False)
-                        ], style={'padding-top':'50px', 'margin': 'auto', 'width': '70%'}),
+                        ], style={'margin': 'auto', 'width': '70%'}),
                         dash.html.Div([
                             dash.html.H4('Bulk correction parameters', style={'text-align': 'center'}),
                             dbc.Form([
