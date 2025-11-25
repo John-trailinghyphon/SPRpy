@@ -221,6 +221,23 @@ if __name__ == '__main__':
     sensorgram_fig.update_xaxes(mirror=True, showline=True)
     sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
+    TIR_fitting_fig = px.line(sensorgram_df_selection, x='TIR deriv x', y='TIR deriv y')
+    TIR_fitting_fig['data'][0]['showlegend'] = True
+    TIR_fitting_fig['data'][0]['name'] = 'TIR angular derivative'
+    TIR_fitting_fig.add_trace(go.Scatter(x=sensorgram_df_selection['TIR deriv fit x'],
+                                        y=sensorgram_df_selection['TIR deriv fit y'],
+                                        name='TIR derivative fit'))
+    TIR_fitting_fig.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                 yaxis_title=r'$\large{\text{dTIR/d\theta}\text{}}$',
+                                 font_family='Balto',
+                                 font_size=19,
+                                 margin_r=25,
+                                 margin_l=60,
+                                 margin_t=40,
+                                 template='simple_white')
+    TIR_fitting_fig.update_xaxes(mirror=True, showline=True)
+    TIR_fitting_fig.update_yaxes(mirror=True, showline=True)
+
     d_n_pair_fig = go.Figure(go.Scatter(
                 x=[0],
                 y=[0],
@@ -560,9 +577,12 @@ if __name__ == '__main__':
                                 ], style={'margin-left': '27.5%'}),
                             ], style={'width': '60%'}),
                         ], style={'display': 'flex', 'justify-content': 'center'}),
-                        dash.html.Div([  # TODO: Add layout options for changing TIR and SPR fit settings. Also add toggle for changing TIR angle algorithm to be more similar to Bionavis approach.
+                        dash.html.Div([  # TODO: Add layout options for changing TIR and SPR fit settings. Also add toggle for changing TIR angle algorithm to be more similar to Bionavis approach?
                             dbc.Collapse(
                                 dbc.Card(
+                                    dash.dcc.Graph(id='quantification-TIR-fit-graph',
+                                                   figure=TIR_fitting_fig,
+                                                   mathjax=True),
                                     dbc.Cardbody(
                                         dbc.Form([
                                             dbc.Row([
@@ -573,6 +593,10 @@ if __name__ == '__main__':
                                                                   value=int(7),
                                                                   type='number',
                                                                   label='smoothening window size'),
+                                                        dbc.Input(id='TIR-fit-option-points',
+                                                                  value=int(2000),
+                                                                  type='number',
+                                                                  label='nr of points'),
                                                         dbc.Input(id='TIR-fit-option-lowerbound',
                                                                   value=int(4),
                                                                   type='number',

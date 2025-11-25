@@ -183,4 +183,4 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed, _window_count=None, _f
     dTIR_final = np.argmax(deriv_TIR_fit_y)
     TIR_theta = deriv_TIR_fit_x[dTIR_final]
 
-    return TIR_theta, deriv_TIR_fit_x, deriv_TIR_fit_y
+    return TIR_theta, TIR_xdata_filtered, deriv_ydata, deriv_TIR_fit_x, deriv_TIR_fit_y

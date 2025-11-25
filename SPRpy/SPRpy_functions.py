@@ -82,8 +82,14 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_boundary
 
     # Calculating SPR and TIR angles
     sensorgram_SPR_angles = np.empty(len(ydata))
+    sensorgram_SPR_fit_y = np.empty(len(ydata))
+    sensorgram_SPR_fit_x = np.empty(len(ydata))
     sensorgram_SPR_angles.fill(np.nan)
     sensorgram_TIR_angles = np.empty(len(ydata))
+    sensorgram_TIR_deriv_x = np.empty(len(ydata))
+    sensorgram_TIR_deriv_y = np.empty(len(ydata))
+    sensorgram_TIR_deriv_fit_x = np.empty(len(ydata))
+    sensorgram_TIR_deriv_fit_y = np.empty(len(ydata))
     sensorgram_TIR_angles.fill(np.nan)
 
     for ind, val in enumerate(time):
@@ -102,21 +108,34 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_boundary
             y_fit_min_ind = np.argmin(y_polyfit)
 
             sensorgram_SPR_angles[ind-1] = x_selection[y_fit_min_ind]
+            sensorgram_SPR_fit_x[ind-1] = x_selection
+            sensorgram_SPR_fit_y[ind-1] = y_polyfit
 
         except:
             print('No SPR minimum found. Skipping measurement point...')
             sensorgram_SPR_angles[ind-1] = np.nan
+            sensorgram_SPR_fit_x[ind-1] = np.nan
+            sensorgram_SPR_fit_y[ind-1] = np.nan
 
         # TIR angles
         try:
-            TIR_theta, _, _ = TIR_determination(angles, reflectivity_spectrum, TIR_range, scanspeed, _window_count=TIR_window_count, _fit_lower_ind=TIR_fit_lower_ind, _fit_higher_ind=TIR_fit_higher_ind)
+            TIR_theta, TIR_xdata_filtered, deriv_ydata, TIR_theta_fit_x, TIR_theta_fit_y  = TIR_determination(angles, reflectivity_spectrum, TIR_range, scanspeed, _window_count=TIR_window_count, _fit_lower_ind=TIR_fit_lower_ind, _fit_higher_ind=TIR_fit_higher_ind)
             sensorgram_TIR_angles[ind-1] = TIR_theta
+            sensorgram_TIR_deriv_x[ind-1] = TIR_xdata_filtered
+            sensorgram_TIR_deriv_y[ind-1] = deriv_ydata
+            sensorgram_TIR_deriv_fit_x[ind-1] = TIR_theta_fit_x
+            sensorgram_TIR_deriv_fit_y[ind-1] = TIR_theta_fit_y
 
         except:
             print('No TIR found. Skipping measurement point...')
             sensorgram_TIR_angles[ind-1] = np.nan
+            sensorgram_TIR_deriv_x[ind - 1] = np.nan
+            sensorgram_TIR_deriv_y[ind - 1] = np.nan
+            sensorgram_TIR_deriv_fit_x[ind-1] = np.nan
+            sensorgram_TIR_deriv_fit_y[ind-1] = np.nan
 
-    sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles})
+
+    sensorgram_df = pd.DataFrame(data={'time': time, 'SPR angle': sensorgram_SPR_angles, 'TIR angle': sensorgram_TIR_angles, 'SPR fit x': sensorgram_SPR_fit_x, 'SPR fit y': sensorgram_SPR_fit_y, 'TIR deriv x': sensorgram_TIR_deriv_x, 'TIR deriv y': sensorgram_TIR_deriv_y, 'TIR deriv fit x': sensorgram_TIR_deriv_fit_x, 'TIR deriv fit y': sensorgram_TIR_deriv_fit_y})
 
     return sensorgram_df
 
