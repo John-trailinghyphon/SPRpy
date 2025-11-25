@@ -141,7 +141,7 @@ def fresnel_calculation(fitted_var=None,
             return fresnel_residuals
 
 
-def TIR_determination(xdata, ydata, TIR_range, scanspeed):
+def TIR_determination(xdata, ydata, TIR_range, scanspeed, _window_count=None, _fit_lower_ind=None, _fit_higher_ind=None):
 
     # Convert to numpy array first if necessary
     if isinstance(xdata, pd.Series):
@@ -155,13 +155,13 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed):
 
     # Scanspeed dependent filtering and fitting
     if scanspeed <= 5:
-        window_count = 7
-        fit_lower_ind = 4
-        fit_higher_ind = 5
+        window_count = (_window_count or 7)
+        fit_lower_ind = (_fit_lower_ind or 4)
+        fit_higher_ind = (_fit_higher_ind or 5)
     elif scanspeed > 5:
-        window_count = 3
-        fit_lower_ind = 3
-        fit_higher_ind = 3
+        window_count = (_window_count or 3)
+        fit_lower_ind = (_fit_lower_ind or 3)
+        fit_higher_ind = (_fit_higher_ind or 3)
 
     # Filter the data with a moving-average filter to smoothen the signal
     TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=window_count, min_count=1)

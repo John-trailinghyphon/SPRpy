@@ -1,9 +1,11 @@
 # Changelog
 
-## v1.0.2
+## v1.1.0
 
 ### Features
 - Optical parameters for sensor tables are now loaded from values entered in "[default_sensor_values]" in config.toml
+- Can now change TIR and SPR angle fitting parameters for the sensorgram and refit them using a button hidden in a collapse
+- TODO: Displays the TIR and SPR angle fits in the reflectivity window when hovering over data points in the SPR sensorgram
 
 ### Fixes
 -

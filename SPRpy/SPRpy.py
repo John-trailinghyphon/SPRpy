@@ -557,6 +557,19 @@ if __name__ == '__main__':
                                 ], style={'margin-left': '27.5%'}),
                             ], style={'width': '60%'}),
                         ], style={'display': 'flex', 'justify-content': 'center'}),
+                        dash.html.Div([  # TODO: Add layout options for changing TIR and SPR fit settings. Also add toggle for changing TIR angle algorithm to be more similar to Bionavis approach.
+                            dbc.Collapse(
+                                dbc.Card(
+                                    dbc.Cardbody(
+                                        dbc.Button('Refit TIR/SPR sensorgram',
+                                                   id='',
+                                                   n_clicks=0,
+                                                   color='warning',
+                                                   title='Apply new fit settings to TIR and SPR sensorgrams' )
+                                    )
+                                ),
+                                id='quantification-TIR-SPR-fit-collapse', is_open=False)
+                        ], style={'padding-top':'50px', 'margin': 'auto', 'width': '70%'}),
                         dash.html.Div([
                             dash.html.H4('Bulk correction parameters', style={'text-align': 'center'}),
                             dbc.Form([
@@ -1324,6 +1337,8 @@ if __name__ == '__main__':
 
             return dash.no_update, new_name, ''
 
+
+    # TODO: Include logic for updating fitting parameters for TIR and SPR angle when calculating sensorgram. Also to select TIR fitting algorithm (implement something similar to Bionavis)
     # Load in new measurement data and send a Store signal to other callbacks to update appropriately
     @dash.callback(
         dash.Output('loaded-new-measurement', 'data'),
@@ -1361,7 +1376,7 @@ if __name__ == '__main__':
                 TIR_range = TIR_range_water_or_long_measurement
             else:
                 TIR_range = TIR_range_air_or_few_scans
-
+            # TODO: Include logic for updating fitting parameters for TIR and SPR angle when calculating sensorgram. Also to select TIR fitting algorithm (implement something similar to Bionavis)
             sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
             # Offset to start at 0 degrees at 0 minutes

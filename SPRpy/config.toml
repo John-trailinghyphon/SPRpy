@@ -3,7 +3,7 @@
 default_data_folder = 'C:\Users\EXAMPLE USER'  # Default folder for loading data files
 TIR_range_water_or_long_measurement = [60.8, 63]  # Default: [60.8, 63] | TIR range for water --> Automatically used for 50 or more scans per file
 TIR_range_air_or_few_scans = [40.9, 41.8]  # Default: [40.9, 41.8] | TIR range for air --> Automatically used for less than 50 scans per file
-auto_angle_range_points = [40, 60]  # Default: [40, 60] | Number of data points below and above the SPR minimum for auto-detection of the SPR peak
+auto_angle_range_points = [40, 60]  # Default: [40, 60] | Number of data points below and above the SPR minimum for auto-detection of the SPR peak during fresnel fitting
 ask_for_previous_session = true  # Default: true | Set to 'false' if you don't want to be asked for a previous session
 session_host = '127.0.0.1'  # Default: '127.0.0.1' | Increment the last digit before running each extra session if you want to have several open simultaneously. Remember to change it also in the browser address in that case.
 default_poly_file = 'DEFAULT_X_cal_values.csv'  # Default filename of X-calibration values used in SPRpy_spr2_to_csv.py

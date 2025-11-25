@@ -73,7 +73,7 @@ def load_csv_data(path=False, default_data_folder=None, prompt='Select the measu
     return data_path_, scanspeed, time_df, angles_df, ydata_df, reflectivity_df_
 
 
-def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(70, 70)):
+def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_boundary_points=(70, 70), SPR_fit_points=4000, TIR_window_count=None, TIR_fit_lower_ind=None, TIR_fit_higher_ind=None):
 
     # Convert dataframes to numpy ndarrays
     time = time.to_numpy()
@@ -92,12 +92,12 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
 
         # SPR angles
         try:
-            y_selection = reflectivity_spectrum[min_index-SPR_points[0]:min_index+SPR_points[1]]
+            y_selection = reflectivity_spectrum[min_index - SPR_boundary_points[0]:min_index + SPR_boundary_points[1]]
 
-            polynomial = np.polyfit(angles[min_index - SPR_points[0]:min_index + SPR_points[1]],
+            polynomial = np.polyfit(angles[min_index - SPR_boundary_points[0]:min_index + SPR_boundary_points[1]],
                                     y_selection, 3)
-            x_selection = np.linspace(angles[min_index - SPR_points[0]],
-                                      angles[min_index + SPR_points[1]], 4000)
+            x_selection = np.linspace(angles[min_index - SPR_boundary_points[0]],
+                                      angles[min_index + SPR_boundary_points[1]], SPR_fit_points)
             y_polyfit = np.polyval(polynomial, x_selection)
             y_fit_min_ind = np.argmin(y_polyfit)
 
@@ -109,7 +109,7 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_points=(
 
         # TIR angles
         try:
-            TIR_theta, _, _ = TIR_determination(angles, reflectivity_spectrum, TIR_range, scanspeed)
+            TIR_theta, _, _ = TIR_determination(angles, reflectivity_spectrum, TIR_range, scanspeed, _window_count=TIR_window_count, _fit_lower_ind=TIR_fit_lower_ind, _fit_higher_ind=TIR_fit_higher_ind)
             sensorgram_TIR_angles[ind-1] = TIR_theta
 
         except:
