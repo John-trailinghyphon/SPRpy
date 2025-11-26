@@ -72,7 +72,7 @@ def load_csv_data(path=False, default_data_folder=None, prompt='Select the measu
 
     return data_path_, scanspeed, time_df, angles_df, ydata_df, reflectivity_df_
 
-
+# TODO: The new fitting parameters need to be supplied as pandas dataframes with each data point as a pandas series object
 def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_boundary_points=(70, 70), SPR_fit_points=4000, TIR_window_count=None, TIR_fit_lower_ind=None, TIR_fit_higher_ind=None):
 
     # Convert dataframes to numpy ndarrays
@@ -80,17 +80,24 @@ def calculate_sensorgram(time, angles, ydata, TIR_range, scanspeed, SPR_boundary
     angles = angles.to_numpy()
     ydata = ydata.to_numpy()
 
+    # TODO: The new fitting parameters need to be supplied as pandas dataframes with each data point as a pandas series object
     # Calculating SPR and TIR angles
     sensorgram_SPR_angles = np.empty(len(ydata))
     sensorgram_SPR_fit_y = np.empty(len(ydata))
     sensorgram_SPR_fit_x = np.empty(len(ydata))
     sensorgram_SPR_angles.fill(np.nan)
+    sensorgram_SPR_fit_x.fill(np.nan)
+    sensorgram_SPR_fit_y.fill(np.nan)
     sensorgram_TIR_angles = np.empty(len(ydata))
     sensorgram_TIR_deriv_x = np.empty(len(ydata))
     sensorgram_TIR_deriv_y = np.empty(len(ydata))
     sensorgram_TIR_deriv_fit_x = np.empty(len(ydata))
     sensorgram_TIR_deriv_fit_y = np.empty(len(ydata))
     sensorgram_TIR_angles.fill(np.nan)
+    sensorgram_TIR_deriv_x.fill(np.nan)
+    sensorgram_TIR_deriv_y.fill(np.nan)
+    sensorgram_TIR_deriv_fit_x.fill(np.nan)
+    sensorgram_TIR_deriv_fit_y.fill(np.nan)
 
     for ind, val in enumerate(time):
         reflectivity_spectrum = ydata[ind-1, :]

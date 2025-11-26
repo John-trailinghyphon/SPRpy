@@ -165,7 +165,7 @@ if __name__ == '__main__':
         current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values)
 
         # Calculate TIR angle and update current_sensor.refractive_indices accordingly
-        TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
+        TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
         current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
         current_sensor.optical_parameters.replace(current_sensor.optical_parameters['n'].iloc[-1], current_sensor.refractive_indices[-1], inplace=True)
         current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
@@ -221,14 +221,14 @@ if __name__ == '__main__':
     sensorgram_fig.update_xaxes(mirror=True, showline=True)
     sensorgram_fig.update_yaxes(mirror=True, showline=True)
 
-    TIR_fitting_fig = px.line(sensorgram_df_selection, x='TIR deriv x', y='TIR deriv y')
+    TIR_fitting_fig = px.line(x=sensorgram_df_selection['TIR deriv x'].iloc[-1], y=sensorgram_df_selection['TIR deriv y'].iloc[-1])
     TIR_fitting_fig['data'][0]['showlegend'] = True
-    TIR_fitting_fig['data'][0]['name'] = 'TIR angular derivative'
-    TIR_fitting_fig.add_trace(go.Scatter(x=sensorgram_df_selection['TIR deriv fit x'],
-                                        y=sensorgram_df_selection['TIR deriv fit y'],
-                                        name='TIR derivative fit'))
+    TIR_fitting_fig['data'][0]['name'] = 'Derivative'
+    TIR_fitting_fig.add_trace(go.Scatter(x=sensorgram_df_selection['TIR deriv fit x'].iloc[-1],
+                                        y=sensorgram_df_selection['TIR deriv fit y'].iloc[-1],
+                                        name='Fit'))
     TIR_fitting_fig.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
-                                 yaxis_title=r'$\large{\text{dTIR/d\theta}\text{}}$',
+                                 yaxis_title=r'$\large{\text{TIR angular derivative}\text{}}$',
                                  font_family='Balto',
                                  font_size=19,
                                  margin_r=25,
@@ -237,6 +237,25 @@ if __name__ == '__main__':
                                  template='simple_white')
     TIR_fitting_fig.update_xaxes(mirror=True, showline=True)
     TIR_fitting_fig.update_yaxes(mirror=True, showline=True)
+
+    reflectivity_df_selection_x = reflectivity_df['angles'][reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]:reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]
+    reflectivity_df_selection_y = reflectivity_df['ydata'][reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]:reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]
+    SPR_fitting_fig = px.line(x=reflectivity_df_selection_x, y=reflectivity_df_selection_y)
+    SPR_fitting_fig['data'][0]['showlegend'] = True
+    SPR_fitting_fig['data'][0]['name'] = 'SPR angle'
+    SPR_fitting_fig.add_trace(go.Scatter(x=sensorgram_df_selection['SPR fit x'].iloc[-1],
+                                         y=sensorgram_df_selection['SPR fit y'].iloc[-1],
+                                         name='Fit'))
+    SPR_fitting_fig.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                   yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                   font_family='Balto',
+                                   font_size=19,
+                                   margin_r=25,
+                                   margin_l=60,
+                                   margin_t=40,
+                                   template='simple_white')
+    SPR_fitting_fig.update_xaxes(mirror=True, showline=True)
+    SPR_fitting_fig.update_yaxes(mirror=True, showline=True)
 
     d_n_pair_fig = go.Figure(go.Scatter(
                 x=[0],
@@ -561,10 +580,9 @@ if __name__ == '__main__':
                                         id='hover-selection-switch',
                                         label='Lock hover selection',
                                         value=False),
-                                    dbc.Switch('Show TIR/SPR fitting options',
+                                    dbc.Switch(label='Show TIR/SPR fitting options',
                                                id='quantification-show-SPR-TIR-fit-options-switch',
-                                               value=False,
-                                               title='Show fit options for TIR and SPR sensorgram'),
+                                               value=False),
                                     dbc.DropdownMenu(
                                         id='sensorgram-save-dropdown',
                                         label='Save as...',
@@ -579,64 +597,73 @@ if __name__ == '__main__':
                         ], style={'display': 'flex', 'justify-content': 'center'}),
                         dash.html.Div([  # TODO: Add layout options for changing TIR and SPR fit settings. Also add toggle for changing TIR angle algorithm to be more similar to Bionavis approach?
                             dbc.Collapse(
-                                dbc.Card(
-                                    dash.dcc.Graph(id='quantification-TIR-fit-graph',
-                                                   figure=TIR_fitting_fig,
-                                                   mathjax=True),
-                                    dbc.Cardbody(
+                                dbc.Card([
+                                    dash.html.Div([
+                                        dash.html.Div([
+                                            dash.dcc.Graph(id='quantification-TIR-fit-graph',
+                                                           figure=TIR_fitting_fig,
+                                                           mathjax=True),
+                                        ], style={'width': '45%'}),
+                                        dash.html.Div([
+                                            dash.dcc.Graph(id='quantification-SPR-fit-graph',
+                                                           figure=SPR_fitting_fig,
+                                                           mathjax=True),
+                                        ], style={'width': '45%'}),
+                                    ], style={'display': 'flex', 'justify-content': 'center'}),
+                                    dbc.CardBody(
                                         dbc.Form([
                                             dbc.Row([
                                                 dbc.Label('TIR fit options:', width='auto'),
                                                 dbc.Col([
                                                     dbc.InputGroup([
+                                                        dbc.Label('smoothening window size:', width='auto'),
                                                         dbc.Input(id='TIR-fit-option-window',
                                                                   value=int(7),
-                                                                  type='number',
-                                                                  label='smoothening window size'),
+                                                                  type='number'),
+                                                        dbc.Label('nr of points:', width='auto'),
                                                         dbc.Input(id='TIR-fit-option-points',
                                                                   value=int(2000),
-                                                                  type='number',
-                                                                  label='nr of points'),
+                                                                  type='number'),
+                                                        dbc.Label('points below max:', width='auto'),
                                                         dbc.Input(id='TIR-fit-option-lowerbound',
                                                                   value=int(4),
-                                                                  type='number',
-                                                                  label='points below max'),
+                                                                  type='number'),
+                                                        dbc.Label('points above max:', width='auto'),
                                                         dbc.Input(id='TIR-fit-option-upperbound',
                                                                   value=int(5),
-                                                                  type='number',
-                                                                  label='points above max')
+                                                                  type='number')
                                                     ])
-                                                ], width=7)
+                                                ], width=10)
                                             ]),
                                             dbc.Row([
                                                 dbc.Label('SPR fit options:', width='auto'),
                                                 dbc.Col([
                                                     dbc.InputGroup([
+                                                        dbc.Label('nr of points:', width='auto'),
                                                         dbc.Input(id='SPR-fit-option-points',
-                                                                  value=int(4000),
-                                                                  type='number',
-                                                                  label='nr of points'),
+                                                                  value=int(2000),
+                                                                  type='number'),
+                                                        dbc.Label('points below min:', width='auto'),
                                                         dbc.Input(id='SPR-fit-option-lowerbound',
-                                                                  value=int(70),
-                                                                  type='number',
-                                                                  label='points below min'),
+                                                                  value=int(4),
+                                                                  type='number'),
+                                                        dbc.Label('points above min:', width='auto'),
                                                         dbc.Input(id='SPR-fit-option-upperbound',
-                                                                  value=int(70),
-                                                                  type='number',
-                                                                  label='points above min')
+                                                                  value=int(5),
+                                                                  type='number')
                                                     ])
                                                 ], width=7)
-                                            ])
+                                            ]),
+                                            dbc.Button('Apply TIR/SPR fit options',
+                                                       id='quantification-apply-fitting-SPR-TIR-button',
+                                                       n_clicks=0,
+                                                       color='success',
+                                                       title='Apply new fit settings to TIR and SPR sensorgrams')
                                         ], style={'margin-bottom': '10px'}),
-                                        dbc.Button('Apply TIR/SPR fit options',
-                                                   id='quantification-apply-fitting-SPR-TIR-button',
-                                                   n_clicks=0,
-                                                   color='success',
-                                                   title='Apply new fit settings to TIR and SPR sensorgrams')
                                     )
-                                ),
-                                id='quantification-TIR-SPR-fit-collapse', is_open=False)
-                        ], style={'margin': 'auto', 'width': '70%'}),
+                                ]),
+                                id='quantification-TIR-SPR-fit-collapse', is_open=True)
+                        ], style={'margin': 'auto', 'width': '100%'}),
                         dash.html.Div([
                             dash.html.H4('Bulk correction parameters', style={'text-align': 'center'}),
                             dbc.Form([
@@ -1524,7 +1551,7 @@ if __name__ == '__main__':
             current_sensor.name = 'Gold sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
                                                 scanspeed)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                 np.pi / 180 * TIR_angle)
@@ -1554,7 +1581,7 @@ if __name__ == '__main__':
             current_sensor.name = 'Glass sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
                                                 scanspeed)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                 np.pi / 180 * TIR_angle)
@@ -1584,7 +1611,7 @@ if __name__ == '__main__':
             current_sensor.name = 'Palladium sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
                                                 scanspeed)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                 np.pi / 180 * TIR_angle)
@@ -1614,7 +1641,7 @@ if __name__ == '__main__':
             current_sensor.name = 'Platinum sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
             current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
 
@@ -2675,7 +2702,7 @@ if __name__ == '__main__':
 
                     current_sensor = next_sensor
                     current_sensor.channel = file_path[-12:-4].replace('_', ' ')
-                    TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], example_analysis_object.TIR_range,
+                    TIR_angle, _, _, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], example_analysis_object.TIR_range,
                                                         example_analysis_object.scanspeed)
                     current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                         np.pi / 180 * TIR_angle)
@@ -2757,7 +2784,7 @@ if __name__ == '__main__':
                     current_sensor.extinction_coefficients = current_sensor.optical_parameters['k'].to_numpy()
 
                     # Calculate TIR angle and update bulk RI
-                    TIR_angle, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'],
+                    TIR_angle, _, _, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'],
                                                         example_analysis_object.TIR_range,
                                                         example_analysis_object.scanspeed)
                     current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
