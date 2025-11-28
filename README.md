@@ -27,7 +27,7 @@ Linux/Mac (always remove "python -m"):
 
 To add a shortcut to the SPRpy folder to the desktop after installation, run the following command in the command prompt (windows only):
 ```SPRpy-desktop-shortcut```
-(If the shortcut still does not appear, for Windows you can usually find the installation folder by pasting ```%USERPROFILE%\AppData\Local\Programs\Python\Python311\Lib\site-packages\SPRpy``` 
+(If the shortcut still does not appear, for Windows you can usually find the installation folder by pasting the following in the explorer window (also note to make sure the python version e.g. \Python311\ or \Python312\, matches the one you installed) ```%USERPROFILE%\AppData\Local\Programs\Python\Python311\Lib\site-packages\SPRpy``` 
 
 To update to a newer version of SPRpy (overwriting the previously installed version), run the following command:
 ```python -m pip --no-cache-dir install --upgrade SPRpy```
@@ -35,17 +35,19 @@ To update to a newer version of SPRpy (overwriting the previously installed vers
 To install an additional copy of a specific version of SPRpy, run the following command:
 ```python -m pip install --target ADD_FOLDER_PATH --ignore-installed SPRpy==X.Y.Z```
 
-(change ADD_FOLDER_PATH to desired folder and change X.Y.Z to desired version). This may be necessary to properly open older SPRpy sessions no longer compatible with the latest release.
+(change ADD_FOLDER_PATH to desired folder and change X.Y.Z to desired version). This may sometimes be necessary to properly open older SPRpy sessions no longer compatible with the latest release.
 
-Note that SPRpy is designed to leverage parallel computing where applicable, thus its performance will be heavily influenced by the number of logical processors of your CPU and their individual clock speeds. While running exclusion height modelling calculations, one can typically expect to see 100 % CPU usage on a 12th generation Intel i7 with 10 logical processors with a runtime of a few minutes. Low-end laptops with weaker CPUs can experience significatly longer computation times in comparison.
+Note that SPRpy is designed to leverage parallel computing where applicable, thus performance for exclusion height calculations will be heavily influenced by the number of logical processors of your CPU and their individual clock speeds. While running exclusion height modelling calculations, one can typically expect to see 100 % CPU usage on a 12th generation Intel i7 with 10 logical processors with a runtime of a few minutes. Low-end laptops with weaker CPUs can experience significatly longer computation times in comparison.
 
 ## Running SPRpy
 
+A text configuration file can be found as "config.toml" that contain some default initial settings that can be tuned. Especially make sure to check that the single 'instrument_TIR_sensitivity' value and several values below [instrument_SPR_sensitivity] matches your specific instrument (defaults are from Bioanvis).
+
 Before running SPRpy, you need to convert your MP-SPR measurement files (.spr2) to a specific .csv format. This can be achieved by running two separate scripts (simply double-click):
-1) "SPRpy_X_cal.py", a script which generally only needs to be run once to convert the stepper motor values to angles for a particular Bionavis instrument (depending on its setup). Requires a full range scan at highest angular resolution (slow scan), along with its .spr2 file and corresponding exported .dto files from the Bionavis Viewer for each instrument wavelength. The script produces a .csv file that is used by the second script in 2).
+1) "SPRpy_X_cal.py", a script which generally only needs to be run once to convert the stepper motor values to angles for a particular Bionavis instrument (depending on its setup). Requires a full range scan at highest angular resolution (slow scan), along with its .spr2 file and corresponding exported .dto files from the Bionavis Viewer for each instrument wavelength. The script produces a .csv file that is used by the second script in 2). You can update the default .csv that is loaded in config.toml at the entry 'default_poly_file'.
 2) "SPRpy_spr2_to_csv.py", a script that is used to convert measurements (.spr2) to a specific .csv format used by SPRpy. You will be prompted to select a .spr2 measurement file to convert (and X_cal.csv, file unless the script finds the default). One .csv file will be created for each wavelength in the same folder as the original file with the filename of the original + channel and wavelength information (NOTE! The appended part of the file name must not be changed, it is used by SPRpy). Also note that the runtime is heavily increased for lower scanspeeds (increased angular resolution).
 
-A text configuration file can be found as "config.toml" that contain some settings that can be tuned. The path in "default_data_folder" can be set to a folder of your choice where you will be initially prompted when loading new data. To run SPRpy, double-click "SPRpy.py" from the SPRpy folder or run it inside a python interpreter.
+To run SPRpy, double-click "SPRpy.py" from the SPRpy folder or run it inside a python interpreter.
 
 SPRpy will first prompt you if you wish to load a previous session or start a new one. All sessions are initially created and stored in a subfolder as ...\\SPRpy\\SPRpy sessions\\SESSION EXAMPLE FOLDER. By default, each new session folder is generated with a name containing the date and time of its creation (thus giving it a unique name), but it can also be renamed to whatever you want inside the GUI while SPRpy is running. One can also rename or move the session folder using the file explorer when SPRpy is **not** running. However, its content structure or .pickle file names must not be changed! If you choose to load a previous session, you will be prompted to select a previous session.pickle file from a session folder. If you choose to start a new session, you will instead be prompted to select an initial SPRpy converted .csv measurement data file to load. NOTE! If you open the converted .csv files in a 3rd party program (like excel), it is recommended to **not** save them as the default .csv option as this may break the formatting (if this happens, rerun the SPRpy_spr2_to_csv.py conversion script for that measurement). Additional measurement files can be added later in the GUI workflow.
 

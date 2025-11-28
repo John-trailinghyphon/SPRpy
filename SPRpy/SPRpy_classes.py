@@ -18,18 +18,34 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, version, name='Session', directory=os.getcwd(), current_data_path=None):
+    def __init__(self, version, name='Session', directory=None, current_data_path=None):
         self.version = version
         self.name = datetime.datetime.now().__str__()[0:16].replace(':', '_') + ' ' + name
-        if not os.path.exists(directory + r'/SPRpy sessions'):
-            os.mkdir(directory + r'/SPRpy sessions')
-        self.location = directory + r'/SPRpy sessions' + r'/{name_}'.format(name_=self.name)
+        if not directory:
+            directory = os.getcwd().replace('\\', '/')
+            if os.path.exists(directory + '/SPRpy sessions'):
+                self.location = directory + '/SPRpy sessions' + '/{name_}'.format(name_=self.name)
+            else:
+                os.mkdir(directory + '/SPRpy sessions')
+                self.location = directory + '/SPRpy sessions' + '/{name_}'.format(name_=self.name)
+        else:
+            if os.path.exists(directory):
+                self.location = directory + '/{name_}'.format(name_=self.name)
+            else:
+                directory = os.getcwd().replace('\\', '/')
+                if os.path.exists(directory + '/SPRpy sessions'):
+                    self.location = directory + '/SPRpy sessions' + '/{name_}'.format(name_=self.name)
+                else:
+                    os.mkdir(directory + '/SPRpy sessions')
+                    self.location = directory + '/SPRpy sessions' + '/{name_}'.format(name_=self.name)
+                print('Warning! Custom session folder in config.toml does not exist. Sessions placed in default SPRpy location instead.')
+
         if not os.path.exists(self.location):
             os.mkdir(self.location)
-        if not os.path.exists(self.location + r'/Sensors'):
-            os.mkdir(self.location + r'/Sensors')
-        if not os.path.exists(self.location + r'/Analysis instances'):
-            os.mkdir(self.location + r'/Analysis instances')
+        if not os.path.exists(self.location + '/Sensors'):
+            os.mkdir(self.location + '/Sensors')
+        if not os.path.exists(self.location + '/Analysis instances'):
+            os.mkdir(self.location + '/Analysis instances')
         self.sensor_instances = {}  # NOTE: The sessions in this list are also updated when modified as current sensor object
         self.sensor_ID_count = 0
         self.fresnel_analysis_instances = {}
@@ -59,7 +75,7 @@ class Session:
         :return:
         """
         removed = self.sensor_instances.pop(sensor_object_id)
-        removed_file_path = self.location + r'\Sensors' + r'\S{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
+        removed_file_path = self.location + '/Sensors' + '/S{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
         os.remove(removed_file_path)
         print('Removed the following sensor object: S{id} {name}'.format(id=removed.object_id, name=removed.name))
 
@@ -71,7 +87,7 @@ class Session:
         :return:
         """
         removed = self.fresnel_analysis_instances.pop(analysis_object_id)
-        removed_file_path = self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
+        removed_file_path = self.location + '/Analysis instances' + '/FM{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
         os.remove(removed_file_path)
         print('Removed the following analysis object: FM{id} {name}'.format(id=removed.object_id, name=removed.name))
 
@@ -83,7 +99,7 @@ class Session:
         :return:
         """
         removed = self.exclusion_height_analysis_instances.pop(analysis_object_id)
-        removed_file_path = self.location + r'\Analysis instances' + r'\EH{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
+        removed_file_path = self.location + '/Analysis instances' + '/EH{id} {name}.pickle'.format(id=removed.object_id, name=removed.name)
         os.remove(removed_file_path)
         print('Removed the following analysis object: EH{id} {name}'.format(id=removed.object_id, name=removed.name))
 
@@ -96,22 +112,22 @@ class Session:
         """
 
         # Save session object
-        with open(self.location + r'\Session file (v{version_}).pickle'.format(version_=self.version.replace('.', '_')), 'wb') as save_file:
+        with open(self.location + '/Session file (v{version_}).pickle'.format(version_=self.version.replace('.', '_')), 'wb') as save_file:
             pickle.dump(self, save_file)
 
         # Save sensor instances
         for sensor_id in self.sensor_instances:
-            with open(self.location + r'\Sensors' + r'\S{id} {name}.pickle'.format(id=sensor_id, name=self.sensor_instances[sensor_id].name), 'wb') as save_file:
+            with open(self.location + '/Sensors' + '/S{id} {name}.pickle'.format(id=sensor_id, name=self.sensor_instances[sensor_id].name), 'wb') as save_file:
                 pickle.dump(self.sensor_instances[sensor_id], save_file)
 
         # Save fresnel analysis instances
         for analysis_id in self.fresnel_analysis_instances:
-            with open(self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
+            with open(self.location + '/Analysis instances' + '/FM{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
                 pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
 
         # Save exclusion height analysis instances
         for analysis_id in self.exclusion_height_analysis_instances:
-            with open(self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
+            with open(self.location + '/Analysis instances' + '/FM{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
                 pickle.dump(self.exclusion_height_analysis_instances[analysis_id], save_file)
 
         return
@@ -119,7 +135,7 @@ class Session:
     def save_session(self):
 
         # Save session object
-        with open(self.location + r'\Session file (v{version_}).pickle'.format(version_=self.version.replace('.', '_')), 'wb') as save_file:
+        with open(self.location + '/Session file (v{version_}).pickle'.format(version_=self.version.replace('.', '_')), 'wb') as save_file:
             pickle.dump(self, save_file)
 
         return
@@ -130,7 +146,7 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\Sensors' + r'\S{id} {name}.pickle'.format(id=sensor_id, name=self.sensor_instances[
+        with open(self.location + '/Sensors' + '/S{id} {name}.pickle'.format(id=sensor_id, name=self.sensor_instances[
             sensor_id].name), 'wb') as save_file:
             pickle.dump(self.sensor_instances[sensor_id], save_file)
 
@@ -142,7 +158,7 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\Analysis instances' + r'\FM{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
+        with open(self.location + '/Analysis instances' + '/FM{id} {name}.pickle'.format(id=analysis_id, name=self.fresnel_analysis_instances[analysis_id].name), 'wb') as save_file:
             pickle.dump(self.fresnel_analysis_instances[analysis_id], save_file)
 
         return
@@ -153,14 +169,14 @@ class Session:
         :return: None
         """
 
-        with open(self.location + r'\Analysis instances' + r'\EH{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
+        with open(self.location + '/Analysis instances' + '/EH{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
             pickle.dump(self.exclusion_height_analysis_instances[analysis_id], save_file)
 
         return
 
     def import_sensor(self):
 
-        file_path_ = select_file(prompt='Select the sensor object', prompt_folder=self.location + r'\Sensors')
+        file_path_ = select_file(prompt='Select the sensor object', prompt_folder=self.location + '/Sensors')
         self.sensor_ID_count += 1
 
         with open(file_path_, 'rb') as import_file:
@@ -172,7 +188,7 @@ class Session:
         return
 
     def import_fresnel_analysis(self):
-        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\Analysis instances')
+        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + '/Analysis instances')
         self.fresnel_analysis_ID_count += 1
 
         with open(file_path_, 'rb') as import_file:
@@ -184,7 +200,7 @@ class Session:
         return
 
     def import_exclusion_height_analysis(self):
-        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + r'\Analysis instances')
+        file_path_ = select_file(prompt='Select the analysis object', prompt_folder=self.location + '/Analysis instances')
         self.exclusion_height_analysis_ID_count += 1
 
         with open(file_path_, 'rb') as import_file:
@@ -194,7 +210,6 @@ class Session:
         self.exclusion_height_analysis_instances[analysis_object.object_id] = analysis_object
 
         return
-
 
 class Sensor:
 

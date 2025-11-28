@@ -141,7 +141,7 @@ def fresnel_calculation(fitted_var=None,
             return fresnel_residuals
 
 
-def TIR_determination(xdata, ydata, TIR_range, scanspeed, _window_count=None, _fit_lower_ind=None, _fit_higher_ind=None):
+def TIR_determination(xdata, ydata, TIR_range, scanspeed, _window_count=None, _fit_points=2000, _fit_lower_ind=None, _fit_higher_ind=None):
 
     # Convert to numpy array first if necessary
     if isinstance(xdata, pd.Series):
@@ -176,7 +176,7 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed, _window_count=None, _f
                     deriv_ydata[dTIR_i-fit_lower_ind:dTIR_i+fit_higher_ind], 3)
 
     # Recreate the curve with a lot more points
-    deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-fit_lower_ind], TIR_xdata_filtered[dTIR_i+fit_lower_ind], 2000)
+    deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-fit_lower_ind], TIR_xdata_filtered[dTIR_i+fit_lower_ind], _fit_points)
 
     # Find TIR from max of deriv fit
     deriv_TIR_fit_y = np.polyval(poly_c, deriv_TIR_fit_x)

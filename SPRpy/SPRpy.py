@@ -12,6 +12,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from SPRpy_classes import *
 from __about__ import version
+import os
 
 # Dash app theme (you have to delete browser cookies before changing theme takes effect)
 dash_app_theme = dbc.themes.SPACELAB  # Options: CERULEAN, COSMO, CYBORG, DARKLY, FLATLY, JOURNAL, LITERA, LUMEN, LUX,
@@ -40,7 +41,18 @@ if __name__ == '__main__':
     TIR_range_air_or_few_scans = config["TIR_range_air_or_few_scans"]  # TIR range for dry scans --> Automatically used for less than 50 scans per file
     auto_angle_range_points = config["auto_angle_range_points"]  # Number of data points below and above the SPR minimum for auto-detection of the SPR peak
     ask_for_previous_session = config["ask_for_previous_session"]
-    default_data_folder = config["default_data_folder"]
+    if config["default_data_folder"] == '':
+        default_data_folder = os.path.expanduser('~')
+    else:
+        if os.path.exists(config["default_data_folder"]):
+            default_data_folder = config["default_data_folder"]
+        else:
+            print('Warning! Custom data folder in config.toml does not exist.')
+            default_data_folder = os.path.expanduser('~')
+    if config['default_session_folder'] != '':
+        default_session_folder = config['default_session_folder']
+    else:
+        default_session_folder = None
     session_host = config["session_host"]
     default_sensor_values = config["default_sensor_values"]
     max_logical_cores = config["max_logical_cores"]
@@ -67,7 +79,7 @@ if __name__ == '__main__':
 
             print('Loading previous session, please wait...')
             load_session_flag = True
-            session_file = select_file(r'Choose a previous session file', prompt_folder=os.getcwd())
+            session_file = select_file(r'Choose a previous session file', prompt_folder=default_session_folder)
 
             with open(session_file, 'rb') as file:
                 current_session = pickle.load(file)
@@ -139,7 +151,7 @@ if __name__ == '__main__':
         current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
 
         # Create initial session
-        current_session = Session(version, current_data_path=current_data_path)
+        current_session = Session(version, directory=default_session_folder, current_data_path=current_data_path)
 
         # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
         if ydata_df.shape[0] > 50:
@@ -620,7 +632,7 @@ if __name__ == '__main__':
                                                         dbc.Input(id='TIR-fit-option-window',
                                                                   value=int(7),
                                                                   type='number'),
-                                                        dbc.Label('nr of points:', width='auto'),
+                                                        dbc.Label('nr of fit points:', width='auto'),
                                                         dbc.Input(id='TIR-fit-option-points',
                                                                   value=int(2000),
                                                                   type='number'),
@@ -639,7 +651,7 @@ if __name__ == '__main__':
                                                 dbc.Label('SPR fit options:', width='auto'),
                                                 dbc.Col([
                                                     dbc.InputGroup([
-                                                        dbc.Label('nr of points:', width='auto'),
+                                                        dbc.Label('nr of fit points:', width='auto'),
                                                         dbc.Input(id='SPR-fit-option-points',
                                                                   value=int(2000),
                                                                   type='number'),
@@ -1693,7 +1705,7 @@ if __name__ == '__main__':
         elif 'rename-sensor-confirm' == dash.ctx.triggered_id:
 
             # First remove previous sensor pickle object file
-            old_path = current_session.location + r'\Sensors\S{id} {name}.pickle'.format(id=current_sensor.object_id,
+            old_path = current_session.location + '/Sensors/S{id} {name}.pickle'.format(id=current_sensor.object_id,
                                                                                          name=current_sensor.name)
             os.remove(old_path)
 
@@ -1968,22 +1980,22 @@ if __name__ == '__main__':
             return new_figure
 
         elif 'quantification-reflectivity-save-html' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('HTML files', '*.html')], default_extension='.html')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('HTML files', '*.html')], default_extension='.html')
             plotly.io.write_html(figure_object, save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-svg' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('SVG files', '*.svg')], default_extension='.svg')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('SVG files', '*.svg')], default_extension='.svg')
             plotly.io.write_image(figure_object, save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-png' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('PNG files', '*.png')], default_extension='.png')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('PNG files', '*.png')], default_extension='.png')
             plotly.io.write_image(figure_object, save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-reflectivity-save-csv' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
             fig_keys_x = ['x' + str(i) for i in range(len(figure_object.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(figure_object.data))]
             fig_keys = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
@@ -2057,25 +2069,25 @@ if __name__ == '__main__':
             return new_sensorgram_fig
 
         elif 'quantification-sensorgram-save-html' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('HTML files', '*.html')], default_extension='.html')
             plotly.io.write_html(figure_object, save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-svg' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('SVG files', '*.svg')], default_extension='.svg')
             plotly.io.write_image(figure_object, save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-png' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('PNG files', '*.png')], default_extension='.png')
             plotly.io.write_image(figure_object, save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'quantification-sensorgram-save-csv' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
             fig_df = pd.DataFrame(data={'Time': list(figure_object.data[0].x["_inputArray"].values())[:-3], 'SPR': list(figure_object.data[0].y["_inputArray"].values())[:-3], 'TIR': list(figure_object.data[1].y["_inputArray"].values())[:-3], 'Bulk corrected': list(figure_object.data[2].y["_inputArray"].values())[:-3]})
             fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
@@ -2464,7 +2476,7 @@ if __name__ == '__main__':
         elif 'rename-fresnel-analysis-confirm' == dash.ctx.triggered_id:
 
             # First remove previous fresnel analysis pickle object file
-            old_path = current_session.location + r'\Analysis instances\FM{id} {name}.pickle'.format(id=current_fresnel_analysis.object_id, name=current_fresnel_analysis.name)
+            old_path = current_session.location + '/Analysis instances/FM{id} {name}.pickle'.format(id=current_fresnel_analysis.object_id, name=current_fresnel_analysis.name)
             os.remove(old_path)
 
             # Change fresnel analysis name and save new fresnel analysis pickle file and session
@@ -2952,25 +2964,25 @@ if __name__ == '__main__':
             return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished', dash.no_update, dash.no_update
 
         elif 'fresnel-reflectivity-save-html' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('HTML files', '*.html')], default_extension='.html')
             plotly.io.write_html(figure_object, save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'fresnel-reflectivity-save-svg' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('SVG files', '*.svg')], default_extension='.svg')
             plotly.io.write_image(figure_object, save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'fresnel-reflectivity-save-png' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('PNG files', '*.png')], default_extension='.png')
             plotly.io.write_image(figure_object, save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'fresnel-reflectivity-save-csv' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
             fig_keys_x = ['x' + str(i) for i in range(len(figure_object.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(figure_object.data))]
             fig_keys = [key for sublist in zip(fig_keys_x, fig_keys_y) for key in sublist]
@@ -3988,50 +4000,50 @@ if __name__ == '__main__':
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'exclusion-height-SPRvsTIR-save-png' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('PNG files', '*.png')], default_extension='.png')
             plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-svg' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('SVG files', '*.svg')], default_extension='.svg')
             plotly.io.write_image(go.Figure(SPRvsTIR_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-html' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('HTML files', '*.html')], default_extension='.html')
             plotly.io.write_html(go.Figure(SPRvsTIR_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-SPRvsTIR-save-csv' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
             SPRvsTIR_fig = go.Figure(SPRvsTIR_figure_JSON)
             fig_df = pd.DataFrame(data={'TIR': list(SPRvsTIR_fig.data[0].x["_inputArray"].values())[:-3], 'SPR': list(SPRvsTIR_fig.data[0].y["_inputArray"].values())[:-3]})
             fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-png' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('PNG files', '*.png')], default_extension='.png')
             plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-svg' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('SVG files', '*.svg')], default_extension='.svg')
             plotly.io.write_image(go.Figure(reflectivity_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-html' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('HTML files', '*.html')], default_extension='.html')
             plotly.io.write_html(go.Figure(reflectivity_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-reflectivity-save-csv' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
             reflectivity_fig = go.Figure(reflectivity_figure_JSON)
             fig_keys_x = ['x' + str(i) for i in range(len(reflectivity_fig.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(reflectivity_fig.data))]
@@ -4048,25 +4060,25 @@ if __name__ == '__main__':
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-png' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('PNG files', '*.png')], default_extension='.png')
             plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-svg' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('SVG files', '*.svg')], default_extension='.svg')
             plotly.io.write_image(go.Figure(sensorgram_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-html' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('HTML files', '*.html')], default_extension='.html')
             plotly.io.write_html(go.Figure(sensorgram_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-sensorgram-save-csv' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
             sensorgram_fig = go.Figure(sensorgram_figure_JSON)
             fig_keys_x = ['x' + str(i) for i in range(len(sensorgram_fig.data))]
             fig_keys_y = ['y' + str(i) for i in range(len(sensorgram_fig.data))]
@@ -4093,26 +4105,26 @@ if __name__ == '__main__':
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-png' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('PNG files', '*.png')], default_extension='.png')
             plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_filename, format='png')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-svg' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('SVG files', '*.svg')], default_extension='.svg')
             plotly.io.write_image(go.Figure(dnpair_figure_JSON), save_filename, format='svg')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-html' == dash.ctx.triggered_id:
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(),
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
                                       file_types=[('HTML files', '*.html')], default_extension='.html')
             plotly.io.write_html(go.Figure(dnpair_figure_JSON), save_filename, include_mathjax='cdn')
             raise dash.exceptions.PreventUpdate
 
         elif 'exclusion-height-d-n-pair-save-csv' == dash.ctx.triggered_id:
             d_n_pair_fig_csv = go.Figure(dnpair_figure_JSON)
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
             fig_df = pd.DataFrame(data={'n_buffer': list(d_n_pair_fig_csv.data[0].x["_inputArray"].values())[:-3], 'd_buffer': list(d_n_pair_fig_csv.data[0].y["_inputArray"].values())[:-3], 'n_probe': list(d_n_pair_fig_csv.data[1].x["_inputArray"].values())[:-3], 'd_probe': list(d_n_pair_fig_csv.data[1].y["_inputArray"].values())[:-3]})
             fig_df.to_csv(save_filename, sep=';')
             raise dash.exceptions.PreventUpdate
@@ -4772,7 +4784,7 @@ if __name__ == '__main__':
                                          'Exclusion RI all': ['{all_}'.format(all_=str(np.round(current_session.exclusion_height_analysis_instances[exclusion_inst].all_exclusion_results[1, :], decimals=4))) for exclusion_inst in current_session.exclusion_height_analysis_instances]
                                          })
 
-            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=os.getcwd(), file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder, file_types=[('CSV files', '*.csv')], default_extension='.csv')
 
             fresnel_df.to_csv(save_filename[:-4] + '_fresnel' + '.csv', sep=';')
             exclusion_df.to_csv(save_filename[:-4] + '_exclusion' + '.csv', sep=';')
