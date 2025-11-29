@@ -7,6 +7,7 @@ import types
 import dash
 import dash_bootstrap_components as dbc
 import pandas as pd
+import copy
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
@@ -118,7 +119,7 @@ if __name__ == '__main__':
             sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
             # Offset to start at 0 degrees at 0 minutes
-            sensorgram_df_selection = sensorgram_df
+            sensorgram_df_selection = copy.deepcopy(sensorgram_df)
             sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
                                                    sensorgram_df_selection['SPR angle'][0]
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
@@ -162,7 +163,7 @@ if __name__ == '__main__':
         sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
         # Offset to start at 0 degrees at 0 minutes
-        sensorgram_df_selection = sensorgram_df
+        sensorgram_df_selection = copy.deepcopy(sensorgram_df)
         sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
                                                sensorgram_df_selection['SPR angle'][0]
         sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
@@ -590,11 +591,11 @@ if __name__ == '__main__':
                                 dbc.ButtonGroup([
                                     dbc.Switch(
                                         id='hover-selection-switch',
-                                        label='Lock hover selection',
+                                        label='Stop mouse hover updates',
                                         value=False),
-                                    dbc.Switch(label='Show TIR/SPR fitting options',
+                                    dbc.Switch(label='Show TIR/SPR fitting parameters',
                                                id='quantification-show-SPR-TIR-fit-options-switch',
-                                               value=False),
+                                               value=True),
                                     dbc.DropdownMenu(
                                         id='sensorgram-save-dropdown',
                                         label='Save as...',
@@ -603,10 +604,10 @@ if __name__ == '__main__':
                                                   dbc.DropdownMenuItem('.SVG', id='quantification-sensorgram-save-svg', n_clicks=0),
                                                   dbc.DropdownMenuItem('.HTML', id='quantification-sensorgram-save-html', n_clicks=0),
                                                   dbc.DropdownMenuItem('.csv', id='quantification-sensorgram-save-csv', n_clicks=0)],
-                                        style={'margin-left': '70%'}),
-                                ], style={'margin-left': '27.5%'}),
+                                        style={'margin-left': '10%'}),
+                                ], style={'margin-left': '10%'}),
                             ], style={'width': '60%'}),
-                        ], style={'display': 'flex', 'justify-content': 'center'}),
+                        ], style={'display': 'flex', 'justify-content': 'center', 'margin-bottom': '20px'}),
                         dash.html.Div([  # TODO: Add layout options for changing TIR and SPR fit settings. Also add toggle for changing TIR angle algorithm to be more similar to Bionavis approach?
                             dbc.Collapse(
                                 dbc.Card([
@@ -1486,7 +1487,7 @@ if __name__ == '__main__':
             sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
 
             # Offset to start at 0 degrees at 0 minutes
-            sensorgram_df_selection = sensorgram_df
+            sensorgram_df_selection = copy.deepcopy(sensorgram_df)
             sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
                                                    sensorgram_df_selection['SPR angle'][0]
             sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
@@ -1864,6 +1865,7 @@ if __name__ == '__main__':
 
         global ydata_df
         global angles_df
+        global sensorgram_df
         global current_sensor
         global reflectivity_df
 
@@ -1872,40 +1874,53 @@ if __name__ == '__main__':
         # Update based on hover over sensorgram figure
         if 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
 
-            # First make sure no other traces has been added and the very first value is ignored
-            if figure_object.data.__len__() == 1:
+            # # First make sure no other traces has been added and the very first value is ignored
+            # if figure_object.data.__len__() == 1:
 
-                # Then also make sure lock hover switch is set to inactive
-                if lock_hover is False:
-                    time_index = hoverData['points'][0]['pointIndex']
+            # Then also make sure lock hover switch is set to inactive
+            if lock_hover is False:
+                time_index = hoverData['points'][0]['pointIndex']
+                SPR_angle = float(sensorgram_df['SPR angle'][time_index+1])
+                TIR_angle = float(sensorgram_df['TIR angle'][time_index+1])
+                reflectivity_df['ydata'] = ydata_df.loc[time_index+1]
 
-                    reflectivity_df['ydata'] = ydata_df.loc[time_index+1]
+                new_figure = go.Figure(go.Scatter(x=reflectivity_df['angles'],
+                                                  y=reflectivity_df['ydata'],
+                                                  mode='lines',
+                                                  showlegend=False,
+                                                  line_color='#636efa'))
+                new_figure.add_trace(go.Scatter(x=[SPR_angle, SPR_angle],
+                                                y=[reflectivity_df['ydata'].min(axis=0)-0.05, reflectivity_df['ydata'].min(axis=0)+0.05],
+                                                mode='lines',
+                                                showlegend=False,
+                                                line_color='#636efa'
+                                                ))
+                new_figure.add_trace(go.Scatter(x=[TIR_angle, TIR_angle],
+                                                y=[reflectivity_df['ydata'].max(axis=0)-0.07, reflectivity_df['ydata'].max(axis=0)],
+                                                mode='lines',
+                                                showlegend=False,
+                                                line_color='#ef553b',
+                                                ))
+                new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                         yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                         font_family='Balto',
+                                         font_size=19,
+                                         margin_r=25,
+                                         margin_l=60,
+                                         margin_t=40,
+                                         template='simple_white',
+                                         uirevision=True)
+                new_figure.update_xaxes(mirror=True,
+                                        showline=True)
+                new_figure.update_yaxes(mirror=True,
+                                        showline=True)
 
-                    new_figure = go.Figure(go.Scatter(x=reflectivity_df['angles'],
-                                                      y=reflectivity_df['ydata'],
-                                                      mode='lines',
-                                                      showlegend=False,
-                                                      line_color='#636efa'))
-                    new_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
-                                             yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
-                                             font_family='Balto',
-                                             font_size=19,
-                                             margin_r=25,
-                                             margin_l=60,
-                                             margin_t=40,
-                                             template='simple_white',
-                                             uirevision=True)
-                    new_figure.update_xaxes(mirror=True,
-                                            showline=True)
-                    new_figure.update_yaxes(mirror=True,
-                                            showline=True)
+                return new_figure
 
-                    return new_figure
-
-                else:
-                    return dash.no_update
             else:
                 return dash.no_update
+            # else:
+            #     return dash.no_update
 
         # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
         elif 'quantification-reflectivity-add-data-trace' == dash.ctx.triggered_id:
