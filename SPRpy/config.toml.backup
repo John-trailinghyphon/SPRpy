@@ -1,20 +1,39 @@
 # This is a backup file for default configuration parameters for SPRpy.py and SPRpy_spr2_to_csv.py that can be used if 'config.toml' is corrupted
 
 default_data_folder = ''  # Custom default folder location when loading data files, insert path between '' and use '/' instead of '\', for instance 'C:/Users/EXAMPLE USER'
-default_session_folder = ''  # Custom location of "SPRpy sessions" folder, insert path between '' and use '/' instead of '\', for instance 'C:/Users/EXAMPLEUSER/SPRpy sessions' default location is in the same folder as SPRpy.py
-TIR_range_water_or_long_measurement = [60.8, 63]  # Default: [60.8, 63] | TIR range for water --> Automatically used for 50 or more scans per file
-TIR_range_air_or_few_scans = [40.9, 41.8]  # Default: [40.9, 41.8] | TIR range for air --> Automatically used for less than 50 scans per file
-auto_angle_range_points = [40, 60]  # Default: [40, 60] | Number of data points below and above the SPR minimum for auto-detection of the SPR peak during fresnel fitting
-ask_for_previous_session = true  # Default: true | Set to 'false' if you don't want to be asked for a previous session
-session_host = '127.0.0.1'  # Default: '127.0.0.1' | Increment the last digit before running each extra session if you want to have several open simultaneously. Remember to change it also in the browser address in that case.
+
+default_session_folder = ''  # Custom location of "SPRpy sessions" folder, insert path between '' and use '/' instead of '\', for instance 'C:/Users/EXAMPLEUSER/SPRpy sessions'. Default location is in the same folder as SPRpy.py
+
+ask_for_previous_session = true  # Default: true | Set to "false" (without "") if you don't want to be asked for a previous session
+
+session_host = '127.0.0.1'  # Default: '127.0.0.1' | Increment the last digit before running each extra session if you want to have several SPRpy windows open simultaneously. Remember to change it also in the browser address in that case.
+
 default_poly_file = 'DEFAULT_X_cal_values.csv'  # Default filename of X-calibration values used in SPRpy_spr2_to_csv.py
+
 max_logical_cores = 0  # Default: 0 (no restriction) | Set to an integer value below your maximum logical processor count if you wish to restrict parallel computing to this number of simultaneous processes
+
 instrument_TIR_sensitivity = 74  # default 79 deg/RIU
+
+[SPR_fitting_parameters]  # Default SPR fitting parameters when creating new sessions
+Fresnel_angle_range_points = [40, 60]  # Default: [40, 60] | Number of data points below and above the SPR minimum for auto-detection of the SPR peak during fresnel fitting (default optimised for air measurement)
+sensorgram_angle_range_points = [70, 70]  # Default: [70, 70] | Number of data points below and above the SPR minimum included in tracking SPR peak in the sensorgram (default optimised for liquid measurement)
+SPR_fit_points = 4000  # Default: 4000 | How many points to generate for high SPR peak tracking accuracy
+
+[TIR_fitting_parameters]  # Default TIR fitting parameters when creating new sessions
+TIR_range_water_or_long_measurement = [60.8, 63.0]  # Default: [60.8, 63.0] | TIR range for water --> Automatically used for 50 or more scans per file
+TIR_range_air_or_few_scans = [40.9, 41.8]  # Default: [40.9, 41.8] | TIR range for air --> Automatically used for less than 50 scans per file
+TIR_fit_points = 2000  # Default: 2000 | How many points to generate for high TIR fitting accuracy
+window_count_scanspeeds_1_5 = 7  # Default: 7 | Number of nearest neighbours that are averaged together to smoothen the spectra for TIR fitting at scanspeed 1 or 5
+window_count_scanspeeds_10 = 3  # Default: 3 | Number of nearest neighbours that are averaged together to smoothen the spectra for TIR fitting at scanspeed 10
+points_above_TIR_peak_scanspeed_1_5 = 5  # Default: 5 | Number of points to include above TIR derivative peak at scanspeed 1 or 5
+points_above_TIR_peak_scanspeed_10 = 3  # Default: 3 | Number of points to include above TIR derivative peak at scanspeed 10
+points_below_TIR_peak_scanspeed_1_5 = 4  # Default: 4 | Number of points to include below TIR derivative peak at scanspeed 1 or 5
+points_below_TIR_peak_scanspeed_10 = 3  # Default: 3 | Number of points to include below TIR derivative peak at scanspeed 10
 
 [instrument_SPR_sensitivity]  # deg/RIU
 670 = 116  # default 124
 785 = 98.75  # default 104
-850 = 93  # default 98
+850 = 98  # default 98
 980 = 87  # default 92
 
 [evanescent_decay_length]  # nm (field based -> exp(-2*height/decay_length))

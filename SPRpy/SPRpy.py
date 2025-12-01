@@ -697,7 +697,7 @@ if __name__ == '__main__':
                                         ], style={'margin-bottom': '10px'}),
                                     )
                                 ]),
-                                id='quantification-TIR-SPR-fit-collapse', is_open=True)
+                                id='quantification-TIR-SPR-fit-collapse', is_open=False)
                         ], style={'margin': 'auto', 'width': '100%'}),
                         dash.html.Div([
                             dash.html.H4('Bulk correction parameters', style={'text-align': 'center'}),
@@ -1504,7 +1504,6 @@ if __name__ == '__main__':
             else:
                 current_session.SPR_TIR_fitting_parameters['TIR range'] = TIR_default_parameters['TIR_range_air_or_few_scans']
 
-            # TODO: Include logic for updating fitting parameters for TIR and SPR angle when calculating sensorgram. Also to select TIR fitting algorithm (implement something similar to Bionavis)
             sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters)
 
             # Offset to start at 0 degrees at 0 minutes
@@ -2239,7 +2238,6 @@ if __name__ == '__main__':
 
         figure_object = go.Figure(figure_JSON)
 
-        # TODO: This doesn't work anymore for some weird reason, it doesn't add the lines
         if 'fresnel-fit-option-rangeslider' == dash.ctx.triggered_id:
 
             # # First check if model has been run previously, then include model data before adding angle range lines
@@ -3215,6 +3213,118 @@ if __name__ == '__main__':
         else:
             raise dash.exceptions.PreventUpdate
 
+    @dash.callback(
+        dash.Output('quantification-TIR-SPR-fit-collapse', 'is_open'),
+        dash.Output('quantification-TIR-fit-graph', 'figure'),
+        dash.Output('quantification-SPR-fit-graph', 'figure'),
+        dash.Input('quantification-show-SPR-TIR-fit-options-switch', 'value'),
+        dash.Input('quantification-sensorgram-graph', 'hoverData'),
+        dash.Input('quantification-apply-fitting-SPR-TIR-button', 'n_clicks'),
+        dash.State('hover-selection-switch', 'value'),
+        dash.State('TIR-fit-option-range-low', 'value'),
+        dash.State('TIR-fit-option-range-high', 'value'),
+        dash.State('TIR-fit-option-window', 'value'),
+        dash.State('TIR-fit-option-points', 'value'),
+        dash.State('TIR-fit-option-below-peak', 'value'),
+        dash.State('TIR-fit-option-above-peak', 'value'),
+        dash.State('SPR-fit-option-points', 'value'),
+        dash.State('SPR-fit-option-below-peak', 'value'),
+        dash.State('SPR-fit-option-above-peak', 'value'),
+        dash.State('quantification-show-SPR-TIR-fit-options-switch', 'value'),
+        prevent_initial_call=True)
+    def SPR_TIR_fitting_parameters_update(fit_show_switch, hoverData, run_button, hover_selection_switch, TIR_range_low, TIR_range_high, TIR_window, TIR_fit_points, TIR_below_peak, TIR_above_peak, SPR_fit_points, SPR_below_peak, SPR_above_peak, fit_show_switch_state):
+
+        global current_session
+        global sensorgram_df
+        global sensorgram_df_selection
+        global corrected_sensorgram_df_selection
+        global ydata_df
+        global reflectivity_df
+
+        if 'quantification-show-SPR-TIR-fit-options-switch' == dash.ctx.triggered_id:
+            return fit_show_switch, dash.no_update, dash.no_update
+
+        # Applying the fit settings and updating  the session object
+        elif 'quantification-apply-fitting-SPR-TIR-button' == dash.ctx.triggered_id:
+            current_session.SPR_TIR_fitting_parameters['TIR range'] = [TIR_range_low, TIR_range_high]
+            current_session.SPR_TIR_fitting_parameters['TIR window count'] = TIR_window
+            current_session.SPR_TIR_fitting_parameters['TIR fit points'] = TIR_fit_points
+            current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak'] = TIR_below_peak
+            current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak'] = TIR_above_peak
+            current_session.SPR_TIR_fitting_parameters['SPR fit points'] = SPR_fit_points
+            current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'] = [SPR_below_peak, SPR_above_peak]
+
+            current_session.save_session()
+
+            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters)
+
+            # Offset to start at 0 degrees at 0 minutes
+            sensorgram_df_selection = copy.deepcopy(sensorgram_df)
+            sensorgram_df_selection['SPR angle'] = sensorgram_df_selection['SPR angle'] - \
+                                                   sensorgram_df_selection['SPR angle'][0]
+            sensorgram_df_selection['TIR angle'] = sensorgram_df_selection['TIR angle'] - \
+                                                   sensorgram_df_selection['TIR angle'][0]
+
+            # Calculate bulk correction
+            corrected_sensorgram_df_selection = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection[
+                'TIR angle'] * instrument_SPR_sensitivity[current_data_path[-9:-6]] / instrument_TIR_sensitivity * math.exp(-2 * 0 / evanescent_decay_length[current_data_path[-9:-6]])
+
+            raise dash.exceptions.PreventUpdate
+
+        # When hovering over data in the sensorgram plot, update the TIR and SPR fitting graphs accordingly
+        elif 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
+
+            if not hover_selection_switch and fit_show_switch_state:
+                time_index = hoverData['points'][0]['pointIndex']
+                reflectivity_ydata = ydata_df.loc[time_index + 1]
+
+                TIR_fitting_figure = px.line(x=sensorgram_df_selection['TIR deriv x'].iloc[time_index], y=sensorgram_df_selection['TIR deriv y'].iloc[time_index])
+                TIR_fitting_figure['data'][0]['showlegend'] = True
+                TIR_fitting_figure['data'][0]['name'] = 'Derivative'
+                TIR_fitting_figure.add_trace(go.Scatter(x=sensorgram_df_selection['TIR deriv fit x'].iloc[time_index],
+                                                     y=sensorgram_df_selection['TIR deriv fit y'].iloc[time_index],
+                                                     name='Fit'))
+                TIR_fitting_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                              yaxis_title=r'$\large{\text{TIR angular derivative}\text{}}$',
+                                              font_family='Balto',
+                                              font_size=19,
+                                              margin_r=25,
+                                              margin_l=60,
+                                              margin_t=40,
+                                              template='simple_white')
+                TIR_fitting_figure.update_xaxes(mirror=True, showline=True)
+                TIR_fitting_figure.update_yaxes(mirror=True, showline=True)
+
+                reflectivity_df_selection_x = reflectivity_df['angles'][
+                                              reflectivity_ydata.idxmin() - current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0]:reflectivity_ydata.idxmin() +
+                                                                                                                                                                 current_session.SPR_TIR_fitting_parameters[
+                                                                                                                                                                     'sensorgram_angle_range_points'][
+                                                                                                                                                                     1] + 1]
+                reflectivity_df_selection_y = reflectivity_ydata[
+                                              reflectivity_ydata.idxmin() - current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0]:reflectivity_ydata.idxmin() +
+                                                                                                                                                                 current_session.SPR_TIR_fitting_parameters[
+                                                                                                                                                                     'sensorgram_angle_range_points'][
+                                                                                                                                                                     1] + 1]
+                SPR_fitting_figure = px.line(x=reflectivity_df_selection_x, y=reflectivity_df_selection_y)
+                SPR_fitting_figure['data'][0]['showlegend'] = True
+                SPR_fitting_figure['data'][0]['name'] = 'SPR angle'
+                SPR_fitting_figure.add_trace(go.Scatter(x=sensorgram_df_selection['SPR fit x'].iloc[time_index],
+                                                     y=sensorgram_df_selection['SPR fit y'].iloc[time_index],
+                                                     name='Fit'))
+                SPR_fitting_figure.update_layout(xaxis_title=r'$\large{\text{Incident angle [ }^{\circ}\text{ ]}}$',
+                                              yaxis_title=r'$\large{\text{Reflectivity [a.u.]}}$',
+                                              font_family='Balto',
+                                              font_size=19,
+                                              margin_r=25,
+                                              margin_l=60,
+                                              margin_t=40,
+                                              template='simple_white')
+                SPR_fitting_figure.update_xaxes(mirror=True, showline=True)
+                SPR_fitting_figure.update_yaxes(mirror=True, showline=True)
+
+                return dash.no_update, TIR_fitting_figure, SPR_fitting_figure
+            else:
+                raise dash.exceptions.PreventUpdate
 
     @dash.callback(
         dash.Output('exclusion-height-sensorgram-graph', 'figure'),
