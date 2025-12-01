@@ -41,7 +41,7 @@ Note that SPRpy is designed to leverage parallel computing where applicable, thu
 
 ## Running SPRpy
 
-A text configuration file can be found as "config.toml" that contain some default initial settings that can be tuned. Especially make sure to check that the single 'instrument_TIR_sensitivity' value and several values below [instrument_SPR_sensitivity] matches your specific instrument (defaults are from Bioanvis).
+A text configuration file can be found as "config.toml" that contain some default initial settings that can be tuned. Especially make sure to check that the single 'instrument_TIR_sensitivity' value and several values below [instrument_SPR_sensitivity] matches your specific instrument (when downloading it initially matches measured values of the SPR from A. Dahlin's lab, other users should switch to the highlighted defaults from BioNavis or other determined values).
 
 Before running SPRpy, you need to convert your MP-SPR measurement files (.spr2) to a specific .csv format. This can be achieved by running two separate scripts (simply double-click):
 1) "SPRpy_X_cal.py", a script which generally only needs to be run once to convert the stepper motor values to angles for a particular Bionavis instrument (depending on its setup). Requires a full range scan at highest angular resolution (slow scan), along with its .spr2 file and corresponding exported .dto files from the Bionavis Viewer for each instrument wavelength. The script produces a .csv file that is used by the second script in 2). You can update the default .csv that is loaded in config.toml at the entry 'default_poly_file'.
