@@ -4,12 +4,14 @@
 
 ### Features
 - Optical parameters for sensor tables are now loaded from values entered in "[default_sensor_values]" in config.toml
-- Can now change TIR and SPR angle fitting parameters for the sensorgram and refit them using a button hidden in a collapse
+- Can now change TIR and SPR angle fitting parameters and refit them using a button hidden menu in the Response quantification tab. NOTE: This will change the TIR and SPR fitting for hte whole session.
+- Default TIR and SPR fitting parameters added to config.toml
 - Displays the TIR and SPR angle fits in the reflectivity window when hovering over data points in the SPR sensorgram
-- A custom folder location for the "SPRpy sessions" folder and for data prompt folder can now be set in config.toml 
+- A custom folder location for the "SPRpy sessions" folder and for the data prompt folder can now be set in config.toml 
 
 ### Fixes
 - Now includes time point information when TIR or SPR angle is not found.
+- Angle range markers in Fresnel modelling figure now updates correctly
 
 ## v1.0.1
 

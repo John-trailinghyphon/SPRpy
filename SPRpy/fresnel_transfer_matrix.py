@@ -141,7 +141,7 @@ def fresnel_calculation(fitted_var=None,
             return fresnel_residuals
 
 
-def TIR_determination(xdata, ydata, TIR_range, scanspeed, _window_count=None, _fit_points=2000, _fit_lower_ind=None, _fit_higher_ind=None):
+def TIR_determination(xdata, ydata, SPR_TIR_fitting_parameters):
 
     # Convert to numpy array first if necessary
     if isinstance(xdata, pd.Series):
@@ -150,33 +150,23 @@ def TIR_determination(xdata, ydata, TIR_range, scanspeed, _window_count=None, _f
     if isinstance(ydata, pd.Series):
         ydata = ydata.to_numpy()
 
-    TIR_ydata = ydata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
-    TIR_xdata = xdata[(xdata >= TIR_range[0]) & (xdata <= TIR_range[1])]
-
-    # Scanspeed dependent filtering and fitting
-    if scanspeed <= 5:
-        window_count = (_window_count or 7)
-        fit_lower_ind = (_fit_lower_ind or 4)
-        fit_higher_ind = (_fit_higher_ind or 5)
-    elif scanspeed > 5:
-        window_count = (_window_count or 3)
-        fit_lower_ind = (_fit_lower_ind or 3)
-        fit_higher_ind = (_fit_higher_ind or 3)
+    TIR_ydata = ydata[(xdata >= SPR_TIR_fitting_parameters['TIR range'][0]) & (xdata <= SPR_TIR_fitting_parameters['TIR range'][1])]
+    TIR_xdata = xdata[(xdata >= SPR_TIR_fitting_parameters['TIR range'][0]) & (xdata <= SPR_TIR_fitting_parameters['TIR range'][1])]
 
     # Filter the data with a moving-average filter to smoothen the signal
-    TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=window_count, min_count=1)
-    TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=window_count, min_count=1)
+    TIR_ydata_filtered = bottleneck.move_mean(TIR_ydata, window=SPR_TIR_fitting_parameters['TIR window count'], min_count=1)
+    TIR_xdata_filtered = bottleneck.move_mean(TIR_xdata, window=SPR_TIR_fitting_parameters['TIR window count'], min_count=1)
 
     # Find maximum derivative
     deriv_ydata = np.concatenate(([np.diff(TIR_ydata_filtered)[0]], np.diff(TIR_ydata_filtered)))  # Add extra value for dimensions
     dTIR_i = np.argmax(deriv_ydata)
 
     # Fit against the derivative spike where the derivative is max, considering also nearest neighbors
-    poly_c = np.polyfit(TIR_xdata_filtered[dTIR_i-fit_lower_ind:dTIR_i+fit_higher_ind],
-                    deriv_ydata[dTIR_i-fit_lower_ind:dTIR_i+fit_higher_ind], 3)
+    poly_c = np.polyfit(TIR_xdata_filtered[dTIR_i - SPR_TIR_fitting_parameters['points_below_TIR_peak']:dTIR_i + SPR_TIR_fitting_parameters['points_above_TIR_peak'] + 1],
+                        deriv_ydata[dTIR_i - SPR_TIR_fitting_parameters['points_below_TIR_peak']:dTIR_i + SPR_TIR_fitting_parameters['points_above_TIR_peak'] + 1], 3)
 
     # Recreate the curve with a lot more points
-    deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i-fit_lower_ind], TIR_xdata_filtered[dTIR_i+fit_lower_ind], _fit_points)
+    deriv_TIR_fit_x = np.linspace(TIR_xdata_filtered[dTIR_i - SPR_TIR_fitting_parameters['points_below_TIR_peak']], TIR_xdata_filtered[dTIR_i + SPR_TIR_fitting_parameters['points_above_TIR_peak']], SPR_TIR_fitting_parameters['TIR fit points'])
 
     # Find TIR from max of deriv fit
     deriv_TIR_fit_y = np.polyval(poly_c, deriv_TIR_fit_x)

@@ -38,9 +38,6 @@ if __name__ == '__main__':
         config = tomllib.loads(f.read())
 
     # Access individual parameters as variables
-    TIR_range_water_or_long_measurement = config["TIR_range_water_or_long_measurement"]  # TIR range for water --> Automatically used for 50 or more scans per file
-    TIR_range_air_or_few_scans = config["TIR_range_air_or_few_scans"]  # TIR range for dry scans --> Automatically used for less than 50 scans per file
-    auto_angle_range_points = config["auto_angle_range_points"]  # Number of data points below and above the SPR minimum for auto-detection of the SPR peak
     ask_for_previous_session = config["ask_for_previous_session"]
     if config["default_data_folder"] == '':
         default_data_folder = os.path.expanduser('~')
@@ -60,6 +57,8 @@ if __name__ == '__main__':
     evanescent_decay_length = config["evanescent_decay_length"]
     instrument_SPR_sensitivity = config["instrument_SPR_sensitivity"]
     instrument_TIR_sensitivity = config["instrument_TIR_sensitivity"]
+    TIR_default_parameters = config['TIR_fitting_parameters']
+    SPR_default_parameters = config['SPR_fitting_parameters']
 
     # Determine how many processes can be used for calculations at a time
     if max_logical_cores == 0:
@@ -110,13 +109,7 @@ if __name__ == '__main__':
             except FileNotFoundError:
                 current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(prompt='Select the original data file matching '+current_session.current_data_path)
 
-            # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
-            if ydata_df.shape[0] > 50:
-                TIR_range = TIR_range_water_or_long_measurement
-            else:
-                TIR_range = TIR_range_air_or_few_scans
-
-            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters, )
 
             # Offset to start at 0 degrees at 0 minutes
             sensorgram_df_selection = copy.deepcopy(sensorgram_df)
@@ -151,16 +144,36 @@ if __name__ == '__main__':
         print('Please wait...')
         current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
 
+        SPR_TIR_fitting_parameters = {}
+
+        # Choose TIR range based on number of scans
+        if ydata_df.shape[0] > 50:
+            SPR_TIR_fitting_parameters['TIR range'] = [float(i) for i in TIR_default_parameters['TIR_range_water_or_long_measurement']]
+        else:
+            SPR_TIR_fitting_parameters['TIR range'] = [float(i) for i in TIR_default_parameters['TIR_range_air_or_few_scans']]
+
+        # Set SPR ranges
+        SPR_TIR_fitting_parameters['Fresnel_angle_range_points'] = [int(i) for i in SPR_default_parameters['Fresnel_angle_range_points']]
+        SPR_TIR_fitting_parameters['sensorgram_angle_range_points'] = [int(i) for i in SPR_default_parameters['sensorgram_angle_range_points']]
+
+        # Select TIR fitting parameters based on scanspeed
+        if scanspeed <= 5:
+            SPR_TIR_fitting_parameters['TIR window count'] = int(TIR_default_parameters['window_count_scanspeeds_1_5'])
+            SPR_TIR_fitting_parameters['points_above_TIR_peak'] = int(TIR_default_parameters['points_above_TIR_peak_scanspeed_1_5'])
+            SPR_TIR_fitting_parameters['points_below_TIR_peak'] = int(TIR_default_parameters['points_below_TIR_peak_scanspeed_1_5'])
+        else:
+            SPR_TIR_fitting_parameters['TIR window count'] = int(TIR_default_parameters['window_count_scanspeeds_10'])
+            SPR_TIR_fitting_parameters['points_above_TIR_peak'] = int(TIR_default_parameters['points_above_TIR_peak_scanspeed_10'])
+            SPR_TIR_fitting_parameters['points_below_TIR_peak'] = int(TIR_default_parameters['points_below_TIR_peak_scanspeed_10'])
+
+        SPR_TIR_fitting_parameters['TIR fit points'] = int(TIR_default_parameters['TIR_fit_points'])
+        SPR_TIR_fitting_parameters['SPR fit points'] = int(SPR_default_parameters['SPR_fit_points'])
+
         # Create initial session
-        current_session = Session(version, directory=default_session_folder, current_data_path=current_data_path)
+        current_session = Session(version, SPR_TIR_fitting_parameters, directory=default_session_folder, current_data_path=current_data_path)
 
         # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
-        if ydata_df.shape[0] > 50:
-            TIR_range = TIR_range_water_or_long_measurement
-        else:
-            TIR_range = TIR_range_air_or_few_scans
-
-        sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+        sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters)
 
         # Offset to start at 0 degrees at 0 minutes
         sensorgram_df_selection = copy.deepcopy(sensorgram_df)
@@ -178,7 +191,7 @@ if __name__ == '__main__':
         current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values)
 
         # Calculate TIR angle and update current_sensor.refractive_indices accordingly
-        TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
+        TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], current_session.SPR_TIR_fitting_parameters)
         current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
         current_sensor.optical_parameters.replace(current_sensor.optical_parameters['n'].iloc[-1], current_sensor.refractive_indices[-1], inplace=True)
         current_sensor.sensor_table_title = 'S{sensor_number} {sensor_name} - {channel} - Fit: {fitted_layer}|{fitted_param}'.format(
@@ -251,8 +264,8 @@ if __name__ == '__main__':
     TIR_fitting_fig.update_xaxes(mirror=True, showline=True)
     TIR_fitting_fig.update_yaxes(mirror=True, showline=True)
 
-    reflectivity_df_selection_x = reflectivity_df['angles'][reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]:reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]
-    reflectivity_df_selection_y = reflectivity_df['ydata'][reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]:reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]
+    reflectivity_df_selection_x = reflectivity_df['angles'][reflectivity_df['ydata'].idxmin()-current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0]:reflectivity_df['ydata'].idxmin()+current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][1]+1]
+    reflectivity_df_selection_y = reflectivity_df['ydata'][reflectivity_df['ydata'].idxmin()-current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0]:reflectivity_df['ydata'].idxmin()+current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][1]+1]
     SPR_fitting_fig = px.line(x=reflectivity_df_selection_x, y=reflectivity_df_selection_y)
     SPR_fitting_fig['data'][0]['showlegend'] = True
     SPR_fitting_fig['data'][0]['name'] = 'SPR angle'
@@ -595,7 +608,7 @@ if __name__ == '__main__':
                                         value=False),
                                     dbc.Switch(label='Show TIR/SPR fitting parameters',
                                                id='quantification-show-SPR-TIR-fit-options-switch',
-                                               value=True),
+                                               value=False),
                                     dbc.DropdownMenu(
                                         id='sensorgram-save-dropdown',
                                         label='Save as...',
@@ -627,42 +640,51 @@ if __name__ == '__main__':
                                         dbc.Form([
                                             dbc.Row([
                                                 dbc.Label('TIR fit options:', width='auto'),
+                                            ]),
+                                            dbc.Row([
                                                 dbc.Col([
                                                     dbc.InputGroup([
+                                                        dbc.Label('TIR angle range', width='auto'),
+                                                        dbc.Input(id='TIR-fit-option-range-low',
+                                                                  value=current_session.SPR_TIR_fitting_parameters['TIR range'][0],
+                                                                  type='number'),
+                                                        dbc.Input(id='TIR-fit-option-range-high',
+                                                                  value=current_session.SPR_TIR_fitting_parameters['TIR range'][1],
+                                                                  type='number'),
                                                         dbc.Label('smoothening window size:', width='auto'),
                                                         dbc.Input(id='TIR-fit-option-window',
-                                                                  value=int(7),
+                                                                  value=current_session.SPR_TIR_fitting_parameters['TIR window count'],
                                                                   type='number'),
                                                         dbc.Label('nr of fit points:', width='auto'),
                                                         dbc.Input(id='TIR-fit-option-points',
-                                                                  value=int(2000),
+                                                                  value=current_session.SPR_TIR_fitting_parameters['TIR fit points'],
                                                                   type='number'),
-                                                        dbc.Label('points below max:', width='auto'),
-                                                        dbc.Input(id='TIR-fit-option-lowerbound',
-                                                                  value=int(4),
+                                                        dbc.Label('measurement points below and above peak:', width='auto'),
+                                                        dbc.Input(id='TIR-fit-option-below-peak',
+                                                                  value=current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak'],
                                                                   type='number'),
-                                                        dbc.Label('points above max:', width='auto'),
-                                                        dbc.Input(id='TIR-fit-option-upperbound',
-                                                                  value=int(5),
+                                                        dbc.Input(id='TIR-fit-option-above-peak',
+                                                                  value=current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak'],
                                                                   type='number')
                                                     ])
-                                                ], width=10)
+                                                ], width=12)
                                             ]),
                                             dbc.Row([
                                                 dbc.Label('SPR fit options:', width='auto'),
+                                            ]),
+                                            dbc.Row([
                                                 dbc.Col([
                                                     dbc.InputGroup([
                                                         dbc.Label('nr of fit points:', width='auto'),
                                                         dbc.Input(id='SPR-fit-option-points',
-                                                                  value=int(2000),
+                                                                  value=current_session.SPR_TIR_fitting_parameters['SPR fit points'],
                                                                   type='number'),
-                                                        dbc.Label('points below min:', width='auto'),
-                                                        dbc.Input(id='SPR-fit-option-lowerbound',
-                                                                  value=int(4),
+                                                        dbc.Label('measurement points below and above dip', width='auto'),
+                                                        dbc.Input(id='SPR-fit-option-below-peak',
+                                                                  value=current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][0],
                                                                   type='number'),
-                                                        dbc.Label('points above min:', width='auto'),
-                                                        dbc.Input(id='SPR-fit-option-upperbound',
-                                                                  value=int(5),
+                                                        dbc.Input(id='SPR-fit-option-above-peak',
+                                                                  value=current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'][1],
                                                                   type='number')
                                                     ])
                                                 ], width=7)
@@ -952,7 +974,7 @@ if __name__ == '__main__':
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]],
+                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][1]]],
                                                                                  min=reflectivity_df['angles'].iloc[0],
                                                                                  max=reflectivity_df['angles'].iloc[-1],
                                                                                  marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
@@ -1467,9 +1489,7 @@ if __name__ == '__main__':
         global sensorgram_df
         global sensorgram_df_selection
         global corrected_sensorgram_df_selection
-        global TIR_range_water_or_long_measurement
-        global TIR_range_air_or_few_scans
-        global TIR_range
+        global TIR_default_parameters
         global default_data_folder
 
         if 'load-data' == dash.ctx.triggered_id:
@@ -1480,11 +1500,12 @@ if __name__ == '__main__':
 
             # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
             if ydata_df.shape[0] > 50:
-                TIR_range = TIR_range_water_or_long_measurement
+                current_session.SPR_TIR_fitting_parameters['TIR range'] = TIR_default_parameters['TIR_range_water_or_long_measurement']
             else:
-                TIR_range = TIR_range_air_or_few_scans
+                current_session.SPR_TIR_fitting_parameters['TIR range'] = TIR_default_parameters['TIR_range_air_or_few_scans']
+
             # TODO: Include logic for updating fitting parameters for TIR and SPR angle when calculating sensorgram. Also to select TIR fitting algorithm (implement something similar to Bionavis)
-            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, TIR_range, scanspeed)
+            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters)
 
             # Offset to start at 0 degrees at 0 minutes
             sensorgram_df_selection = copy.deepcopy(sensorgram_df)
@@ -1556,16 +1577,13 @@ if __name__ == '__main__':
         global current_session
         global current_data_path
         global reflectivity_df
-        global scanspeed
-        global TIR_range
 
         if 'new-sensor-gold' == dash.ctx.triggered_id:
             current_sensor = add_sensor_backend(current_session, current_data_path, default_sensor_values, sensor_metal='Au')
             current_sensor.name = 'Gold sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
-                                                scanspeed)
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], current_session.SPR_TIR_fitting_parameters)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                 np.pi / 180 * TIR_angle)
             current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
@@ -1594,8 +1612,7 @@ if __name__ == '__main__':
             current_sensor.name = 'Glass sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
-                                                scanspeed)
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], current_session.SPR_TIR_fitting_parameters)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                 np.pi / 180 * TIR_angle)
             current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
@@ -1624,8 +1641,7 @@ if __name__ == '__main__':
             current_sensor.name = 'Palladium sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range,
-                                                scanspeed)
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], current_session.SPR_TIR_fitting_parameters)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                 np.pi / 180 * TIR_angle)
             current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
@@ -1654,7 +1670,7 @@ if __name__ == '__main__':
             current_sensor.name = 'Platinum sensor'
 
             # Calculate TIR angle and bulk refractive index from measured data
-            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], TIR_range, scanspeed)
+            TIR_angle, _, _, _, _ = TIR_determination(reflectivity_df['angles'], reflectivity_df['ydata'], current_session.SPR_TIR_fitting_parameters)
             current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
             current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
 
@@ -1880,8 +1896,8 @@ if __name__ == '__main__':
             # Then also make sure lock hover switch is set to inactive
             if lock_hover is False:
                 time_index = hoverData['points'][0]['pointIndex']
-                SPR_angle = float(sensorgram_df['SPR angle'][time_index+1])
-                TIR_angle = float(sensorgram_df['TIR angle'][time_index+1])
+                SPR_angle = float(sensorgram_df['SPR angle'][time_index])
+                TIR_angle = float(sensorgram_df['TIR angle'][time_index])
                 reflectivity_df['ydata'] = ydata_df.loc[time_index+1]
 
                 new_figure = go.Figure(go.Scatter(x=reflectivity_df['angles'],
@@ -2220,14 +2236,13 @@ if __name__ == '__main__':
         global current_session
         global reflectivity_df
         global current_sensor
-        global TIR_range
-        global scanspeed
 
         figure_object = go.Figure(figure_JSON)
 
+        # TODO: This doesn't work anymore for some weird reason, it doesn't add the lines
         if 'fresnel-fit-option-rangeslider' == dash.ctx.triggered_id:
 
-            # First check if model has been run previously, then include model data before adding angle range lines
+            # # First check if model has been run previously, then include model data before adding angle range lines
             if figure_object.data.__len__() > 3:
                 new_figure = go.Figure(go.Scatter(x=figure_object.data[0]['x'],
                                                   y=figure_object.data[0]['y'],
@@ -2248,16 +2263,15 @@ if __name__ == '__main__':
                                                   showlegend=False,
                                                   line_color='#636efa'
                                                   ))
-            # Adding angle range lines
-            new_figure.add_trace(go.Scatter(x=[rangeslider_inp[0], rangeslider_inp[0]],
-                                            y=[min(figure_object.data[0]['y']), max(figure_object.data[0]['y'])],
+            new_figure.add_trace(go.Scatter(x=[rangeslider_inp[0], rangeslider_inp[0]],  # Adding angle range lines
+                                            y=[min(list(figure_object.data[0]['y']['_inputArray'].values())[:-4]), max(list(figure_object.data[0]['y']['_inputArray'].values())[:-4])],
                                             mode='lines',
                                             showlegend=False,
                                             line_color='black',
                                             line_dash='dash'
                                             ))
-            new_figure.add_trace(go.Scatter(x=[rangeslider_inp[1], rangeslider_inp[1]],
-                                            y=[min(figure_object.data[0]['y']), max(figure_object.data[0]['y'])],
+            new_figure.add_trace(go.Scatter(x=[rangeslider_inp[1], rangeslider_inp[1]],  # Adding angle range lines
+                                            y=[min(list(figure_object.data[0]['y']['_inputArray'].values())[:-4]), max(list(figure_object.data[0]['y']['_inputArray'].values())[:-4])],
                                             mode='lines',
                                             showlegend=False,
                                             line_color='black',
@@ -2397,12 +2411,12 @@ if __name__ == '__main__':
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True, True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
-            current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, TIR_range, scanspeed, analysis_name)
+            current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor, current_data_path, reflectivity_df, analysis_name)
 
             # Calculate initial intensity offset from data
             FR_y = fresnel_calculation(
                 angles=reflectivity_df['angles'].iloc[
-                       reflectivity_df['ydata'].idxmin()-1:reflectivity_df['ydata'].idxmin()+1],
+                       reflectivity_df['ydata'].idxmin()-1:reflectivity_df['ydata'].idxmin()+2],
                 wavelength=current_fresnel_analysis.sensor_object.wavelength,
                 layer_thicknesses=current_fresnel_analysis.sensor_object.layer_thicknesses,
                 n_re=current_fresnel_analysis.sensor_object.refractive_indices,
@@ -2413,7 +2427,7 @@ if __name__ == '__main__':
 
             current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var), current_fresnel_analysis.y_offset])
             current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] * 2, np.inf)]
-            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-auto_angle_range_points[0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+auto_angle_range_points[1]]]
+            current_fresnel_analysis.angle_range = [reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][1]]]
 
             current_session.save_session()
             current_session.save_fresnel_analysis(current_fresnel_analysis.object_id)
@@ -2729,8 +2743,7 @@ if __name__ == '__main__':
 
                     current_sensor = next_sensor
                     current_sensor.channel = file_path[-12:-4].replace('_', ' ')
-                    TIR_angle, _, _, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], example_analysis_object.TIR_range,
-                                                        example_analysis_object.scanspeed)
+                    TIR_angle, _, _, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], current_session.SPR_TIR_fitting_parameters)
                     current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                         np.pi / 180 * TIR_angle)
                     current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
@@ -2744,12 +2757,11 @@ if __name__ == '__main__':
 
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
-                                                                        file_path, next_reflectivity_df_, example_analysis_object.TIR_range,
-                                                                        example_analysis_object.scanspeed, current_sensor.name)
+                                                                        file_path, next_reflectivity_df_, current_sensor.name)
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
-                        next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
-                        next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() + auto_angle_range_points[1]]]
+                        next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() - current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][0]],
+                        next_reflectivity_df_['angles'].iloc[next_reflectivity_df_['ydata'].idxmin() + current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][1]]]
 
                     # Set analysis options from example analysis objects
                     current_fresnel_analysis.ini_guess = example_analysis_object.ini_guess
@@ -2811,9 +2823,7 @@ if __name__ == '__main__':
                     current_sensor.extinction_coefficients = current_sensor.optical_parameters['k'].to_numpy()
 
                     # Calculate TIR angle and update bulk RI
-                    TIR_angle, _, _, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'],
-                                                        example_analysis_object.TIR_range,
-                                                        example_analysis_object.scanspeed)
+                    TIR_angle, _, _, _, _ = TIR_determination(next_reflectivity_df_['angles'], next_reflectivity_df_['ydata'], current_session.SPR_TIR_fitting_parameters)
                     current_sensor.refractive_indices[-1] = current_sensor.refractive_indices[0] * np.sin(
                         np.pi / 180 * TIR_angle)
                     current_sensor.optical_parameters['n'] = current_sensor.refractive_indices
@@ -2836,17 +2846,15 @@ if __name__ == '__main__':
                     # Add fresnel model object to session
                     current_fresnel_analysis = add_fresnel_model_object(current_session, current_sensor,
                                                                         file_path, next_reflectivity_df_,
-                                                                        example_analysis_object.TIR_range,
-                                                                        example_analysis_object.scanspeed,
                                                                         current_sensor.name + ' (S' + str(
                                                                             current_sensor.object_id) + ') ')
 
                     # Calculate angle range based on measured data
                     current_fresnel_analysis.angle_range = [
                         next_reflectivity_df_['angles'].iloc[
-                            next_reflectivity_df_['ydata'].idxmin() - auto_angle_range_points[0]],
+                            next_reflectivity_df_['ydata'].idxmin() - current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][0]],
                         next_reflectivity_df_['angles'].iloc[
-                            next_reflectivity_df_['ydata'].idxmin() + auto_angle_range_points[1]]]
+                            next_reflectivity_df_['ydata'].idxmin() + current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][1]]]
 
                     # Set analysis options from example analysis objects
                     current_fresnel_analysis.ini_guess = example_analysis_object.ini_guess
@@ -4805,3 +4813,4 @@ if __name__ == '__main__':
             exclusion_df.to_csv(save_filename[:-4] + '_exclusion' + '.csv', sep=';')
 
     app.run(debug=True, use_reloader=False, host=session_host, port=8050)
+

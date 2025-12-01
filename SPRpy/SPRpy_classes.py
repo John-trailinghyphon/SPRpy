@@ -18,7 +18,7 @@ class Session:
     the first thing that a user is prompted for before they start their analysis.
     """
 
-    def __init__(self, version, name='Session', directory=None, current_data_path=None):
+    def __init__(self, version, SPR_TIR_fitting_parameters, name='Session', directory=None, current_data_path=None):
         self.version = version
         self.name = datetime.datetime.now().__str__()[0:16].replace(':', '_') + ' ' + name
         if not directory:
@@ -53,6 +53,7 @@ class Session:
         self.exclusion_height_analysis_instances = {}
         self.exclusion_height_analysis_ID_count = 0
         self.current_data_path = current_data_path
+        self.SPR_TIR_fitting_parameters = SPR_TIR_fitting_parameters
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to SPRpy!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.'
 
@@ -240,21 +241,21 @@ class Sensor:
 
         match sensor_metal:
             case 'Au' | 'gold' | 'Gold' | 'GOLD':
-                self.layer_thicknesses = np.array([np.nan, float(self.default_sensor_values["d_nm"][1]), self.default_sensor_values["d_nm"][2], np.nan])
+                self.layer_thicknesses = np.array([np.nan, float(self.default_sensor_values["d_nm"][1]), float(self.default_sensor_values["d_nm"][2]), np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_670"][0]), float(self.default_sensor_values["n_670"][1]), float(self.default_sensor_values["n_670"][2]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][2]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][2]), 0.0])
                     case 785:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_785"][0]), float(self.default_sensor_values["n_785"][1]), float(self.default_sensor_values["n_785"][2]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][2]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][2]), 0.0])
                     case 850:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_850"][0]), float(self.default_sensor_values["n_850"][1]), float(self.default_sensor_values["n_850"][2]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][2]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][2]), 0.0])
                     case 980:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_980"][0]), float(self.default_sensor_values["n_980"][1]), float(self.default_sensor_values["n_980"][2]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][2]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][2]), 0.0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'Bulk'],  # NOTE: sensor_object.optical_parameters will auto-update when changing sensor_object.layer_thicknesses, sensor_object.refractive_indices or sensor_object.extinction_coefficients
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
@@ -262,21 +263,21 @@ class Sensor:
 
             case 'sio2' | 'SiO2' | 'SIO2' | 'Glass' | 'glass' | 'silica':
                 # Fused silica values source: L. V. Rodríguez-de Marcos, J. I. Larruquert, J. A. Méndez, J. A. Aznárez. Self-consistent optical constants of SiO2 and Ta2O5 films. Opt. Mater. Express 6, 3622-3637 (2016)
-                self.layer_thicknesses = np.array([np.nan, float(self.default_sensor_values["d_nm"][1]), self.default_sensor_values["d_nm"][2],  self.default_sensor_values["d_nm"][3], np.nan])
+                self.layer_thicknesses = np.array([np.nan, float(self.default_sensor_values["d_nm"][1]), float(self.default_sensor_values["d_nm"][2]),  float(self.default_sensor_values["d_nm"][3]), np.nan])
                 self.fitted_layer_index = (3, 1)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_670"][0]), float(self.default_sensor_values["n_670"][1]), float(self.default_sensor_values["n_670"][2]), float(self.default_sensor_values["n_670"][3]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][2]), float(self.default_sensor_values["k_670"][3]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][2]), float(self.default_sensor_values["k_670"][3]), 0.0])
                     case 785:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_785"][0]), float(self.default_sensor_values["n_785"][1]), float(self.default_sensor_values["n_785"][2]), float(self.default_sensor_values["n_785"][3]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][2]), float(self.default_sensor_values["k_785"][3]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][2]), float(self.default_sensor_values["k_785"][3]), 0.0])
                     case 850:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_850"][0]), float(self.default_sensor_values["n_850"][1]), float(self.default_sensor_values["n_850"][2]), float(self.default_sensor_values["n_850"][3]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][2]), float(self.default_sensor_values["k_850"][3]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][2]), float(self.default_sensor_values["k_850"][3]), 0.0])
                     case 980:
                         self.refractive_indices = np.array([float(self.default_sensor_values["n_980"][0]), float(self.default_sensor_values["n_980"][1]), float(self.default_sensor_values["n_980"][2]), float(self.default_sensor_values["n_980"][3]), 1.0003])
-                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][2]), float(self.default_sensor_values["k_980"][3]), 0])
+                        self.extinction_coefficients = np.array([float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][2]), float(self.default_sensor_values["k_980"][3]), 0.0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Au', 'SiO2', 'Bulk'],
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
@@ -285,29 +286,29 @@ class Sensor:
             case 'Pd' | 'palladium' | 'Palladium' | 'PALLADIUM':
                 # Source Pd 670nm : Andersson, John, et al. "Surface plasmon resonance sensing with thin films of palladium and platinum–quantitative and real-time analysis." Physical Chemistry Chemical Physics 24.7 (2022): 4588-4594.
                 # Source Pd 785nm, 980nm: Similar procedure as Andersson, John et al., but these were not reported.
-                self.layer_thicknesses = np.array([np.nan, float(self.default_sensor_values["d_nm"][1]), self.default_sensor_values["d_nm"][4], np.nan])
+                self.layer_thicknesses = np.array([np.nan, float(self.default_sensor_values["d_nm"][1]), float(self.default_sensor_values["d_nm"][4]), np.nan])
                 self.fitted_layer_index = (2, 3)  # Tuple with index for df.iloc[fitted_layer_index]
                 match self.wavelength:
                     case 670:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_670"][0]), float(self.default_sensor_values["n_670"][1]), float(self.default_sensor_values["n_670"][4]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][4]), 0])
+                            [float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][4]), 0.0])
                     case 785:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_785"][0]), float(self.default_sensor_values["n_785"][1]), float(self.default_sensor_values["n_785"][4]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][4]), 0])
+                            [float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][4]), 0.0])
                     case 850:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_850"][0]), float(self.default_sensor_values["n_850"][1]), float(self.default_sensor_values["n_850"][4]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][4]), 0])
+                            [float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][4]), 0.0])
                     case 980:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_980"][0]), float(self.default_sensor_values["n_980"][1]), float(self.default_sensor_values["n_980"][4]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][4]), 0])
+                            [float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][4]), 0.0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Pd', 'Bulk'],
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
@@ -323,22 +324,22 @@ class Sensor:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_670"][0]), float(self.default_sensor_values["n_670"][1]), float(self.default_sensor_values["n_670"][5]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][5]), 0])
+                            [float(self.default_sensor_values["k_670"][0]), float(self.default_sensor_values["k_670"][1]), float(self.default_sensor_values["k_670"][5]), 0.0])
                     case 785:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_785"][0]), float(self.default_sensor_values["n_785"][1]), float(self.default_sensor_values["n_785"][5]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][5]), 0])
+                            [float(self.default_sensor_values["k_785"][0]), float(self.default_sensor_values["k_785"][1]), float(self.default_sensor_values["k_785"][5]), 0.0])
                     case 850:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_850"][0]), float(self.default_sensor_values["n_850"][1]), float(self.default_sensor_values["n_850"][5]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][5]), 0])
+                            [float(self.default_sensor_values["k_850"][0]), float(self.default_sensor_values["k_850"][1]), float(self.default_sensor_values["k_850"][5]), 0.0])
                     case 980:
                         self.refractive_indices = np.array(
                             [float(self.default_sensor_values["n_980"][0]), float(self.default_sensor_values["n_980"][1]), float(self.default_sensor_values["n_980"][5]), 1.0003])
                         self.extinction_coefficients = np.array(
-                            [float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][5]), 0])
+                            [float(self.default_sensor_values["k_980"][0]), float(self.default_sensor_values["k_980"][1]), float(self.default_sensor_values["k_980"][5]), 0.0])
                 self.optical_parameters = pd.DataFrame(data={'Layers': ['Prism', 'Cr', 'Pt', 'Bulk'],
                                                              'd [nm]': self.layer_thicknesses,
                                                              'n': self.refractive_indices,
@@ -353,16 +354,15 @@ class FresnelModel:
 
     """
 
-    def __init__(self, sensor_object_, data_path_, reflectivity_df_, TIR_range_, scanspeed_, object_id_, object_name_):
+    def __init__(self, session_object, sensor_object_, data_path_, reflectivity_df_, object_id_, object_name_):
         self.name = object_name_
         self.object_id = object_id_
         self.sensor_object = sensor_object_
         self.sensor_object_label = ''
         self.initial_data_path = data_path_
         self.measurement_data = reflectivity_df_
-        self.TIR_range = TIR_range_  # Default for air. For water: (60.8, 63)
-        self.scanspeed = scanspeed_  # Scan speed from .spr2 file, 1 (slow), 5 (medium) or 10 (fast)
-        self.angle_range = [40, 80]
+        self.SPR_TIR_fitting_parameters = session_object.SPR_TIR_fitting_parameters  # We want the SPR and TIR fitting parameters to update when they change globally in the session
+        self.angle_range = session_object.SPR_TIR_fitting_parameters['Fresnel_angle_range_points']
         self.polarization = 1.0  # 0-1, for degree of s (=0) and p(=1) polarization,
         self.ini_guess = np.array(4)
         self.bounds = [0, 50]  # or [(lb1, lb2), (ub1, ub2)] etc
@@ -395,7 +395,7 @@ class FresnelModel:
         ydata_ = self.measurement_data['ydata']
 
         # Calculate TIR angle and bulk refractive index
-        TIR_angle, TIR_fitted_angles, TIR_fitted_ydata = TIR_determination(xdata_, ydata_, self.TIR_range, self.scanspeed)
+        TIR_angle, _, _, _, _ = TIR_determination(xdata_, ydata_, self.SPR_TIR_fitting_parameters)
         self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
         # Add extinction correction to fitted surface layer extinction value
@@ -485,10 +485,11 @@ class ExclusionHeight:
         injections. The underlying method is described as the "non-interacting probe method" in the literature.
     """
 
-    def __init__(self, fresnel_object_, sensorgram_df_, data_path_,  object_id_, object_name_):
+    def __init__(self, session_object, fresnel_object_, sensorgram_df_, data_path_,  object_id_, object_name_):
         self.name = object_name_
         self.object_id = object_id_
         self.fresnel_object = fresnel_object_
+        self.SPR_TIR_fitting_parameters = session_object.SPR_TIR_fitting_parameters  # We want the SPR and TIR fitting parameters to update when they change globally in the session
         self.fresnel_object_label = 'Fresnel background: FM{analysis_number} {analysis_name}'.format(
                                                                     analysis_number=fresnel_object_.object_id,
                                                                     analysis_name=fresnel_object_.name)
@@ -499,8 +500,8 @@ class ExclusionHeight:
         self.sensorgram_offset_ind = 0
         self.d_n_pair_resolution = 200
         self.height_steps = np.linspace(0, 200, self.d_n_pair_resolution)
-        self.points_below_SPR_min_ind = None
-        self.points_above_SPR_min_ind = None
+        self.points_below_SPR_min_ind = None  # This will be calculated based on the most updated fits of the Fresnel background
+        self.points_above_SPR_min_ind = None  # This will be calculated based on the most updated fits of the Fresnel background
         self.injection_points = []
         self.buffer_points = []
         self.probe_points = []
@@ -545,7 +546,7 @@ class ExclusionHeight:
 
             # Calculate TIR and bulk RI for each mean spectra
             try:
-                buffer_TIR_angle, _, _ = TIR_determination(background_angles.to_numpy(), mean_buffer_reflectivity.to_numpy(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+                buffer_TIR_angle, _, _, _, _ = TIR_determination(background_angles.to_numpy(), mean_buffer_reflectivity.to_numpy(), self.SPR_TIR_fitting_parameters)
             except TypeError:
                 raise TypeError('Something went wrong when selecting buffer points. Please clear and reselect them and avoid clicking other point markers.')
             self.buffer_bulk_RIs.append(self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * buffer_TIR_angle))
@@ -567,7 +568,7 @@ class ExclusionHeight:
 
             # Calculate TIR and bulk RI for each mean spectra
             try:
-                probe_TIR_angle, _, _ = TIR_determination(background_angles.to_numpy(), mean_probe_reflectivity.to_numpy(), self.fresnel_object.TIR_range, self.fresnel_object.scanspeed)
+                probe_TIR_angle, _, _, _, _ = TIR_determination(background_angles.to_numpy(), mean_probe_reflectivity.to_numpy(), self.SPR_TIR_fitting_parameters)
             except TypeError:
                 raise TypeError('Something went wrong when selecting probe points. Please clear and reselect them and avoid clicking other point markers.')
             self.probe_bulk_RIs.append(self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * probe_TIR_angle))
@@ -868,13 +869,13 @@ def copy_sensor_backend(session_object, sensor_object):
     return copied_sensor_object
 
 
-def add_fresnel_model_object(session_object, sensor_object, data_path_, reflectivity_df_, TIR_range_, scanspeed_, object_name_):
+def add_fresnel_model_object(session_object, sensor_object, data_path_, reflectivity_df_, object_name_):
     """
     Adds analysis objects to a session object.
     :return: an analysis object
     """
     session_object.fresnel_analysis_ID_count += 1
-    analysis_object = FresnelModel(sensor_object, data_path_, reflectivity_df_, TIR_range_, scanspeed_, session_object.fresnel_analysis_ID_count, object_name_)
+    analysis_object = FresnelModel(session_object, sensor_object, data_path_, reflectivity_df_, session_object.fresnel_analysis_ID_count, object_name_)
     session_object.fresnel_analysis_instances[session_object.fresnel_analysis_ID_count] = analysis_object
 
     return analysis_object
@@ -886,7 +887,7 @@ def add_exclusion_height_object(session_object, fresnel_object, sensorgram_df_, 
     :return: an analysis object
     """
     session_object.exclusion_height_analysis_ID_count += 1
-    analysis_object = ExclusionHeight(fresnel_object, sensorgram_df_, data_path_, session_object.exclusion_height_analysis_ID_count, object_name_)
+    analysis_object = ExclusionHeight(session_object, fresnel_object, sensorgram_df_, data_path_, session_object.exclusion_height_analysis_ID_count, object_name_)
     session_object.exclusion_height_analysis_instances[session_object.exclusion_height_analysis_ID_count] = analysis_object
 
     return analysis_object
