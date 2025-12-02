@@ -156,18 +156,24 @@ if __name__ == '__main__':
         SPR_TIR_fitting_parameters['Fresnel_angle_range_points'] = [int(i) for i in SPR_default_parameters['Fresnel_angle_range_points']]
         SPR_TIR_fitting_parameters['sensorgram_angle_range_points'] = [int(i) for i in SPR_default_parameters['sensorgram_angle_range_points']]
 
-        # Select TIR fitting parameters based on scanspeed
-        if scanspeed <= 5:
-            SPR_TIR_fitting_parameters['TIR window count'] = int(TIR_default_parameters['window_count_scanspeeds_1_5'])
-            SPR_TIR_fitting_parameters['points_above_TIR_peak'] = int(TIR_default_parameters['points_above_TIR_peak_scanspeed_1_5'])
-            SPR_TIR_fitting_parameters['points_below_TIR_peak'] = int(TIR_default_parameters['points_below_TIR_peak_scanspeed_1_5'])
-        else:
-            SPR_TIR_fitting_parameters['TIR window count'] = int(TIR_default_parameters['window_count_scanspeeds_10'])
-            SPR_TIR_fitting_parameters['points_above_TIR_peak'] = int(TIR_default_parameters['points_above_TIR_peak_scanspeed_10'])
-            SPR_TIR_fitting_parameters['points_below_TIR_peak'] = int(TIR_default_parameters['points_below_TIR_peak_scanspeed_10'])
-
+        SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5'] = int(TIR_default_parameters['window_count_scanspeeds_1_5'])
+        SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5'] = int(TIR_default_parameters['points_above_TIR_peak_scanspeed_1_5'])
+        SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5'] = int(TIR_default_parameters['points_below_TIR_peak_scanspeed_1_5'])
+        SPR_TIR_fitting_parameters['window_count_scanspeeds_10'] = int(TIR_default_parameters['window_count_scanspeeds_10'])
+        SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10'] = int(TIR_default_parameters['points_above_TIR_peak_scanspeed_10'])
+        SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10'] = int(TIR_default_parameters['points_below_TIR_peak_scanspeed_10'])
         SPR_TIR_fitting_parameters['TIR fit points'] = int(TIR_default_parameters['TIR_fit_points'])
         SPR_TIR_fitting_parameters['SPR fit points'] = int(SPR_default_parameters['SPR_fit_points'])
+
+        # Select active TIR fitting parameters based on scanspeed
+        if scanspeed <= 5:
+            SPR_TIR_fitting_parameters['TIR window count'] = SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5']
+            SPR_TIR_fitting_parameters['points_above_TIR_peak'] = SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5']
+            SPR_TIR_fitting_parameters['points_below_TIR_peak'] = SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5']
+        else:
+            SPR_TIR_fitting_parameters['TIR window count'] = SPR_TIR_fitting_parameters['window_count_scanspeeds_10']
+            SPR_TIR_fitting_parameters['points_above_TIR_peak'] = SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10']
+            SPR_TIR_fitting_parameters['points_below_TIR_peak'] = SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10']
 
         # Create initial session
         current_session = Session(version, SPR_TIR_fitting_parameters, directory=default_session_folder, current_data_path=current_data_path)
@@ -1503,6 +1509,16 @@ if __name__ == '__main__':
                 current_session.SPR_TIR_fitting_parameters['TIR range'] = TIR_default_parameters['TIR_range_water_or_long_measurement']
             else:
                 current_session.SPR_TIR_fitting_parameters['TIR range'] = TIR_default_parameters['TIR_range_air_or_few_scans']
+
+            # Select active TIR fitting parameters based on scanspeed
+            if scanspeed <= 5:
+                SPR_TIR_fitting_parameters['TIR window count'] = SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5']
+                SPR_TIR_fitting_parameters['points_above_TIR_peak'] = SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5']
+                SPR_TIR_fitting_parameters['points_below_TIR_peak'] = SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5']
+            else:
+                SPR_TIR_fitting_parameters['TIR window count'] = SPR_TIR_fitting_parameters['window_count_scanspeeds_10']
+                SPR_TIR_fitting_parameters['points_above_TIR_peak'] = SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10']
+                SPR_TIR_fitting_parameters['points_below_TIR_peak'] = SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10']
 
             sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters)
 
@@ -3240,6 +3256,7 @@ if __name__ == '__main__':
         global corrected_sensorgram_df_selection
         global ydata_df
         global reflectivity_df
+        global scanspeed
 
         if 'quantification-show-SPR-TIR-fit-options-switch' == dash.ctx.triggered_id:
             return fit_show_switch, dash.no_update, dash.no_update
@@ -3253,6 +3270,16 @@ if __name__ == '__main__':
             current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak'] = TIR_above_peak
             current_session.SPR_TIR_fitting_parameters['SPR fit points'] = SPR_fit_points
             current_session.SPR_TIR_fitting_parameters['sensorgram_angle_range_points'] = [SPR_below_peak, SPR_above_peak]
+
+            # Select active TIR fitting parameters based on scanspeed
+            if scanspeed <= 5:
+                SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5'] = TIR_window
+                SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5'] = TIR_above_peak
+                SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5'] = TIR_below_peak
+            else:
+                SPR_TIR_fitting_parameters['window_count_scanspeeds_10'] = TIR_window
+                SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10'] = TIR_above_peak
+                SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10'] = TIR_below_peak
 
             current_session.save_session()
 
