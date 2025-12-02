@@ -1502,7 +1502,6 @@ if __name__ == '__main__':
             # Load measurement data and update session current data path
             current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
             current_session.current_data_path = current_data_path
-            current_session.save_session()
 
             # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
             if ydata_df.shape[0] > 50:
@@ -1512,13 +1511,15 @@ if __name__ == '__main__':
 
             # Select active TIR fitting parameters based on scanspeed
             if scanspeed <= 5:
-                SPR_TIR_fitting_parameters['TIR window count'] = SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5']
-                SPR_TIR_fitting_parameters['points_above_TIR_peak'] = SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5']
-                SPR_TIR_fitting_parameters['points_below_TIR_peak'] = SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5']
+                current_session.SPR_TIR_fitting_parameters['TIR window count'] = current_session.SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5']
+                current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak'] = current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5']
+                current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak'] = current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5']
             else:
-                SPR_TIR_fitting_parameters['TIR window count'] = SPR_TIR_fitting_parameters['window_count_scanspeeds_10']
-                SPR_TIR_fitting_parameters['points_above_TIR_peak'] = SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10']
-                SPR_TIR_fitting_parameters['points_below_TIR_peak'] = SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10']
+                current_session.SPR_TIR_fitting_parameters['TIR window count'] = current_session.SPR_TIR_fitting_parameters['window_count_scanspeeds_10']
+                current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak'] = current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10']
+                current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak'] = current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10']
+
+            current_session.save_session()
 
             sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters)
 
@@ -3273,13 +3274,13 @@ if __name__ == '__main__':
 
             # Select active TIR fitting parameters based on scanspeed
             if scanspeed <= 5:
-                SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5'] = TIR_window
-                SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5'] = TIR_above_peak
-                SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5'] = TIR_below_peak
+                current_session.SPR_TIR_fitting_parameters['window_count_scanspeeds_1_5'] = TIR_window
+                current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_1_5'] = TIR_above_peak
+                current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_1_5'] = TIR_below_peak
             else:
-                SPR_TIR_fitting_parameters['window_count_scanspeeds_10'] = TIR_window
-                SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10'] = TIR_above_peak
-                SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10'] = TIR_below_peak
+                current_session.SPR_TIR_fitting_parameters['window_count_scanspeeds_10'] = TIR_window
+                current_session.SPR_TIR_fitting_parameters['points_above_TIR_peak_scanspeed_10'] = TIR_above_peak
+                current_session.SPR_TIR_fitting_parameters['points_below_TIR_peak_scanspeed_10'] = TIR_below_peak
 
             current_session.save_session()
 
