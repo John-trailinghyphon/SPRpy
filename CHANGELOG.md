@@ -2,11 +2,8 @@
 
 ## v1.1.1
 
-### Features
--  
-
 ### Fixes
-- 
+- Now correctly handles selecting TIR fitting parameters according to scanspeed when loading new measurements in one session.
 
 ## v1.1.0
 
