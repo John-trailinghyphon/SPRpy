@@ -11,6 +11,8 @@ import copy
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
+from win32con import TRUETYPE_FONTTYPE
+
 from SPRpy_classes import *
 from __about__ import version
 import os
@@ -109,7 +111,7 @@ if __name__ == '__main__':
             except FileNotFoundError:
                 current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(prompt='Select the original data file matching '+current_session.current_data_path)
 
-            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters, )
+            sensorgram_df = calculate_sensorgram(time_df, angles_df, ydata_df, current_session.SPR_TIR_fitting_parameters)
 
             # Offset to start at 0 degrees at 0 minutes
             sensorgram_df_selection = copy.deepcopy(sensorgram_df)
@@ -1476,7 +1478,7 @@ if __name__ == '__main__':
     # TODO: Include logic for updating fitting parameters for TIR and SPR angle when calculating sensorgram. Also to select TIR fitting algorithm (implement something similar to Bionavis)
     # Load in new measurement data and send a Store signal to other callbacks to update appropriately
     @dash.callback(
-        dash.Output('loaded-new-measurement', 'data'),
+        dash.Output('loaded-new-measurement', 'data', allow_duplicate=True),
         dash.Output('datapath-textfield', 'children'),
         dash.Output('batch-fresnel-analysis-files', 'data'),
         dash.Input('load-data', 'n_clicks'),
@@ -3234,6 +3236,7 @@ if __name__ == '__main__':
         dash.Output('quantification-TIR-SPR-fit-collapse', 'is_open'),
         dash.Output('quantification-TIR-fit-graph', 'figure'),
         dash.Output('quantification-SPR-fit-graph', 'figure'),
+        dash.Output('loaded-new-measurement', 'data'),
         dash.Input('quantification-show-SPR-TIR-fit-options-switch', 'value'),
         dash.Input('quantification-sensorgram-graph', 'hoverData'),
         dash.Input('quantification-apply-fitting-SPR-TIR-button', 'n_clicks'),
@@ -3260,7 +3263,7 @@ if __name__ == '__main__':
         global scanspeed
 
         if 'quantification-show-SPR-TIR-fit-options-switch' == dash.ctx.triggered_id:
-            return fit_show_switch, dash.no_update, dash.no_update
+            return fit_show_switch, dash.no_update, dash.no_update, dash.no_update
 
         # Applying the fit settings and updating  the session object
         elif 'quantification-apply-fitting-SPR-TIR-button' == dash.ctx.triggered_id:
@@ -3297,7 +3300,7 @@ if __name__ == '__main__':
             corrected_sensorgram_df_selection = sensorgram_df_selection['SPR angle'] - sensorgram_df_selection[
                 'TIR angle'] * instrument_SPR_sensitivity[current_data_path[-9:-6]] / instrument_TIR_sensitivity * math.exp(-2 * 0 / evanescent_decay_length[current_data_path[-9:-6]])
 
-            raise dash.exceptions.PreventUpdate
+            return dash.no_update, dash.no_update, dash.no_update, 'signal'
 
         # When hovering over data in the sensorgram plot, update the TIR and SPR fitting graphs accordingly
         elif 'quantification-sensorgram-graph' == dash.ctx.triggered_id:
@@ -3350,7 +3353,7 @@ if __name__ == '__main__':
                 SPR_fitting_figure.update_xaxes(mirror=True, showline=True)
                 SPR_fitting_figure.update_yaxes(mirror=True, showline=True)
 
-                return dash.no_update, TIR_fitting_figure, SPR_fitting_figure
+                return dash.no_update, TIR_fitting_figure, SPR_fitting_figure, dash.no_update
             else:
                 raise dash.exceptions.PreventUpdate
 

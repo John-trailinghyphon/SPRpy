@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.2
+
+### Fixes
+- Now correctly updates sensorgram graph after applying new TIR and SPR fitting parameters
+
 ## v1.1.1
 
 ### Fixes
