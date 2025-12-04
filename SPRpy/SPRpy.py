@@ -3593,14 +3593,11 @@ if __name__ == '__main__':
             buffer_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.buffer_points]
             probe_points_time_ = [round(item[1], 2) for item in current_exclusion_height_analysis.probe_points]
 
-            injection_time_string = '{length} injection points: {points}'.format(length=len(injection_points_time_),
-                                                                                 points=injection_points_time_)
+            injection_time_string = '{length} injection points: {points}'.format(length=len(injection_points_time), points=injection_points_time_)
 
-            buffer_time_string = '{length} buffer points: {points}'.format(length=len(buffer_points_time_),
-                                                                           points=buffer_points_time_)
+            buffer_time_string = '{length} buffer points: {points}'.format(length=len(buffer_points_time), points=buffer_points_time_)
 
-            probe_time_string = '{length} probe points: {points}'.format(length=len(probe_points_time_),
-                                                                         points=probe_points_time_)
+            probe_time_string = '{length} probe points: {points}'.format(length=len(probe_points_time), points=probe_points_time_)
 
             current_session.save_session()
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
