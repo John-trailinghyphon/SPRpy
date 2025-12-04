@@ -2184,6 +2184,14 @@ if __name__ == '__main__':
 
             return new_sensorgram_fig
 
+    @dash.callback(
+        dash.Output('sensorgram-correction-layer-S_SPR', 'value'),
+        dash.Output('sensorgram-correction-layer-decay-length', 'value'),
+        dash.Input('loaded-new-measurement', 'data'),
+        prevent_initial_call=True)
+    def update_bulk_correction_parameters(signal):
+        return instrument_SPR_sensitivity[current_data_path[-9:-6]], evanescent_decay_length[current_data_path[-9:-6]]
+
 
     # Update the reflectivity plot in the Fresnel fitting tab
     @dash.callback(

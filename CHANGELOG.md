@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.3
+
+### Fixes
+- Fixed slow loading times when selecting points in exclusion height determination
+- When loading new measurement data the wavelength dependent bulk correction parameters are now also updated
+
 ## v1.1.2
 
 ### Fixes
