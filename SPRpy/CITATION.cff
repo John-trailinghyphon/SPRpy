@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Andersson"
+  given-names: "John"
+  orcid: "https://orcid.org/0000-0002-2977-8305"
+title: "SPRpy: GUI analysis methods for MP-SPR measurements"
+version: 1.1.0
+doi: 10.5281/zenodo.13479400
+date-released: 2025-12-01
+url: "https://github.com/John-trailinghyphon/SPRpy"
