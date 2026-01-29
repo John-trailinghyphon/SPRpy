@@ -1396,7 +1396,7 @@ if __name__ == '__main__':
                                                    color='primary',
                                                    n_clicks=0,
                                                    disabled=False),
-                                    # table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+                                    # table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value [nm]')]))]
                                     #             table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td('S'+ str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name), dash.html.Td('{layer}|{parameter}-{channel}'.format(
                                     #
                                     dbc.Table.from_dataframe(pd.DataFrame(
@@ -1406,7 +1406,7 @@ if __name__ == '__main__':
                                              layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
                                              channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel) for fresnel_inst in current_session.fresnel_analysis_instances],
-                                        'Value': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]}),
+                                        'Value [nm]': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]}),
                                         bordered=True, id='result-summary-fresnel-table'),
                                     dash.html.H4(['Exclusion height results']),
                                     dbc.Table.from_dataframe(pd.DataFrame(
@@ -2404,7 +2404,7 @@ if __name__ == '__main__':
             new_figure.update_yaxes(mirror=True,
                                     showline=True)
 
-            table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+            table_header = [dash.html.Thead(dash.html.Tr([dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value [nm]')]))]
             table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td('S'+ str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.name), dash.html.Td('{layer}|{parameter}-{channel}'.format(
                                              layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
@@ -2543,7 +2543,7 @@ if __name__ == '__main__':
                                                      n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
             table_header = [dash.html.Thead(dash.html.Tr(
-                [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+                [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value [nm]')]))]
             table_body = [dash.html.Tbody([dash.html.Tr(
                 [dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td(
                     'S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' +
@@ -2690,7 +2690,7 @@ if __name__ == '__main__':
 
                 table_header = [dash.html.Thead(dash.html.Tr(
                     [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'),
-                     dash.html.Th('Value')]))]
+                     dash.html.Th('Value [nm]')]))]
                 table_body = [dash.html.Tbody([dash.html.Tr(
                     [dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td(
                         'S' + str(
@@ -2740,7 +2740,7 @@ if __name__ == '__main__':
                 current_fresnel_analysis = None
                 current_session.save_session()
 
-                return figure_object, pd.DataFrame({'Analysis': [''], 'Variable': [''], 'Value': ['']}), go.Figure(go.Bar(x=[0], y=[0])), dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return figure_object, pd.DataFrame({'Analysis': [''], 'Variable': [''], 'Value [nm]': ['']}), go.Figure(go.Bar(x=[0], y=[0])), dash.no_update, [], False, False, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, [], dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-fresnel-analysis-cancel' == dash.ctx.triggered_id:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -2972,7 +2972,7 @@ if __name__ == '__main__':
                     n_clicks=0) for fresnel_id in current_session.fresnel_analysis_instances]
 
             table_header = [dash.html.Thead(dash.html.Tr(
-                [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value')]))]
+                [dash.html.Th('Analysis'), dash.html.Th('Sensor'), dash.html.Th('Variable'), dash.html.Th('Value [nm]')]))]
             table_body = [dash.html.Tbody([dash.html.Tr(
                 [dash.html.Td('FM' + str(current_session.fresnel_analysis_instances[fresnel_inst].object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].name), dash.html.Td(
                     'S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' +
@@ -4941,7 +4941,7 @@ if __name__ == '__main__':
                                              layer=current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer,
                                              parameter=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.optical_parameters.columns[current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer_index[1]],
                                              channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel) for fresnel_inst in current_session.fresnel_analysis_instances],
-                                        'Value': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]})
+                                        'Value [nm]': [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]})
 
             exclusion_df = pd.DataFrame(
                                         {'Analysis': [current_session.exclusion_height_analysis_instances[exclusion_inst].name
