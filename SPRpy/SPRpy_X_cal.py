@@ -25,7 +25,7 @@ start_pos, scanspeed, _, _, _, _, _, _ = SPRpy_spr2_to_csv.extract_parameters(sp
 # Get polynomial coefficients
 polycoffs = []
 for dto_file in dto_files:
-    data = np.loadtxt(dto_file, delimiter='\t').T
+    data = np.loadtxt(dto_file, delimiter='\t', converters=lambda s: s.replace(',', '.')).T
     angles = data[0, :]
     step_max = start_pos + scanspeed * len(angles)
     steps = np.arange(start_pos, step_max, scanspeed)
