@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.4
+
+### Fixes
+- Fixed default k value to 0 for 850 nm wavelength sensors
+- Fixed crash in SPRpy_X_cal.py, now correctly reads "," as decimal points 
+
 ## v1.1.3
 
 ### Fixes
