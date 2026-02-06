@@ -1,4 +1,5 @@
-# This is a backup file for default configuration parameters for SPRpy.py and SPRpy_spr2_to_csv.py that can be used if 'config.toml' is corrupted
+# Configuration parameters for SPRpy.py and SPRpy_spr2_to_csv.py.
+# TIP! Copy and save a backup version of your settings in this file (use a different filename) so that you do not completely lose them after upgrading to a new SPRpy version.
 
 default_data_folder = ''  # Custom default folder location when loading data files, insert path between '' and use '/' instead of '\', for instance 'C:/Users/EXAMPLE USER'
 
@@ -15,8 +16,8 @@ max_logical_cores = 0  # Default: 0 (no restriction) | Set to an integer value b
 instrument_TIR_sensitivity = 74  # default 79 deg/RIU
 
 [SPR_fitting_parameters]  # Default SPR fitting parameters when creating new sessions
-Fresnel_angle_range_points = [40, 60]  # Default: [40, 60] | Number of data points below and above the SPR minimum for auto-detection of the SPR peak during fresnel fitting (default optimised for air measurement)
-sensorgram_angle_range_points = [70, 70]  # Default: [70, 70] | Number of data points below and above the SPR minimum included in tracking SPR peak in the sensorgram (default optimised for liquid measurement)
+Fresnel_angle_range_points = [40, 60]  # Default: [40, 60] | Number of data points below and above the SPR minimum for auto-detection of the SPR peak during fresnel fitting (default optimised for air measurement). Set this to [1, 1] for Pd or Pt films in air as it does not have an SPR minimum.
+sensorgram_angle_range_points = [70, 70]  # Default: [70, 70] | Number of data points below and above the SPR minimum included in tracking SPR peak in the sensorgram (default optimised for liquid measurement). Set this to [1, 1] for Pd or Pt films in air as it does not have an SPR minimum.
 SPR_fit_points = 4000  # Default: 4000 | How many points to generate for high SPR peak tracking accuracy
 
 [TIR_fitting_parameters]  # Default TIR fitting parameters when creating new sessions
@@ -51,5 +52,5 @@ n_850 = ['1.5149', '4.1254', '0.2653', '1.4603', '2.7', '2.7193', '1.456', '1.53
 n_980 = ['1.5130', '4.2797', '0.2800', '1.4592', '3.0331', '3.0598', '1.456', '1.53', '1.58']
 k_670 = ['0', '4.2683', '3.9259', '0', '4.60', '5.28', '0', '0', '0']
 k_785 = ['0', '4.1895', '4.88', '0', '5.1250', '5.6380', '0', '0', '0']
-k_850 = ['1.5149', '4.1383', '5.5002', '0', '5.7', '5.9555', '1.456', '1.53', '1.58']
+k_850 = ['0', '4.1383', '5.5002', '0', '5.7', '5.9555', '1.456', '1.53', '1.58']
 k_980 = ['0', '4.0770', '6.7406', '0', '6.1010', '6.4912', '0', '0', '0']
