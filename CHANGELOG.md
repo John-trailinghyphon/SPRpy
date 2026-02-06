@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.5
+
+### Fixes
+- Fixed default k value to 5.42 for Au 850 nm
+
 ## v1.1.4
 
 ### Fixes
