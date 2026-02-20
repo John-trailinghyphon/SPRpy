@@ -4,6 +4,7 @@
 
 ### Fixes
 - Fixed default k value to 5.42 for Au 850 nm
+- Fixed dependency issue with pandas > 3.0, limiting to version 2.3.1
 
 ## v1.1.4
 
