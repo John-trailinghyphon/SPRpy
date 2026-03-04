@@ -217,7 +217,7 @@ if __name__ == '__main__':
         current_exclusion_height_analysis = None
 
     # Dash app
-    app = dash.Dash(name='SPRpy', title='SPRpy', external_stylesheets=[dash_app_theme])
+    app = dash.Dash(name='SPRpy', title='SPRpy', external_stylesheets=[dash_app_theme], compress=True)
     app._favicon = 'icon.ico'
     # app.config.suppress_callback_exceptions = True  # NOTE: Comment out this line for debugging purposes if callbacks do not fire when supposed to
 

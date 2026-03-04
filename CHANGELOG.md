@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.6
+
+### Features
+
+
+### Fixes
+
 ## v1.1.5
 
 ### Fixes
