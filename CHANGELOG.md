@@ -1,11 +1,15 @@
 # Changelog
 
+## v1.1.7
+
+### Fixes
+- Updated default TIR range to be broader and extended to lower angles
+- Added missing dependency for version 1.1.6 (yanked).
+
 ## v1.1.6
 
 ### Features
 - When loading new data files the explorer window now defaults to the previous data file's location.
-
-### Fixes
 
 ## v1.1.5
 
