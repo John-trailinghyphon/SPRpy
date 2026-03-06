@@ -3,7 +3,7 @@
 ## v1.1.6
 
 ### Features
-
+- When loading new data files the explorer window now defaults to the previous data file's location.
 
 ### Fixes
 

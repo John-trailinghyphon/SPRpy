@@ -1501,8 +1501,11 @@ if __name__ == '__main__':
         global default_data_folder
 
         if 'load-data' == dash.ctx.triggered_id:
+            # Get the folder location of the last loaded datafile
+            previous_path = os.path.dirname(current_data_path)
+
             # Load measurement data and update session current data path
-            current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
+            current_data_path, scanspeed, time_df, angles_df, ydata_df, reflectivity_df = load_csv_data(default_data_folder=previous_path)
             current_session.current_data_path = current_data_path
 
             # Calculate sensorgram (assume air or liquid medium for TIR calculation based on number of scans)
