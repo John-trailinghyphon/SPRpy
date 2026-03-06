@@ -22,7 +22,7 @@ SPR_fit_points = 4000  # Default: 4000 | How many points to generate for high SP
 
 [TIR_fitting_parameters]  # Default TIR fitting parameters when creating new sessions
 TIR_range_water_or_long_measurement = [60.8, 63.0]  # Default: [60.8, 63.0] | TIR range for water --> Automatically used for 50 or more scans per file
-TIR_range_air_or_few_scans = [40.9, 41.8]  # Default: [40.9, 41.8] | TIR range for air --> Automatically used for less than 50 scans per file
+TIR_range_air_or_few_scans = [40.2, 41.8]  # Default: [40.2, 41.8] | TIR range for air --> Automatically used for less than 50 scans per file
 TIR_fit_points = 2000  # Default: 2000 | How many points to generate for high TIR fitting accuracy
 window_count_scanspeeds_1_5 = 7  # Default: 7 | Number of nearest neighbours that are averaged together to smoothen the spectra for TIR fitting at scanspeed 1 or 5
 window_count_scanspeeds_10 = 3  # Default: 3 | Number of nearest neighbours that are averaged together to smoothen the spectra for TIR fitting at scanspeed 10
