@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.8
+
+### Features
+- Adding Ti as optional adhesion material in default values
+- Ti is now default adhesion layer for SiO2 films
+
 ## v1.1.7
 
 ### Fixes
