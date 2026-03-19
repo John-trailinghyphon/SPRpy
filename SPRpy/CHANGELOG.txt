@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.9
+
+### Features
+- Add data trace now also defaults to current data file's folder location
+
 ## v1.1.8
 
 ### Features

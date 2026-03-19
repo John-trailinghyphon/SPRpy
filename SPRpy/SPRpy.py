@@ -1905,6 +1905,7 @@ if __name__ == '__main__':
         global sensorgram_df
         global current_sensor
         global reflectivity_df
+        global current_data_path
 
         figure_object = go.Figure(figure_JSON)
 
@@ -1961,7 +1962,7 @@ if __name__ == '__main__':
 
         # This adds a trace to the reflectivity plot from a separate measurement file. The trace data is not stored.
         elif 'quantification-reflectivity-add-data-trace' == dash.ctx.triggered_id:
-            _, _, _, _, _, trace_reflectivity_df = load_csv_data(default_data_folder=default_data_folder)
+            _, _, _, _, _, trace_reflectivity_df = load_csv_data(default_data_folder=os.path.dirname(current_data_path))
             figure_object.add_trace(go.Scatter(x=trace_reflectivity_df['angles'],
                                                y=trace_reflectivity_df['ydata'],
                                                mode='lines',
