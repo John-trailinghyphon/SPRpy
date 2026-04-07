@@ -3,13 +3,13 @@
 ## v1.2.0
 
 ### Features
-- Can now tune initial guess and lower and upper bounds when fitting refractive index in exclusion height determination
+- Can now tune initial guess and lower and upper bounds for the fitting of refractive index during exclusion height determination
 
 ### Fixes
+- Fixed rare problem with previous default x0, lower/upper bounds for RI fitting during exclusion height determination of extremely hydrated layers 
 - Increased the default upper height limit in exclusion height determination to a factor of 12 times the lower limit (instead of 6).
-- Fixed problem choosing different exclusion height analysis objects
-- Fixed problem with selecting different exclusion height objects 
-- TODO: Fixed problem with removing exclusion height objects
+- Fixed problem with selecting different exclusion height objects that had not yet run any calculations
+- Fixed problem with removing exclusion height objects
 
 ## v1.1.9
 

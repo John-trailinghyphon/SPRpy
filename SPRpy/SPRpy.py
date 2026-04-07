@@ -2610,8 +2610,6 @@ if __name__ == '__main__':
 
                 # Pop out the current fresnel analysis object from the session, delete its .pickle file and make the first instance the current one
                 removed = current_fresnel_analysis
-
-                # TODO: Check that this works!
                 try:
                     current_fresnel_analysis = current_session.fresnel_analysis_instances[1]
                 except KeyError:  # In case the first few instances have already been removed, try the next one
@@ -3925,7 +3923,19 @@ if __name__ == '__main__':
 
                 # Pop out the current exclusion height analysis object from the session, delete its .pickle file and make the first instance the current one
                 removed = current_exclusion_height_analysis
-                current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[0]  # TODO: This fails, should use a different key value
+                try:
+                    current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[1]
+                except KeyError:  # In case the first few instances have already been removed, try the next one
+                    failed = True
+                    attempted = 1
+                    max_attempts = len(current_session.exclusion_height_analysis_instances) + 1
+                    while failed and not attempted == max_attempts:
+                        attempted += 1
+                        try:
+                            current_exclusion_height_analysis = current_session.exclusion_height_analysis_instances[attempted+1]
+                        except KeyError:
+                            continue
+                        failed = False
                 current_session.remove_exclusion_height_analysis(removed.object_id)
                 current_session.save_session()
 
@@ -4192,7 +4202,7 @@ if __name__ == '__main__':
                 table_body = [dash.html.Tbody([dash.html.Tr([dash.html.Td(''), dash.html.Td(''), dash.html.Td(''), dash.html.Td(''), dash.html.Td('')])])]
                 exclusion_result_summary_dataframe = table_header + table_body
 
-                return dash.no_update, exclusion_result_summary_dataframe, dash.no_update, dash.no_update, False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, '', '', '', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return dash.no_update, exclusion_result_summary_dataframe, dash.no_update, '', False, 'Sensor: None', 'Fresnel background: None', False, False, False, False, 'Mean exclusion height: None', 'Mean exclusion RI: None', 'All exclusion heights: None', 'All exclusion RI: None', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, '', '', '', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         elif 'remove-exclusion-height-analysis-cancel' == dash.ctx.triggered_id:
             # Cancel removal of exclusion height analysis object
