@@ -7,6 +7,7 @@ import pickle
 import copy
 import bottleneck
 import multiprocessing
+import numpy as np
 from SPRpy_functions import *
 from fresnel_transfer_matrix import fresnel_calculation
 
@@ -499,7 +500,10 @@ class ExclusionHeight:
         self.sensorgram_data = sensorgram_df_.iloc[:,:3]
         self.sensorgram_offset_ind = 0
         self.d_n_pair_resolution = 200
-        self.height_steps = np.linspace(0, 200, self.d_n_pair_resolution)
+        self.height_bounds = [0, 200]
+        self.RI_bounds = [1.2, 1.6]
+        self.RI_initial_guess = 1.35
+        self.height_steps = np.linspace(self.height_bounds[0], self.height_bounds[1], self.d_n_pair_resolution)
         self.points_below_SPR_min_ind = None  # This will be calculated based on the most updated fits of the Fresnel background
         self.points_above_SPR_min_ind = None  # This will be calculated based on the most updated fits of the Fresnel background
         self.injection_points = []
@@ -511,9 +515,9 @@ class ExclusionHeight:
         self.probe_reflectivity_dfs = []  # Use labels 'buffer reflectivity' and 'buffer angles' (and likewise probe) for indexing
         self.probe_bulk_RIs = []  # Calculated from TIR angle of each reflectivity DF
         self.d_n_pair_dfs = []  # Use labels 'height' and 'buffer RI' and 'probe RI' for indexing
-        self.all_exclusion_results = []
-        self.mean_exclusion_height_result = None  # Tuple of mean value of exclusion height from all injection steps, and standard deviation
-        self.mean_exclusion_RI_result = None  # Tuple of mean value of exclusion RI from all injection steps, and standard deviation
+        self.all_exclusion_results = np.array([[np.nan, np.nan],[np.nan, np.nan]])
+        self.mean_exclusion_height_result = [np.nan]  # Tuple of mean value of exclusion height from all injection steps, and standard deviation
+        self.mean_exclusion_RI_result = [np.nan]  # Tuple of mean value of exclusion RI from all injection steps, and standard deviation
         self.abort_flag = False
         self.fit_offset = False
         self.fit_prism = False
@@ -616,21 +620,21 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
     offset_results = []
     prism_k_results = []
     if not exclusion_height_analysis_object_copy.fit_offset:
-        exclusion_new_fresnel_ini_guess = 1.38  # Swollen layer estimated hydration
-        exclusion_new_fresnel_bounds = [1.0, 3.0]
+        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.RI_initial_guess  # Swollen layer estimated hydration
+        exclusion_new_fresnel_bounds = exclusion_height_analysis_object_copy.RI_bounds
 
     elif exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
         exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess[0:2]
-        exclusion_new_fresnel_ini_guess[0] = 1.38  # Swollen layer estimated hydration
-        exclusion_new_fresnel_bounds = [(1.0, -np.inf), (3.0, np.inf)]
+        exclusion_new_fresnel_ini_guess[0] = exclusion_height_analysis_object_copy.RI_initial_guess  # Swollen layer estimated hydration
+        exclusion_new_fresnel_bounds = [(exclusion_height_analysis_object_copy.RI_bounds[0], -np.inf), (exclusion_height_analysis_object_copy.RI_bounds[1], np.inf)]
 
     elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
         if len(exclusion_height_analysis_object_copy.fresnel_object.ini_guess) == 3:
             exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
         elif len(exclusion_height_analysis_object_copy.fresnel_object.ini_guess) == 2:
             exclusion_new_fresnel_ini_guess = [exclusion_height_analysis_object_copy.fresnel_object.ini_guess, 0.01]
-        exclusion_new_fresnel_ini_guess[0] = 1.38  # Swollen layer estimated hydration
-        exclusion_new_fresnel_bounds = [(1.0, -np.inf, 0), (3.0, np.inf, 0.1)]
+        exclusion_new_fresnel_ini_guess[0] = exclusion_height_analysis_object_copy.RI_initial_guess # Swollen layer estimated hydration
+        exclusion_new_fresnel_bounds = [(exclusion_height_analysis_object_copy.RI_bounds[0], -np.inf, 0), (exclusion_height_analysis_object_copy.RI_bounds[1], np.inf, 0.1)]
 
     # Check if calculations should be performed on buffer or probe data
     if buffer_or_probe_flag == 'buffer':

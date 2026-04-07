@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.0
+
+### Features
+- Can now tune initial guess and lower and upper bounds when fitting refractive index in exclusion height determination
+
+### Fixes
+- Increased the default upper height limit in exclusion height determination to a factor of 12 times the lower limit (instead of 6).
+- Fixed problem choosing different exclusion height analysis objects
+- Fixed problem with selecting different exclusion height objects 
+- TODO: Fixed problem with removing exclusion height objects
+
 ## v1.1.9
 
 ### Features
