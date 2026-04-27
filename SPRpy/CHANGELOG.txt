@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.1
+
+### Features
+
+### Fixes
+- Updated default thickness for SiO2 layers to be 20 nm
+
 ## v1.2.0
 
 ### Features
