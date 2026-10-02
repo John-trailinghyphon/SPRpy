@@ -982,7 +982,7 @@ if __name__ == '__main__':
                                                     dbc.Row([
                                                         dbc.Label('Angle range', width='auto'),
                                                         dbc.Col([
-                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()-current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][0]], reflectivity_df['angles'].iloc[reflectivity_df['ydata'].idxmin()+current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'][1]]],
+                                                            dash.dcc.RangeSlider(value=[reflectivity_df['angles'].iloc[0], reflectivity_df['angles'].iloc[-1]],
                                                                                  min=reflectivity_df['angles'].iloc[0],
                                                                                  max=reflectivity_df['angles'].iloc[-1],
                                                                                  marks={mark_ind: str(mark_ind) for mark_ind in range(reflectivity_df['angles'].iloc[0].astype('int'), reflectivity_df['angles'].iloc[-1].astype('int')+1, 1)},
@@ -2468,7 +2468,7 @@ if __name__ == '__main__':
                 n_im=current_fresnel_analysis.sensor_object.extinction_coefficients,
                 ydata_type='R',
                 polarization=current_fresnel_analysis.polarization)
-            current_fresnel_analysis.y_offset = reflectivity_df['ydata'].min() - FR_y[1]  # Can't calculate only 1 angle, so use middle of 3 around minimum
+            current_fresnel_analysis.y_offset = reflectivity_df['ydata'].min() - FR_y[0]  # Can't calculate only 1 angle, so use middle of 3 around minimum
 
             current_fresnel_analysis.ini_guess = np.array([float(current_sensor.fitted_var), current_fresnel_analysis.y_offset])
             current_fresnel_analysis.bounds = [(current_fresnel_analysis.ini_guess[0] / 4, -np.inf), (current_fresnel_analysis.ini_guess[0] * 2, np.inf)]

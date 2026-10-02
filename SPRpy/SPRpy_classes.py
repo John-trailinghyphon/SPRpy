@@ -372,7 +372,7 @@ class FresnelModel:
         self.fit_offset = True
         self.fit_prism_k = True
         self.fitted_data = None
-        self.fitted_result = None
+        self.fitted_result = np.array([0, 0, 0])
         self.fitted_layer_index = copy.deepcopy(self.sensor_object.fitted_layer_index)  # Deepcopy to not overwrite if fitting multiple layers in the same sensor object
         self.fitted_layer = copy.deepcopy(self.sensor_object.optical_parameters.iloc[self.fitted_layer_index[0], 0])
 
