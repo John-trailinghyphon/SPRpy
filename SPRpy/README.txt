@@ -36,6 +36,11 @@ To update SPRpy: ```uv tool upgrade SPRpy```. To install a specific version (e.g
 
 NOTE: Updating replaces the files in the SPRpy folder, including config.toml. Keep a backup copy of your config.toml (with a different filename) and copy your settings back after updating. New settings that are missing in an older config.toml are taken from config.toml.defaults automatically.
 
+If something goes wrong with uv:
+- **"sprpy" is not recognized as a command** (after installing): the folder where uv puts the commands is not on the PATH yet. Run ```uv tool update-shell``` and open a new terminal window.
+- **"Failed to hardlink files ... incompatible hardlinks"** (e.g. when the user folder or project is synced with OneDrive): let uv copy files instead of linking them by running ```setx UV_LINK_MODE copy``` once, and open a new terminal window.
+- **An older version is installed** (e.g. right after a new release): uv used its cached list of versions. Run ```uv tool install SPRpy --reinstall --refresh``` (or ```uv tool upgrade SPRpy --refresh```).
+
 ### Alternative: install with pip
 
 SPRpy is written in Python 3.11 and also works with 3.12. It is not yet compatible with python > 3.13 (issue with tkinter for python 3.13.0, should be fixed in 3.13.1), and has not been tested on earlier versions of python. Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
@@ -128,7 +133,7 @@ Sessions created with older SPRpy versions keep the legacy methods so that previ
 
 *Surface coverage:* the surface coverage (ng/cm²) of a thin adsorbed layer can be calculated from the SPR shift between two points of the sensorgram, shown at the bottom of the page. If the layer thickness d of the bulk correction parameters is 0, the thin film approximation m_S = δ·Δθ_SPR / (2·(∂n/∂C)·S_SPR) is used, otherwise m_S = d·Δθ_SPR / ((∂n/∂C)·S_SPR·(1 − exp(−2d/δ))) with the estimated layer thickness d (the two agree for thin layers). The equation that is used is highlighted and marked, and stated with the result. Turn on "Select surface coverage points" below the sensorgram and click two points on the SPR or bulk corrected trace (e.g. on the baseline before an injection and after rinsing). While the toggle is on, clicks select points instead of setting the zero point of the sensorgram; a third click starts a new pair. The shift is taken from the trace of the first point (including the drift correction and the current bulk correction parameters), the decay length δ and the SPR sensitivity S_SPR are taken from the bulk correction parameters, and the refractive index increment ∂n/∂C (cm³/g, about 0.18 for proteins) is given next to the equation (the default can be changed with dn_dC in config.toml). The result is shown below the equation and written to the session log.
 
-The analysis methods for the TIR and SPR angles, the vectorised Fresnel calculation and the drift correction are adapted from MATLAB scripts by Jesper Petersson (Chalmers).
+The analysis methods for the TIR and SPR angles, the vectorised Fresnel calculation and the drift correction are adapted from MATLAB scripts by Jesper Medin (Chalmers).
 
 Further reading for the bulk correction method: 
 

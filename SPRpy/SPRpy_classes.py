@@ -784,7 +784,7 @@ def adaptive_exclusion_height(exclusion_height_analysis_object, buffer_index, pr
                               minimum_height=0.5, coarse_steps=31):
     """
     Exclusion height of one injection step with a two-pass search (as in SPR_WetHeight.m by J. Andersson and
-    J. Petersson):
+    J. Medin):
      1) Coarse pass: coarse_steps heights between the height bounds (the first and last of height_steps) are swept until
         the buffer and probe curves of surface layer RI vs height cross (the buffer RI drops below the probe RI).
      2) Fine pass: the curves are calculated with len(height_steps) points (the resolution) in a window around the

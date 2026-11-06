@@ -5,7 +5,7 @@
 ### Features
 - Much faster calculations: the Fresnel transfer-matrix model is now vectorised over all angles (identical results, ~90 times faster). This speeds up fresnel modelling, batch analysis and exclusion height determination.
 - Much faster conversion of .spr2 files (SPRpy_spr2_to_csv.py), with a more accurate intensity calibration (interpolation of the calibration curve). Files can also be given on the command line.
-- New TIR angle method (Savitzky-Golay derivative with a parabola fit of the derivative peak) and SPR angle method (cubic fit of an adaptive dip window), adapted from MATLAB scripts by Jesper Petersson. Considerably less noisy TIR angles. Selectable in the TIR/SPR fitting parameters panel; old sessions keep the legacy methods by default.
+- New TIR angle method (Savitzky-Golay derivative with a parabola fit of the derivative peak) and SPR angle method (cubic fit of an adaptive dip window), adapted from MATLAB scripts by Jesper Medin. Considerably less noisy TIR angles. Selectable in the TIR/SPR fitting parameters panel; old sessions keep the legacy methods by default.
 - The TIR range (liquid or air) is chosen from where the TIR edge is in the data when loading a measurement, instead of from the number of scans (single scans in liquid now work).
 - SPR drift correction in the response quantification tab (linear fit to a selected baseline).
 - Checkbox in fresnel modelling to keep the bulk refractive index of the sensor table instead of calculating it from the TIR angle.

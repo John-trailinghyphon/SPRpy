@@ -221,7 +221,7 @@ def TIR_determination_legacy(xdata, ydata, SPR_TIR_fitting_parameters):
 def TIR_determination_savitzky_golay(xdata, ydata, TIR_range, smooth_width_deg=0.15, fit_halfwidth_deg=0.045, fit_points=200):
     """
     TIR angle as the angle of steepest increase in reflectivity within TIR_range (port of TIR_det.m by J. Andersson
-    and J. Petersson, Chalmers). The derivative is computed with a Savitzky-Golay (local straight-line) filter and a
+    and J. Medin, Chalmers). The derivative is computed with a Savitzky-Golay (local straight-line) filter and a
     parabola is fitted to the top of the derivative peak. The filter widths are given in degrees, so the method adapts
     to the angle step of the measurement.
 
@@ -456,7 +456,7 @@ def SPR_determination_legacy(xdata, ydata, SPR_TIR_fitting_parameters):
 def SPR_determination_dip_level(xdata, ydata, dip_level=0.2, min_angle=None, fit_points=200, smooth_width_deg=0.1, min_points=10):
     """
     SPR angle as the minimum of a cubic fitted to the bottom of the SPR dip (port of SPR_det.m by J. Andersson and
-    J. Petersson, Chalmers). The fit window contains the contiguous points around the minimum with a reflectivity below
+    J. Medin, Chalmers). The fit window contains the contiguous points around the minimum with a reflectivity below
     Rmin + dip_level*(Rtop - Rmin) in the smoothed spectrum.
 
     If no proper fit window is found (e.g. no complete dip, like for Pd or Pt films in air), the lowest point of the

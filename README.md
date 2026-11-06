@@ -36,6 +36,11 @@ To update SPRpy: ```uv tool upgrade SPRpy```. To install a specific version (e.g
 
 NOTE: Updating replaces the files in the SPRpy folder, including config.toml. Keep a backup copy of your config.toml (with a different filename) and copy your settings back after updating. New settings that are missing in an older config.toml are taken from config.toml.defaults automatically.
 
+If something goes wrong with uv:
+- **"sprpy" is not recognized as a command** (after installing): the folder where uv puts the commands is not on the PATH yet. Run ```uv tool update-shell``` and open a new terminal window.
+- **"Failed to hardlink files ... incompatible hardlinks"** (e.g. when the user folder or project is synced with OneDrive): let uv copy files instead of linking them by running ```setx UV_LINK_MODE copy``` once, and open a new terminal window.
+- **An older version is installed** (e.g. right after a new release): uv used its cached list of versions. Run ```uv tool install SPRpy --reinstall --refresh``` (or ```uv tool upgrade SPRpy --refresh```).
+
 ### Alternative: install with pip
 
 SPRpy is written in Python 3.11 and also works with 3.12. It is not yet compatible with python > 3.13 (issue with tkinter for python 3.13.0, should be fixed in 3.13.1), and has not been tested on earlier versions of python. Python 3 releases can be found [here](https://www.python.org/downloads/). NOTE: It is recommended to check the box during installation that adds python.exe to the PATH environment variable (or see manual instructions [here](https://datatofish.com/add-python-to-windows-path/)) to allow running SPRpy scripts by double-clicking them in your file explorer. Alternatively, SPRpy can be set up as any python project in your favourite IDE.
