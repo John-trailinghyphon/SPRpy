@@ -73,7 +73,8 @@ include = [
   "SPRpy/LICENCE"
 ]
 exclude = [
-  "SPRpy/SPRpy sessions"
+  "SPRpy/SPRpy sessions",
+  "SPRpy/example data/*.csv"  # Converted example data (made from the .spr2 files by the start menu, and too large for PyPI)
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -95,5 +96,6 @@ include = [
   "SPRpy/LICENCE"
 ]
 exclude = [
-  "SPRpy/SPRpy sessions"
+  "SPRpy/SPRpy sessions",
+  "SPRpy/example data/*.csv"  # Converted example data (made from the .spr2 files by the start menu, and too large for PyPI)
 ]
