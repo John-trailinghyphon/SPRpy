@@ -6,10 +6,15 @@ import scipy
 import pickle
 import copy
 import bottleneck
-import multiprocessing
 import numpy as np
 from SPRpy_functions import *
-from fresnel_transfer_matrix import fresnel_calculation
+from fresnel_transfer_matrix import fresnel_calculation, TIR_shift_overlay
+
+EXCLUSION_HEIGHT_SEARCH_METHODS = {'adaptive': 'Adaptive: sweep until the crossing, then refine (recommended)',
+                                   'grid': 'Fixed grid of height steps (SPRpy <= 1.2)'}
+
+EXCLUSION_BULK_RI_METHODS = {'edge_overlay': 'TIR edge overlay (recommended)',
+                             'TIR_angle': 'Separate TIR angles (v1.2)'}
 
 
 class Session:
@@ -57,6 +62,18 @@ class Session:
         self.SPR_TIR_fitting_parameters = SPR_TIR_fitting_parameters
         self.log = datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Welcome to SPRpy!' \
             + '\n' + datetime.datetime.now().__str__()[0:16] + ' >> ' + 'Start your session by defining your SPR sensor layers.'
+
+    def add_log(self, message, save=False):
+        """
+        Adds a time stamped message to the session log (shown in the GUI), and prints it in the console.
+        :param message: string
+        :param save: also save the session file
+        """
+        line = datetime.datetime.now().__str__()[0:16] + ' >> ' + message
+        self.log = self.log + '\n' + line
+        print(line)
+        if save:
+            self.save_session()
 
     def update_name_and_location(self, new_name):
         """
@@ -129,7 +146,7 @@ class Session:
 
         # Save exclusion height analysis instances
         for analysis_id in self.exclusion_height_analysis_instances:
-            with open(self.location + '/Analysis instances' + '/FM{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
+            with open(self.location + '/Analysis instances' + '/EH{id} {name}.pickle'.format(id=analysis_id, name=self.exclusion_height_analysis_instances[analysis_id].name), 'wb') as save_file:
                 pickle.dump(self.exclusion_height_analysis_instances[analysis_id], save_file)
 
         return
@@ -373,6 +390,7 @@ class FresnelModel:
         self.fit_prism_k = True
         self.fitted_data = None
         self.fitted_result = np.array([0, 0, 0])
+        self.update_bulk_RI_from_TIR = True  # If False, the bulk refractive index in the sensor table is used as is
         self.fitted_layer_index = copy.deepcopy(self.sensor_object.fitted_layer_index)  # Deepcopy to not overwrite if fitting multiple layers in the same sensor object
         self.fitted_layer = copy.deepcopy(self.sensor_object.optical_parameters.iloc[self.fitted_layer_index[0], 0])
 
@@ -395,9 +413,10 @@ class FresnelModel:
         xdata_ = self.measurement_data['angles']
         ydata_ = self.measurement_data['ydata']
 
-        # Calculate TIR angle and bulk refractive index
-        TIR_angle, _, _, _, _ = TIR_determination(xdata_, ydata_, self.SPR_TIR_fitting_parameters)
-        self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
+        # Calculate TIR angle and bulk refractive index (unless the bulk refractive index is set manually)
+        if getattr(self, 'update_bulk_RI_from_TIR', True):
+            TIR_angle, _, _, _, _ = TIR_determination(xdata_, ydata_, self.SPR_TIR_fitting_parameters)
+            self.sensor_object.refractive_indices[-1] = self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * TIR_angle)
 
         # Add extinction correction to fitted surface layer extinction value
         self.sensor_object.extinction_coefficients[0] += self.extinction_correction  # Manually correct prism layer extinction
@@ -521,8 +540,24 @@ class ExclusionHeight:
         self.abort_flag = False
         self.fit_offset = False
         self.fit_prism = False
+        self.bulk_RI_method = 'edge_overlay'  # How the bulk RI change between buffer and probe is determined, see EXCLUSION_BULK_RI_METHODS
+        self.height_search = 'adaptive'  # How the crossing of the buffer and probe curves is searched, see EXCLUSION_HEIGHT_SEARCH_METHODS
+        self.TIR_shifts = []  # TIR shift (deg) between each buffer and its probe, used for the bulk RI change
+        self.height_sensitivity = np.array([np.nan])  # Change of each exclusion height (nm) per +1 mdeg error in the TIR shift
 
-    def initialize_model(self, ydata_df):
+    def initialize_model(self, ydata_df, bulk_RI_method=None):
+        """
+        Calculates the mean buffer and probe spectra, their bulk refractive indices and angle ranges for the fitting.
+
+        :param ydata_df: reflectivity data frame of the measurement
+        :param bulk_RI_method: 'edge_overlay' or 'TIR_angle' (see EXCLUSION_BULK_RI_METHODS). If None, the method stored
+                               in the analysis object is used (sessions from SPRpy <= 1.2 use 'TIR_angle').
+        """
+
+        if bulk_RI_method is not None:
+            self.bulk_RI_method = bulk_RI_method
+        elif not hasattr(self, 'bulk_RI_method'):
+            self.bulk_RI_method = 'TIR_angle'
 
         # Calculate number of points above and below minimum point based on fresnel model background range
         background_reflectivity = self.fresnel_object.measurement_data['ydata']
@@ -541,51 +576,54 @@ class ExclusionHeight:
         self.probe_bulk_RIs = []
         self.SPR_vs_TIR_dfs = []
 
-        # Calculate average reflectivity traces based on selected points
-        bufferpoint_index = 0
-        for reflectivity_index in range(int(len(self.buffer_points) / 2)):
+        # Mean reflectivity spectrum and TIR angle of every buffer and probe interval (pairs of selected points)
+        background_angles_array = background_angles.to_numpy()
 
-            sliced_buffer_reflectivity_spectras = ydata_df.iloc[self.buffer_points[bufferpoint_index][0]:self.buffer_points[bufferpoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected buffer points
-            mean_buffer_reflectivity = sliced_buffer_reflectivity_spectras.mean(axis=0).squeeze()
+        def mean_spectra_and_TIR_angles(points, point_type):
+            spectra, TIR_angles = [], []
+            for point_index in range(0, 2 * (len(points) // 2), 2):
+                mean_reflectivity = ydata_df.iloc[slice(*point_pair_indices(points, point_index)), :].mean(axis=0).squeeze()
+                try:
+                    TIR_angle, _, _, _, _ = TIR_determination(background_angles_array, mean_reflectivity.to_numpy(), self.SPR_TIR_fitting_parameters)
+                except (TypeError, ValueError, IndexError):
+                    raise TypeError('Something went wrong when selecting {kind} points. Please clear and reselect them and avoid clicking other point markers.'.format(kind=point_type))
+                spectra.append(mean_reflectivity)
+                TIR_angles.append(TIR_angle)
+            return spectra, TIR_angles
 
-            # Calculate TIR and bulk RI for each mean spectra
-            try:
-                buffer_TIR_angle, _, _, _, _ = TIR_determination(background_angles.to_numpy(), mean_buffer_reflectivity.to_numpy(), self.SPR_TIR_fitting_parameters)
-            except TypeError:
-                raise TypeError('Something went wrong when selecting buffer points. Please clear and reselect them and avoid clicking other point markers.')
-            self.buffer_bulk_RIs.append(self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * buffer_TIR_angle))
+        buffer_spectra, buffer_TIR_angles = mean_spectra_and_TIR_angles(self.buffer_points, 'buffer')
+        probe_spectra, probe_TIR_angles = mean_spectra_and_TIR_angles(self.probe_points, 'probe')
 
-            # Calculate appropriate range selection
-            buffer_reflectivity_minimum_ind = pd.Series(bottleneck.move_mean(mean_buffer_reflectivity.to_numpy(), window=4, min_count=1)).idxmin()
-            self.buffer_reflectivity_dfs.append(pd.DataFrame(data={'reflectivity': mean_buffer_reflectivity.iloc[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
-                                                                   'angles': background_angles.iloc[buffer_reflectivity_minimum_ind - self.points_below_SPR_min_ind:buffer_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
-                                                                   })
-                                                )
+        # Each probe has two buffer intervals (before and after), buffer interval k belongs to probe k // 2. The
+        # exclusion height depends on the bulk RI change between them (not on the absolute bulk RI), i.e. on the TIR
+        # shift. With 'edge_overlay' the shift is found by overlaying the TIR edges of buffer and probe, and the buffer
+        # TIR angle is set to the probe TIR angle minus this shift.
+        self.TIR_shifts = []
+        for buffer_index in range(len(buffer_spectra)):
+            probe_index = buffer_index // 2
+            if probe_index >= len(probe_spectra):
+                self.TIR_shifts.append(np.nan)
+                continue
+            if self.bulk_RI_method == 'edge_overlay':
+                shift = TIR_shift_overlay(background_angles_array, buffer_spectra[buffer_index].to_numpy(), probe_spectra[probe_index].to_numpy(),
+                                          buffer_TIR_angles[buffer_index], probe_TIR_angles[probe_index])
+                buffer_TIR_angles[buffer_index] = probe_TIR_angles[probe_index] - shift
+            else:
+                shift = probe_TIR_angles[probe_index] - buffer_TIR_angles[buffer_index]
+            self.TIR_shifts.append(shift)
 
-            # Next pair of buffer point indices
-            bufferpoint_index += 2
+        prism_RI = self.sensor_object.refractive_indices[0]
+        self.buffer_bulk_RIs = [prism_RI * np.sin(np.pi / 180 * TIR_angle) for TIR_angle in buffer_TIR_angles]
+        self.probe_bulk_RIs = [prism_RI * np.sin(np.pi / 180 * TIR_angle) for TIR_angle in probe_TIR_angles]
 
-        probepoint_index = 0
-        for reflectivity_index in range(int(len(self.probe_points) / 2)):
-            sliced_probe_reflectivity_spectras = ydata_df.iloc[self.probe_points[probepoint_index][0]:self.probe_points[probepoint_index + 1][0], :]  # Selecting all spectras between the pairwise selected probe point
-            mean_probe_reflectivity = sliced_probe_reflectivity_spectras.mean(axis=0).squeeze()
+        # Angle range around the SPR minimum of each mean spectrum, with the same number of points as the Fresnel background
+        def fitting_range(mean_reflectivity):
+            minimum_ind = pd.Series(bottleneck.move_mean(mean_reflectivity.to_numpy(), window=4, min_count=1)).idxmin()
+            selection = slice(minimum_ind - self.points_below_SPR_min_ind, minimum_ind + self.points_above_SPR_min_ind)
+            return pd.DataFrame(data={'reflectivity': mean_reflectivity.iloc[selection], 'angles': background_angles.iloc[selection]})
 
-            # Calculate TIR and bulk RI for each mean spectra
-            try:
-                probe_TIR_angle, _, _, _, _ = TIR_determination(background_angles.to_numpy(), mean_probe_reflectivity.to_numpy(), self.SPR_TIR_fitting_parameters)
-            except TypeError:
-                raise TypeError('Something went wrong when selecting probe points. Please clear and reselect them and avoid clicking other point markers.')
-            self.probe_bulk_RIs.append(self.sensor_object.refractive_indices[0] * np.sin(np.pi / 180 * probe_TIR_angle))
-
-            # Calculate appropriate range selection
-            probe_reflectivity_minimum_ind = pd.Series(bottleneck.move_mean(mean_probe_reflectivity.to_numpy(), window=4, min_count=1)).idxmin()
-            self.probe_reflectivity_dfs.append(pd.DataFrame(data={'reflectivity': mean_probe_reflectivity.iloc[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind],
-                                                                  'angles': background_angles.iloc[probe_reflectivity_minimum_ind - self.points_below_SPR_min_ind:probe_reflectivity_minimum_ind + self.points_above_SPR_min_ind]
-                                                                  })
-                                               )
-
-            # Next pair of probe point indices
-            probepoint_index += 2
+        self.buffer_reflectivity_dfs = [fitting_range(spectrum) for spectrum in buffer_spectra]
+        self.probe_reflectivity_dfs = [fitting_range(spectrum) for spectrum in probe_spectra]
 
         # Create SPR vs TIR data frames
         injectionpoint_index = 0
@@ -594,8 +632,8 @@ class ExclusionHeight:
 
         for reflectivity_index in range(int(len(self.injection_points) / 2)):
 
-            self.SPR_vs_TIR_dfs.append(pd.DataFrame(data={'SPR angles': offset_SPR_sensorgram.iloc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]],
-                                                          'TIR angles': offset_TIR_sensorgram.iloc[self.injection_points[injectionpoint_index][0]:self.injection_points[injectionpoint_index + 1][0]],
+            self.SPR_vs_TIR_dfs.append(pd.DataFrame(data={'SPR angles': offset_SPR_sensorgram.iloc[slice(*point_pair_indices(self.injection_points, injectionpoint_index))],
+                                                          'TIR angles': offset_TIR_sensorgram.iloc[slice(*point_pair_indices(self.injection_points, injectionpoint_index))],
                                                           })
                                        )
 
@@ -605,6 +643,62 @@ class ExclusionHeight:
         return
 
 
+def point_pair_indices(points, first_index):
+    """
+    Start and end index of a pair of selected sensorgram points (points[first_index] and points[first_index + 1]),
+    sorted so that the two points of a pair can be selected in any order.
+    """
+    start, end = sorted((int(points[first_index][0]), int(points[first_index + 1][0])))
+    return start, end
+
+
+def exclusion_fit_settings(exclusion_height_analysis_object):
+    """
+    Initial guess and bounds for fitting the surface layer RI (and optionally the intensity offset and prism k).
+    """
+    eh = exclusion_height_analysis_object
+    if not eh.fit_offset:
+        return [eh.RI_initial_guess], (eh.RI_bounds[0], eh.RI_bounds[1])
+    offset_guess = float(np.ravel(eh.fresnel_object.ini_guess)[1]) if np.size(eh.fresnel_object.ini_guess) >= 2 else eh.fresnel_object.y_offset
+    if not eh.fit_prism:
+        return [eh.RI_initial_guess, offset_guess], [(eh.RI_bounds[0], -np.inf), (eh.RI_bounds[1], np.inf)]
+    prism_k_guess = float(np.ravel(eh.fresnel_object.ini_guess)[2]) if np.size(eh.fresnel_object.ini_guess) >= 3 else 0.01
+    return [eh.RI_initial_guess, offset_guess, prism_k_guess], [(eh.RI_bounds[0], -np.inf, 0), (eh.RI_bounds[1], np.inf, 0.1)]
+
+
+def fit_surface_layer(exclusion_height_analysis_object, reflectivity_df, bulk_RI, height, initial_guess=None, bounds=None):
+    """
+    Fits the RI of the surface layer (and optionally the offset and prism k) at a given surface layer height and bulk RI.
+    The sensor object of the analysis is not changed.
+
+    :return: fitted values (RI, [offset, [prism k]])
+    """
+    eh = exclusion_height_analysis_object
+    if initial_guess is None:
+        initial_guess, bounds = exclusion_fit_settings(eh)
+
+    refractive_indices = np.array(eh.sensor_object.refractive_indices, dtype=np.float64)
+    refractive_indices[-1] = bulk_RI
+    layer_thicknesses = np.array(eh.sensor_object.layer_thicknesses, dtype=np.float64)
+    layer_thicknesses[-2] = height  # Surface layer height
+    extinction_coefficients = np.array(eh.sensor_object.extinction_coefficients, dtype=np.float64)
+
+    result = scipy.optimize.least_squares(fresnel_calculation,
+                                          np.array(initial_guess, dtype=np.float64),
+                                          bounds=bounds,
+                                          kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
+                                                  'wavelength': eh.sensor_object.wavelength,
+                                                  'layer_thicknesses': layer_thicknesses,
+                                                  'n_re': refractive_indices,
+                                                  'n_im': extinction_coefficients,
+                                                  'angles': reflectivity_df['angles'].to_numpy(),
+                                                  'ydata': reflectivity_df['reflectivity'].to_numpy(),
+                                                  'ydata_type': eh.sensor_object.data_type,
+                                                  'ydata_offset': eh.fresnel_object.y_offset,
+                                                  'polarization': eh.polarization})
+    return result['x']
+
+
 def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_probe_flag, data_frame_index):
     """
     This function calculates the exclusion height for a single injection step
@@ -612,238 +706,255 @@ def calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_
     :param exclusion_height_analysis_object_copy: object containing all parameters and data
     :param buffer_or_probe_flag: either 'buffer' or 'probe'
     :param data_frame_index: index of dataframe and buffer or probe RI bulk value
-    :return RI_results: list of calculated RI results for each height step
+    :return: [RI results, offset results, prism k results] for each height step
     """
 
-    # Adapt new initial guess and bounds for refractive index range
-    RI_results = []
-    offset_results = []
-    prism_k_results = []
-    if not exclusion_height_analysis_object_copy.fit_offset:
-        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.RI_initial_guess  # Swollen layer estimated hydration
-        exclusion_new_fresnel_bounds = exclusion_height_analysis_object_copy.RI_bounds
-
-    elif exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
-        exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess[0:2]
-        exclusion_new_fresnel_ini_guess[0] = exclusion_height_analysis_object_copy.RI_initial_guess  # Swollen layer estimated hydration
-        exclusion_new_fresnel_bounds = [(exclusion_height_analysis_object_copy.RI_bounds[0], -np.inf), (exclusion_height_analysis_object_copy.RI_bounds[1], np.inf)]
-
-    elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
-        if len(exclusion_height_analysis_object_copy.fresnel_object.ini_guess) == 3:
-            exclusion_new_fresnel_ini_guess = exclusion_height_analysis_object_copy.fresnel_object.ini_guess
-        elif len(exclusion_height_analysis_object_copy.fresnel_object.ini_guess) == 2:
-            exclusion_new_fresnel_ini_guess = [exclusion_height_analysis_object_copy.fresnel_object.ini_guess, 0.01]
-        exclusion_new_fresnel_ini_guess[0] = exclusion_height_analysis_object_copy.RI_initial_guess # Swollen layer estimated hydration
-        exclusion_new_fresnel_bounds = [(exclusion_height_analysis_object_copy.RI_bounds[0], -np.inf, 0), (exclusion_height_analysis_object_copy.RI_bounds[1], np.inf, 0.1)]
-
-    # Check if calculations should be performed on buffer or probe data
+    eh = exclusion_height_analysis_object_copy
     if buffer_or_probe_flag == 'buffer':
-
-        # Add bulk RI to layers
-        refractive_indices = exclusion_height_analysis_object_copy.sensor_object.refractive_indices
-        refractive_indices[-1] = exclusion_height_analysis_object_copy.buffer_bulk_RIs[data_frame_index]
-
-        for height in exclusion_height_analysis_object_copy.height_steps:
-
-            exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses[-2] = height  # Surface layer height should be updated to current height step
-
-            # Perform the fitting
-            result = scipy.optimize.least_squares(fresnel_calculation,
-                                                  exclusion_new_fresnel_ini_guess,
-                                                  bounds=exclusion_new_fresnel_bounds,
-                                                  kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
-                                                          'wavelength': exclusion_height_analysis_object_copy.sensor_object.wavelength,
-                                                          'layer_thicknesses': exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses,
-                                                          'n_re': refractive_indices,
-                                                          'n_im': exclusion_height_analysis_object_copy.sensor_object.extinction_coefficients,
-                                                          'angles': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
-                                                          'ydata': exclusion_height_analysis_object_copy.buffer_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy(),
-                                                          'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
-                                                          'ydata_offset': exclusion_height_analysis_object_copy.fresnel_object.y_offset,
-                                                          'polarization': exclusion_height_analysis_object_copy.polarization}
-                                                  )
-            # Collect the results from least_squares object
-            RI_results.append(result['x'][0])
-
-            if exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
-                offset_results.append(result['x'][1])
-
-            elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
-                offset_results.append(result['x'][1])
-                prism_k_results.append(result['x'][2])
-
-        return [RI_results, offset_results, prism_k_results]
-
+        reflectivity_df = eh.buffer_reflectivity_dfs[data_frame_index]
+        bulk_RI = eh.buffer_bulk_RIs[data_frame_index]
     elif buffer_or_probe_flag == 'probe':
-
-        # Add bulk RI to layers
-        refractive_indices = exclusion_height_analysis_object_copy.sensor_object.refractive_indices
-        refractive_indices[-1] = exclusion_height_analysis_object_copy.probe_bulk_RIs[data_frame_index]
-
-        for height in exclusion_height_analysis_object_copy.height_steps:
-
-            exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses[-2] = height
-
-            result = scipy.optimize.least_squares(fresnel_calculation,
-                                                  exclusion_new_fresnel_ini_guess,
-                                                  bounds=exclusion_new_fresnel_bounds,
-                                                  kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
-                                                          'wavelength': exclusion_height_analysis_object_copy.sensor_object.wavelength,
-                                                          'layer_thicknesses': exclusion_height_analysis_object_copy.sensor_object.layer_thicknesses,
-                                                          'n_re': refractive_indices,
-                                                          'n_im': exclusion_height_analysis_object_copy.sensor_object.extinction_coefficients,
-                                                          'angles': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['angles'].to_numpy(),
-                                                          'ydata': exclusion_height_analysis_object_copy.probe_reflectivity_dfs[data_frame_index]['reflectivity'].to_numpy(),
-                                                          'ydata_type': exclusion_height_analysis_object_copy.sensor_object.data_type,
-                                                          'ydata_offset': exclusion_height_analysis_object_copy.fresnel_object.y_offset,
-                                                          'polarization': exclusion_height_analysis_object_copy.polarization}
-                                                  )
-            # Collect the results from least_squares object
-            RI_results.append(result['x'][0])
-
-            if exclusion_height_analysis_object_copy.fit_offset and not exclusion_height_analysis_object_copy.fit_prism:
-                offset_results.append(result['x'][1])
-
-            elif exclusion_height_analysis_object_copy.fit_offset and exclusion_height_analysis_object_copy.fit_prism:
-                offset_results.append(result['x'][1])
-                prism_k_results.append(result['x'][2])
-
-        return [RI_results, offset_results, prism_k_results]
-
+        reflectivity_df = eh.probe_reflectivity_dfs[data_frame_index]
+        bulk_RI = eh.probe_bulk_RIs[data_frame_index]
     else:
         raise ValueError('Only buffer or probe allowed')
 
+    initial_guess, bounds = exclusion_fit_settings(eh)
+    RI_results, offset_results, prism_k_results = [], [], []
+    for height in eh.height_steps:
+        fitted = fit_surface_layer(eh, reflectivity_df, bulk_RI, height, initial_guess, bounds)
+        RI_results.append(fitted[0])
+        if eh.fit_offset:
+            offset_results.append(fitted[1])
+            if eh.fit_prism:
+                prism_k_results.append(fitted[2])
 
-def exclusion_height_process(exclusion_height_analysis_object_copy, buffer_or_probe_flag, data_frame_index, connection):
+    return [RI_results, offset_results, prism_k_results]
+
+
+def exclusion_height_crossing(height_steps, buffer_RI_result, probe_RI_result):
     """
-    This function initiates the calculations and sends back the result
+    Exclusion height and RI: the first height where the fitted surface layer RI of the buffer curve drops below that of
+    the probe curve (located within the height step with a 200 point linear interpolation).
 
-    :param exclusion_height_analysis_object_copy: object containing all parameters and data
-    :param buffer_or_probe_flag: either 'buffer' or 'probe'
-    :param data_frame_index: index of dataframe
-    :param connection: child pipe connection object from multiprocessing.Pipe()
-    :return: None
+    :return: (height, RI), or (nan, nan) if the curves do not cross within the height steps
     """
+    for height_ind in range(1, len(height_steps)):
+        if buffer_RI_result[height_ind] < probe_RI_result[height_ind]:
+            buffer_RI_zoom_range = np.linspace(buffer_RI_result[height_ind - 1], buffer_RI_result[height_ind], 200)
+            probe_RI_zoom_range = np.linspace(probe_RI_result[height_ind - 1], probe_RI_result[height_ind], 200)
+            height_zoom_range = np.linspace(height_steps[height_ind - 1], height_steps[height_ind], 200)
+            index = int(np.argmax(buffer_RI_zoom_range < probe_RI_zoom_range))
+            return float(height_zoom_range[index]), float(buffer_RI_zoom_range[index])
+    return np.nan, np.nan
 
-    result = calculate_exclusion_height(exclusion_height_analysis_object_copy, buffer_or_probe_flag, data_frame_index)
-    connection.send(result)
-    connection.close()
+
+def exclusion_height_sensitivity(exclusion_height_analysis_object, probe_index, exclusion_height, buffer_RI_result=None, probe_RI_result=None, slopes=None):
+    """
+    Change of the exclusion height (nm) if the TIR shift between buffer and probe (i.e. the bulk RI change) is 1 mdeg
+    larger. The exclusion height is where the buffer and probe curves of surface layer RI vs height cross, so it moves
+    by dh = (dRI_probe/dn_bulk) / (dRI_buffer/dh - dRI_probe/dh) * dn_bulk.
+    """
+    eh = exclusion_height_analysis_object
+    heights = np.asarray(eh.height_steps, dtype=np.float64)
+    if not np.isfinite(exclusion_height) or (slopes is None and len(heights) < 3):
+        return np.nan
+
+    prism_RI = eh.sensor_object.refractive_indices[0]
+    probe_bulk_RI = eh.probe_bulk_RIs[probe_index]
+    TIR_angle = np.arcsin(probe_bulk_RI / prism_RI)
+    delta_bulk_RI = prism_RI * np.cos(TIR_angle) * np.radians(1e-3)  # Bulk RI change for 1 mdeg TIR shift
+
+    probe_df = eh.probe_reflectivity_dfs[probe_index]
+    RI_plus = fit_surface_layer(eh, probe_df, probe_bulk_RI + delta_bulk_RI, exclusion_height)[0]
+    RI_minus = fit_surface_layer(eh, probe_df, probe_bulk_RI - delta_bulk_RI, exclusion_height)[0]
+    probe_RI_per_bulk_RI = (RI_plus - RI_minus) / (2 * delta_bulk_RI)
+
+    if slopes is not None:
+        buffer_slope, probe_slope = slopes
+    else:
+        buffer_slope = np.interp(exclusion_height, heights, np.gradient(np.asarray(buffer_RI_result, dtype=np.float64), heights))
+        probe_slope = np.interp(exclusion_height, heights, np.gradient(np.asarray(probe_RI_result, dtype=np.float64), heights))
+    if buffer_slope == probe_slope:
+        return np.nan
+    return float(probe_RI_per_bulk_RI / (buffer_slope - probe_slope) * delta_bulk_RI)
 
 
-def process_all_exclusion_heights(exclusion_height_analysis_object, logical_cores):
+def adaptive_exclusion_height(exclusion_height_analysis_object, buffer_index, probe_index, tolerance=1e-3, slope_step=0.25,
+                              minimum_height=0.5, coarse_steps=31):
+    """
+    Exclusion height of one injection step with a two-pass search (as in SPR_WetHeight.m by J. Andersson and
+    J. Petersson):
+     1) Coarse pass: coarse_steps heights between the height bounds (the first and last of height_steps) are swept until
+        the buffer and probe curves of surface layer RI vs height cross (the buffer RI drops below the probe RI).
+     2) Fine pass: the curves are calculated with len(height_steps) points (the resolution) in a window around the
+        coarse crossing (the coarse step containing it, plus half a coarse step on each side), and the crossing is
+        located within the tolerance with a root finder (Brent's method) on the fitted curves.
+    Heights where a fitted RI lies at the RI bounds, and heights below minimum_height (nm), are skipped since the curves
+    are not defined there. If the curves have already crossed at the first usable height, the heights before it are
+    swept with finer steps. A wide height range (e.g. 0-300 nm for thick brushes) therefore costs little extra time, and
+    the curves are well resolved around the crossing.
 
-    buffer_connections = []
-    probe_connections = []
-    buffer_processes = []
-    probe_processes = []
+    :return: dict with 'heights', 'buffer' and 'probe' (fitted values at each height of the fine pass, or of the coarse
+             pass if no crossing was found, sorted by height), 'height' and 'RI' (crossing, nan if none) and
+             'sensitivity' (nm per mdeg TIR shift)
+    """
+    eh = exclusion_height_analysis_object
+    initial_guess, bounds = exclusion_fit_settings(eh)
+    buffer_df, buffer_bulk_RI = eh.buffer_reflectivity_dfs[buffer_index], eh.buffer_bulk_RIs[buffer_index]
+    probe_df, probe_bulk_RI = eh.probe_reflectivity_dfs[probe_index], eh.probe_bulk_RIs[probe_index]
+    RI_low, RI_high = eh.RI_bounds[0], eh.RI_bounds[1]
+    fits = {}
 
-    buffer_index = 0
-    probe_index = 0
-    process_step = 0
-    required_processes = int(len(exclusion_height_analysis_object.injection_points) + len(exclusion_height_analysis_object.injection_points) / 2)
+    def fitted(height):
+        height = float(height)
+        if height not in fits:
+            fits[height] = (fit_surface_layer(eh, buffer_df, buffer_bulk_RI, height, initial_guess, bounds),
+                            fit_surface_layer(eh, probe_df, probe_bulk_RI, height, initial_guess, bounds))
+        return fits[height]
 
-    while process_step < min(required_processes, logical_cores):
+    def difference(height):
+        buffer_fit, probe_fit = fitted(height)
+        if min(buffer_fit[0], probe_fit[0]) <= RI_low + 1e-6 or max(buffer_fit[0], probe_fit[0]) >= RI_high - 1e-6:
+            return np.nan  # At the RI bounds
+        return buffer_fit[0] - probe_fit[0]
 
-        # Setup buffer process
-        buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
-        buffer_connections.append(buffer_parent_conn)
-        buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
-        buffer_processes.append(buffer_process)
-        buffer_process.start()
-        buffer_index += 1
-        process_step += 1
+    def sweep(heights):
+        """
+        First bracket (h1, d1, h2, d2) where the difference changes from positive to negative, or the gap before the
+        first usable height if the curves have already crossed there (h1, nan, h2, d2), or None.
+        """
+        previous = None
+        for index, height in enumerate(heights):
+            value = difference(height)
+            if not np.isfinite(value):
+                continue
+            if previous is None and value <= 0:
+                return (heights[index - 1], np.nan, height, value) if index > 0 else None
+            if previous is not None and previous[1] > 0 and value <= 0:
+                return previous[0], previous[1], height, value
+            previous = (height, value)
+        return None
 
-        # Setup probe process
-        if buffer_index % 2 == 0:
-            probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
-            probe_connections.append(probe_parent_conn)
-            probe_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
-            probe_processes.append(probe_process)
-            probe_process.start()
-            probe_index += 1
-            process_step += 1
+    def find_bracket(heights):
+        for _ in range(4):  # The sweep is refined if the curves have already crossed at the first usable height
+            bracket = sweep(heights)
+            if bracket is None or not np.isnan(bracket[1]):
+                return bracket
+            if bracket[2] - bracket[0] < 10 * tolerance:
+                return None
+            heights = np.linspace(bracket[0], bracket[2], 11)
+        return None
 
-    # If there are remaining processes, wait for the next two processes to finish and start new processes for the remaining steps
-    process_index = 0
-    while process_step < required_processes:
-        buffer_processes[process_index].join()
+    height_steps = np.asarray(eh.height_steps, dtype=np.float64)
+    lower, upper = max(float(height_steps[0]), minimum_height), max(float(height_steps[-1]), minimum_height)
+    fine_points = max(len(height_steps), 3)
 
-        # Setup buffer process
-        buffer_parent_conn, buffer_child_conn = multiprocessing.Pipe()
-        buffer_connections.append(buffer_parent_conn)
-        buffer_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'buffer', buffer_index, buffer_child_conn))
-        buffer_processes.append(buffer_process)
-        buffer_process.start()
-        buffer_index += 1
-        process_step += 1
+    # 1) Coarse pass
+    coarse_heights = np.unique(np.linspace(lower, upper, max(2, min(coarse_steps, fine_points))))
+    bracket = find_bracket(coarse_heights)
+    crossing_height, crossing_RI, sensitivity = np.nan, np.nan, np.nan
+    curve_heights = coarse_heights
 
-        if buffer_index % 2 == 0:
-            probe_processes[int(process_index/2)].join()
+    # 2) Fine pass around the coarse crossing
+    if bracket is not None:
+        step = bracket[2] - bracket[0]
+        window = (max(lower, bracket[0] - step / 2), min(upper, bracket[2] + step / 2))
+        curve_heights = np.linspace(window[0], window[1], fine_points)
+        fine_bracket = find_bracket(curve_heights)
+        if fine_bracket is None:
+            fine_bracket = bracket  # Not resolved on the fine grid (e.g. fits at the RI bounds), use the coarse step
+        low, low_value, high, high_value = fine_bracket
+        try:
+            crossing_height = scipy.optimize.brentq(lambda h: np.nan_to_num(difference(h), nan=0.0), low, high, xtol=tolerance)
+        except ValueError:
+            crossing_height = low + (high - low) * low_value / (low_value - high_value) if np.isfinite(low_value) else high
+        crossing_RI = float(fitted(crossing_height)[0][0])
+        curve_heights = np.unique(np.concatenate([curve_heights, [crossing_height]]))
 
-            # Setup probe process
-            probe_parent_conn, probe_child_conn = multiprocessing.Pipe()
-            probe_connections.append(probe_parent_conn)
-            probe_process = multiprocessing.Process(target=exclusion_height_process, args=(copy.deepcopy(exclusion_height_analysis_object), 'probe', probe_index, probe_child_conn))
-            probe_processes.append(probe_process)
-            probe_process.start()
-            probe_index += 1
-            process_step += 1
+    if np.isfinite(crossing_height):
+        try:
+            low, high = max(crossing_height - slope_step, lower), crossing_height + slope_step
+            slopes = ((fitted(high)[0][0] - fitted(low)[0][0]) / (high - low), (fitted(high)[1][0] - fitted(low)[1][0]) / (high - low))
+            sensitivity = exclusion_height_sensitivity(eh, probe_index, crossing_height, slopes=slopes)
+        except Exception as error:
+            print('Could not estimate the sensitivity of the exclusion height: {error}'.format(error=error))
 
-        process_index += 1
+    heights = np.array(sorted(float(h) for h in curve_heights))
+    return {'heights': heights,
+            'buffer': np.array([fitted(h)[0] for h in heights]),
+            'probe': np.array([fitted(h)[1] for h in heights]),
+            'height': float(crossing_height), 'RI': float(crossing_RI), 'sensitivity': sensitivity}
 
-    # Wait for each process to finish and collect and record results
-    for process_index in range(len(buffer_processes)):
 
-        # Check if user has aborted the analysis
-        if exclusion_height_analysis_object.abort_flag:
-            for buffer_process in buffer_processes:
-                buffer_process.terminate()
-            for probe_process in probe_processes:
-                probe_process.terminate()
+def store_exclusion_height_step(exclusion_height_analysis_object, step, heights, buffer_fits, probe_fits, height, RI, sensitivity):
+    """
+    Stores the curves (fitted values vs height) and the result of one injection step in the analysis object.
+    """
+    eh = exclusion_height_analysis_object
+    buffer_fits, probe_fits = np.atleast_2d(buffer_fits), np.atleast_2d(probe_fits)
+    data = {'height': heights, 'buffer RI': buffer_fits[:, 0], 'probe RI': probe_fits[:, 0]}
+    if eh.fit_offset and buffer_fits.shape[1] > 1:
+        data.update({'buffer offsets': buffer_fits[:, 1], 'probe offsets': probe_fits[:, 1]})
+        if eh.fit_prism and buffer_fits.shape[1] > 2:
+            data.update({'buffer prism k': buffer_fits[:, 2], 'probe prism k': probe_fits[:, 2]})
+    eh.d_n_pair_dfs[step] = pd.DataFrame(data=data)
+    eh.all_exclusion_results[0, step] = height
+    eh.all_exclusion_results[1, step] = RI
+    eh.height_sensitivity[step] = sensitivity
 
-            exclusion_height_analysis_object.abort_flag = False
 
-            return
+def run_exclusion_height_calculation(exclusion_height_analysis_object, logical_cores=None):
+    """
+    Runs the exclusion height calculation of an initialized analysis object (height steps and settings set) for all
+    injection steps (each buffer interval with its probe interval), and calculates the mean exclusion height and RI with
+    standard deviations. The calculations run in the current process: with the vectorised fresnel model a full
+    calculation takes seconds, less than starting parallel processes would (logical_cores is no longer used).
+    The calculation stops after the current step if eh.abort_flag is set (e.g. by the abort button).
+    """
+    eh = exclusion_height_analysis_object
+    eh.abort_flag = False
+    steps = len(eh.buffer_reflectivity_dfs)
+    eh.all_exclusion_results = np.full((2, steps), np.nan)
+    eh.d_n_pair_dfs = [0] * steps
+    eh.height_sensitivity = np.full(steps, np.nan)
+    eh.mean_exclusion_height_result = [np.nan]
+    eh.mean_exclusion_RI_result = [np.nan]
 
-        # Wait for processes to finish and collect results
-        buffer_processes[process_index].join()
-        full_buffer_result = buffer_connections[process_index].recv()
-        buffer_RI_result = full_buffer_result[0]
+    probe_curves = {}
+    for step in range(steps):
+        if eh.abort_flag:
+            print('Exclusion height calculation aborted.')
+            eh.abort_flag = False
+            break
+        probe_index = step // 2
+        if getattr(eh, 'height_search', 'grid') == 'adaptive':
+            result = adaptive_exclusion_height(eh, step, probe_index)
+            store_exclusion_height_step(eh, step, result['heights'], result['buffer'], result['probe'], result['height'], result['RI'], result['sensitivity'])
+        else:
+            buffer_curve = calculate_exclusion_height(eh, 'buffer', step)
+            if probe_index not in probe_curves:
+                probe_curves[probe_index] = calculate_exclusion_height(eh, 'probe', probe_index)
+            probe_curve = probe_curves[probe_index]
+            height, RI = exclusion_height_crossing(eh.height_steps, buffer_curve[0], probe_curve[0])
+            sensitivity = np.nan
+            if np.isfinite(height):
+                try:
+                    sensitivity = exclusion_height_sensitivity(eh, probe_index, height, buffer_curve[0], probe_curve[0])
+                except Exception as error:
+                    print('Could not estimate the sensitivity of the exclusion height: {error}'.format(error=error))
+            store_exclusion_height_step(eh, step, np.asarray(eh.height_steps, dtype=np.float64),
+                                        np.column_stack([np.asarray(curve, dtype=np.float64) for curve in buffer_curve if len(curve)]),
+                                        np.column_stack([np.asarray(curve, dtype=np.float64) for curve in probe_curve if len(curve)]),
+                                        height, RI, sensitivity)
 
-        if process_index % 2 == 0:
-            probe_processes[int(process_index/2)].join()
-            full_probe_result = probe_connections[int(process_index/2)].recv()
-            probe_RI_result = full_probe_result[0]
-
-        if not exclusion_height_analysis_object.fit_offset:
-            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result})
-        elif exclusion_height_analysis_object.fit_offset and not exclusion_height_analysis_object.fit_prism:
-            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1]})
-        elif exclusion_height_analysis_object.fit_offset and exclusion_height_analysis_object.fit_prism:
-            exclusion_height_analysis_object.d_n_pair_dfs[process_index] = pd.DataFrame(data={'height': exclusion_height_analysis_object.height_steps, 'buffer RI': buffer_RI_result, 'probe RI': probe_RI_result, 'buffer offsets': full_buffer_result[1], 'probe offsets': full_probe_result[1], 'buffer prism k': full_buffer_result[2], 'probe prism k': full_probe_result[2]})
-
-        # Calculate exclusion height from buffer and probe height steps and RI result intersection and add to exclusion_height_analysis_object.all_exclusion_results
-        for height_ind in range(len(exclusion_height_analysis_object.height_steps)):
-            if buffer_RI_result[height_ind] < probe_RI_result[height_ind]:
-
-                buffer_RI_zoom_range = np.linspace(buffer_RI_result[height_ind - 1], buffer_RI_result[height_ind], 200)
-                probe_RI_zoom_range = np.linspace(probe_RI_result[height_ind - 1], probe_RI_result[height_ind], 200)
-                height_zoom_range = np.linspace(exclusion_height_analysis_object.height_steps[height_ind - 1], exclusion_height_analysis_object.height_steps[height_ind], 200)
-
-                # Zoom in on the intersection
-                for index in range(200):
-                    if buffer_RI_zoom_range[index] < probe_RI_zoom_range[index]:
-                        exclusion_height_analysis_object.all_exclusion_results[0, process_index] = height_zoom_range[index]
-                        exclusion_height_analysis_object.all_exclusion_results[1, process_index] = buffer_RI_zoom_range[index]
-                        break
-
-                # Stop looping through height steps
-                break
-
-    # Replace zeros with NaNs for non-intersecting results
-    exclusion_height_analysis_object.all_exclusion_results = np.where(exclusion_height_analysis_object.all_exclusion_results == 0, np.nan, exclusion_height_analysis_object.all_exclusion_results)
-
-    return
+    if np.all(np.isnan(eh.all_exclusion_results[0, :])):
+        eh.mean_exclusion_height_result = (np.nan, np.nan)
+        eh.mean_exclusion_RI_result = (np.nan, np.nan)
+    else:
+        eh.mean_exclusion_height_result = (np.nanmean(eh.all_exclusion_results[0, :]), np.nanstd(eh.all_exclusion_results[0, :]))
+        eh.mean_exclusion_RI_result = (np.nanmean(eh.all_exclusion_results[1, :]), np.nanstd(eh.all_exclusion_results[1, :]))
+    return eh
 
 
 def add_sensor_backend(session_object, data_path_, default_sensor_values, sensor_metal='Au'):

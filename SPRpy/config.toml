@@ -1,28 +1,44 @@
 # Configuration parameters for SPRpy.py and SPRpy_spr2_to_csv.py.
 # TIP! Copy and save a backup version of your settings in this file (use a different filename) so that you do not completely lose them after upgrading to a new SPRpy version.
+# Settings that are missing in this file (e.g. new settings after an upgrade) are automatically taken from config.toml.defaults, and listed when SPRpy starts.
 
 default_data_folder = ''  # Custom default folder location when loading data files, insert path between '' and use '/' instead of '\', for instance 'C:/Users/EXAMPLE USER'
 
 default_session_folder = ''  # Custom location of "SPRpy sessions" folder, insert path between '' and use '/' instead of '\', for instance 'C:/Users/EXAMPLEUSER/SPRpy sessions'. Default location is in the same folder as SPRpy.py
 
-ask_for_previous_session = true  # Default: true | Set to "false" (without "") if you don't want to be asked for a previous session
+ask_for_previous_session = true  # Default: true | Set to "false" (without "") if you don't want to be asked for a previous session (only used when show_start_menu = false)
+
+show_start_menu = true  # Default: true | Start SPRpy from a menu window (open a measurement, reopen a session or convert .spr2 files). If false, the console prompts and file dialogs are used
+
+show_splash_screen = true  # Default: true | Show the splash screen with the loading status while SPRpy starts (when not started from the start menu)
+
+open_browser = true  # Default: true | Open the SPRpy GUI in the default web browser automatically when it is ready
 
 session_host = '127.0.0.1'  # Default: '127.0.0.1' | Increment the last digit before running each extra session if you want to have several SPRpy windows open simultaneously. Remember to change it also in the browser address in that case.
 
 default_poly_file = 'DEFAULT_X_cal_values.csv'  # Default filename of X-calibration values used in SPRpy_spr2_to_csv.py
 
-max_logical_cores = 0  # Default: 0 (no restriction) | Set to an integer value below your maximum logical processor count if you wish to restrict parallel computing to this number of simultaneous processes
+max_logical_cores = 0  # Not used since SPRpy 2.0.0: exclusion height calculations take seconds and run without parallel processes (kept for compatibility)
+
+channel_spots = [[1, 2], [3, 4]]  # Default: [[1, 2], [3, 4]] | Channels (laser numbers, L1, L2, ...) that measure the same spot on the sample. Used to group the results when analysing all wavelengths: channels of the same spot should agree (apart from the different sensitivity of each wavelength), while differences between spots can indicate an inhomogeneous sample
+
+dn_dC = 0.18  # Default: 0.18 | Default refractive index increment dn/dC (cm3/g) of the adsorbed material for the surface coverage in the response quantification tab (~0.18 for proteins). Can also be changed in the GUI
 
 instrument_TIR_sensitivity = 74  # default 79 deg/RIU
 
 [SPR_fitting_parameters]  # Default SPR fitting parameters when creating new sessions
+SPR_method = 'dip_level'  # Default: 'dip_level' | 'dip_level': cubic fit to the bottom of the dip (points below SPR_dip_level of the dip depth), adapts to the dip width of each wavelength. 'legacy': cubic fit to a fixed number of points around the minimum (sensorgram_angle_range_points), as in SPRpy <= 1.2
+SPR_dip_level = 0.2  # Default: 0.2 | Fraction of the dip depth included in the SPR fit window for SPR_method = 'dip_level' (0.1-0.5 all work well)
 Fresnel_angle_range_points = [40, 60]  # Default: [40, 60] | Number of data points below and above the SPR minimum for auto-detection of the SPR peak during fresnel fitting (default optimised for air measurement). Set this to [1, 1] for Pd or Pt films in air as it does not have an SPR minimum.
 sensorgram_angle_range_points = [70, 70]  # Default: [70, 70] | Number of data points below and above the SPR minimum included in tracking SPR peak in the sensorgram (default optimised for liquid measurement). Set this to [1, 1] for Pd or Pt films in air as it does not have an SPR minimum.
 SPR_fit_points = 4000  # Default: 4000 | How many points to generate for high SPR peak tracking accuracy
 
 [TIR_fitting_parameters]  # Default TIR fitting parameters when creating new sessions
-TIR_range_water_or_long_measurement = [60.8, 63.0]  # Default: [60.8, 63.0] | TIR range for water --> Automatically used for 50 or more scans per file
-TIR_range_air_or_few_scans = [40.2, 41.8]  # Default: [40.2, 41.8] | TIR range for air --> Automatically used for less than 50 scans per file
+TIR_method = 'savitzky_golay'  # Default: 'savitzky_golay' | 'savitzky_golay': Savitzky-Golay derivative with a filter width in degrees (adapts to the scan speed) and a parabola fit of the derivative peak. 'legacy': moving average derivative with the window and point settings below, as in SPRpy <= 1.2
+TIR_smooth_width_deg = 0.15  # Default: 0.15 | Width of the Savitzky-Golay derivative filter (deg). Wider = less noise, but distorts the TIR edge
+TIR_fit_halfwidth_deg = 0.045  # Default: 0.045 | Half-width of the parabola fitted to the derivative peak (deg)
+TIR_range_water_or_long_measurement = [60.8, 63.0]  # Default: [60.8, 63.0] | TIR range for water. The range (water or air) containing the TIR edge of the measurement is selected automatically when loading data
+TIR_range_air_or_few_scans = [40.2, 41.8]  # Default: [40.2, 41.8] | TIR range for air
 TIR_fit_points = 2000  # Default: 2000 | How many points to generate for high TIR fitting accuracy
 window_count_scanspeeds_1_5 = 7  # Default: 7 | Number of nearest neighbours that are averaged together to smoothen the spectra for TIR fitting at scanspeed 1 or 5
 window_count_scanspeeds_10 = 3  # Default: 3 | Number of nearest neighbours that are averaged together to smoothen the spectra for TIR fitting at scanspeed 10
@@ -43,14 +59,14 @@ points_below_TIR_peak_scanspeed_10 = 3  # Default: 3 | Number of points to inclu
 850 = 416
 980 = 570
 
-[default_sensor_values]  # Here you can edit each column of the "Show default values" button and default loaded optical values in the sensor tables. Make sure you have the same number of entries (and matching positions), especially on 'Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt' columns (the rest are not used by the code).
-Layer = ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt', 'Ti', 'PEG', 'Protein', 'DNA']
-d_nm = ['', '2', '50', '20', '20', '20', '2', '~2 or ~8.5 (2 or 20 kDa)', '4', '?']
-n_670 = ['1.5247', '3.5295', '0.2238', '1.4628', '2.25', '2.47', '2.1533', '1.456', '1.53', '1.58']  # Default prism = 1.5202
-n_785 = ['1.5212', '3.9729', '0.2580', '1.4610', '2.5467', '2.5254', '2.4412','1.456', '1.53', '1.58']  # Default prism = 1.5162
-n_850 = ['1.5200', '4.1254', '0.2653', '1.4603', '2.7', '2.7193', '2.5705','1.456', '1.53', '1.58']  # Default prism = 1.5149
-n_980 = ['1.517', '4.2797', '0.2800', '1.4592', '3.0331', '3.0598', '2.7838', '1.456', '1.53', '1.58']  # Default prism = 1.5130
-k_670 = ['0', '4.2683', '3.88', '0', '4.60', '5.28', '2.3631','0', '0', '0']
-k_785 = ['0', '4.1895', '4.88', '0', '5.1250', '5.6380', '2.5137','0', '0', '0']
-k_850 = ['0', '4.1383', '5.42', '0', '5.7', '5.9555', '2.5731', '1.456', '1.53', '1.58']
-k_980 = ['0', '4.0770', '6.7406', '0', '6.1010', '6.4912', '2.6824', '0', '0', '0']
+[default_sensor_values]  # Here you can edit each column of the "Show default values" button and default loaded optical values in the sensor tables. Make sure you have the same number of entries (and matching positions), especially on 'Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt' columns. The other columns (and columns you add, e.g. a polymer with its n at each wavelength) are used when fresnel modelling all wavelengths: a sensor layer with the same name gets the n and k of each wavelength from here.
+Layer = ['Prism', 'Cr', 'Au', 'SiO2', 'Pd', 'Pt', 'Ti', 'PEG', 'Protein', 'DNA', 'PHEAA']  # PHEAA: n from spectroscopic ellipsometry
+d_nm = ['', '2', '50', '20', '20', '20', '2', '~2 or ~8.5 (2 or 20 kDa)', '4', '?', '?']
+n_670 = ['1.5247', '3.5295', '0.2238', '1.4628', '2.25', '2.47', '2.1533', '1.456', '1.53', '1.58', '1.464']  # Default prism = 1.5202
+n_785 = ['1.5212', '3.9729', '0.2580', '1.4610', '2.5467', '2.5254', '2.4412','1.456', '1.53', '1.58', '1.457']  # Default prism = 1.5162
+n_850 = ['1.5200', '4.1254', '0.2653', '1.4603', '2.7', '2.7193', '2.5705','1.456', '1.53', '1.58', '1.454']  # Default prism = 1.5149
+n_980 = ['1.517', '4.2797', '0.2800', '1.4592', '3.0331', '3.0598', '2.7838', '1.456', '1.53', '1.58', '1.449']  # Default prism = 1.5130
+k_670 = ['0', '4.2683', '3.88', '0', '4.60', '5.28', '2.3631','0', '0', '0', '0']
+k_785 = ['0', '4.1895', '4.88', '0', '5.1250', '5.6380', '2.5137','0', '0', '0', '0']
+k_850 = ['0', '4.1383', '5.42', '0', '5.7', '5.9555', '2.5731', '0', '0', '0', '0']
+k_980 = ['0', '4.0770', '6.7406', '0', '6.1010', '6.4912', '2.6824', '0', '0', '0', '0']

@@ -3,4 +3,5 @@ venv
 venv_laptop
 dist
 /dist archive/
-/pyproject.toml
+.venv/
+__pycache__/

@@ -1,0 +1,226 @@
+/* SPRpy styling on top of the Bootstrap Spacelab theme (files in assets/ are loaded automatically by Dash) */
+
+:root {
+    --sprpy-primary: #446e9b;
+    --sprpy-primary-dark: #2f4f73;
+    --sprpy-background: #f3f5f8;
+    --sprpy-border: #dfe4ea;
+    --sprpy-text-muted: #6c7a89;
+    --sprpy-radius: 10px;
+}
+
+body {
+    background-color: var(--sprpy-background);
+    font-family: Inter, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.sprpy-app {
+    min-height: 100vh;
+}
+
+/* Top bar */
+.sprpy-navbar {
+    background: linear-gradient(90deg, var(--sprpy-primary-dark), var(--sprpy-primary)) !important;
+    box-shadow: 0 2px 8px rgba(20, 40, 70, 0.25);
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+}
+
+.sprpy-navbar img {
+    background: white;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.sprpy-brand {
+    font-weight: 700;
+    font-size: 1.6rem;
+    letter-spacing: 0.5px;
+}
+
+.sprpy-tagline {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+}
+
+/* Illustrations */
+.sprpy-hero {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 1.5rem;
+    padding: 1rem 2rem 0.5rem 2rem;
+    background: white;
+    border-bottom: 1px solid var(--sprpy-border);
+}
+
+.sprpy-hero figure {
+    margin: 0;
+    text-align: center;
+}
+
+.sprpy-hero img {
+    max-height: 170px;
+    max-width: 330px;
+    object-fit: contain;
+}
+
+.sprpy-hero figcaption {
+    color: var(--sprpy-text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+}
+
+/* Main area and cards */
+.sprpy-main {
+    padding: 1.25rem 1.5rem;
+}
+
+.sprpy-card {
+    border: 1px solid var(--sprpy-border) !important;
+    border-radius: var(--sprpy-radius) !important;
+    box-shadow: 0 1px 4px rgba(20, 40, 70, 0.07);
+    background: white;
+}
+
+.sprpy-card > .card-header {
+    background: white;
+    border-bottom: 1px solid var(--sprpy-border);
+    border-radius: var(--sprpy-radius) var(--sprpy-radius) 0 0 !important;
+    padding: 0.7rem 1.1rem;
+}
+
+.sprpy-card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--sprpy-primary-dark);
+}
+
+/* Session log */
+.sprpy-console {
+    width: 100%;
+    height: 170px;
+    font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+    background: #fafbfc;
+    border: 1px solid var(--sprpy-border);
+    border-radius: 6px;
+    padding: 0.5rem 0.7rem;
+    resize: vertical;
+}
+
+/* Measurement and sensor card */
+.sprpy-datapath {
+    font-size: 0.9rem;
+    color: var(--sprpy-text-muted);
+    margin-bottom: 0.6rem;
+    word-break: break-all;
+}
+
+.sprpy-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+}
+
+.sprpy-sensor-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.sprpy-sensor-table .dash-table-container {
+    margin-bottom: 0.6rem;
+}
+
+.sprpy-table-buttons {
+    flex-wrap: wrap;
+}
+
+.sprpy-default-values .table {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+/* Analysis tabs */
+.sprpy-tabs {
+    border-bottom: 2px solid var(--sprpy-border);
+    margin-bottom: 0.5rem;
+}
+
+.sprpy-tabs .nav-link {
+    font-weight: 500;
+    color: var(--sprpy-text-muted);
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    margin-bottom: -2px;
+    padding: 0.6rem 1.1rem;
+    background: none !important;
+}
+
+.sprpy-tabs .nav-link:hover {
+    color: var(--sprpy-primary);
+}
+
+.sprpy-tabs .nav-link.active {
+    color: var(--sprpy-primary-dark) !important;
+    border-bottom-color: var(--sprpy-primary) !important;
+    font-weight: 600;
+}
+
+/* Forms */
+.sprpy-form-heading {
+    font-weight: 600;
+    color: var(--sprpy-primary-dark);
+    margin-top: 0.6rem;
+    margin-bottom: 0.4rem;
+}
+
+.sprpy-drift-group {
+    margin-top: 0.6rem;
+    margin-left: 10%;
+    max-width: 85%;
+}
+
+.sprpy-hint {
+    margin-left: 10%;
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--sprpy-text-muted);
+    min-height: 1.2rem;
+}
+
+.btn {
+    border-radius: 6px;
+}
+
+.btn-group > .btn, .btn-group > .btn-group > .btn, .input-group > .btn {
+    border-radius: 0;
+}
+
+.btn-group > .btn:first-child, .input-group > :first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.btn-group > .btn:last-child, .input-group > .btn:last-child {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.modal-content {
+    border-radius: var(--sprpy-radius);
+}
+
+/* Graphs */
+.js-plotly-plot .plotly .modebar {
+    opacity: 0.6;
+}
+
+.sprpy-help {
+    cursor: help;
+    text-decoration: underline dotted;
+}

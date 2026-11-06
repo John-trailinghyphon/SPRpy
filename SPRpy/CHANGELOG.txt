@@ -1,5 +1,52 @@
 # Changelog
 
+## v2.0.0
+
+### Features
+- Much faster calculations: the Fresnel transfer-matrix model is now vectorised over all angles (identical results, ~90 times faster). This speeds up fresnel modelling, batch analysis and exclusion height determination.
+- Much faster conversion of .spr2 files (SPRpy_spr2_to_csv.py), with a more accurate intensity calibration (interpolation of the calibration curve). Files can also be given on the command line.
+- New TIR angle method (Savitzky-Golay derivative with a parabola fit of the derivative peak) and SPR angle method (cubic fit of an adaptive dip window), adapted from MATLAB scripts by Jesper Petersson. Considerably less noisy TIR angles. Selectable in the TIR/SPR fitting parameters panel; old sessions keep the legacy methods by default.
+- The TIR range (liquid or air) is chosen from where the TIR edge is in the data when loading a measurement, instead of from the number of scans (single scans in liquid now work).
+- SPR drift correction in the response quantification tab (linear fit to a selected baseline).
+- Checkbox in fresnel modelling to keep the bulk refractive index of the sensor table instead of calculating it from the TIR angle.
+- The TIR and SPR fit plots now show the actual fit windows, and are calculated on demand (lower memory use for long measurements).
+- Restyled GUI: top bar, collapsible illustrations, cards for session log, measurement and sensor controls and analysis tabs.
+- Missing entries in config.toml (e.g. after upgrading) are taken from config.toml.defaults and listed at startup.
+- Empty columns/rows in .csv files (e.g. from Excel) are ignored when loading data.
+- Automated test suite (folder "tests", run with pytest).
+- Installation with uv (`uv tool install SPRpy`), which also installs a compatible Python version automatically. New commands: `sprpy` (start SPRpy), `sprpy-convert` (.spr2 to .csv), `sprpy-xcal` (X-calibration) and `sprpy-folder` (open the SPRpy folder). The desktop shortcut now starts SPRpy, with a second shortcut to the SPRpy folder.
+- Start menu with an SPR curve (calculated with the Fresnel model), sharp at any Windows display scaling and always on top: open a measurement (.csv, or .spr2 which is converted first), reopen a session, or only convert .spr2 files. The window then shows the loading progress, and the GUI opens in the browser automatically. Can be turned off in config.toml (show_start_menu, open_browser).
+- Many more automatic session log messages (data loading, sensors, fit settings, fresnel and exclusion height results, batch results, exports); the log updates and scrolls automatically.
+
+- Exclusion height: the bulk refractive index change between buffer and probe is now determined by overlaying their TIR edges ("Bulk RI change from" option). The exclusion height depends strongly on this change (about 1 nm per millidegree of TIR shift), and the TIR edge changes shape slightly with the probe, so separately determined TIR angles gave results that depended on the TIR method and its settings (e.g. 7.4 nm with the legacy TIR method and 4.2 nm with the Savitzky-Golay method for the example data, compared with 6.8 nm for both with the overlay). The old behaviour is available as "Separate TIR angles", and is kept for analyses from older sessions until they are initialized again.
+- Exclusion height results show the TIR shift of each step and how much the exclusion height changes per millidegree error in the TIR shift.
+
+- All wavelengths: fresnel modelling and exclusion height determination can be repeated for all channels (wavelengths) of a measurement in the "All wavelengths" panels of the fresnel modelling and exclusion height tabs. Each channel gets its own sensor (optical constants of its wavelength from config.toml), fresnel analysis and exclusion height analysis, and the results are compared per measurement spot (channels measuring the same spot are set with channel_spots in config.toml, default L1+L2 and L3+L4).
+
+- Exclusion height: two-pass adaptive height search (default, "Height search" option), as in SPR_WetHeight.m: a coarse sweep finds the crossing of the buffer and probe curves, the curves are then calculated with "Resolution" points in a narrow window around it, and the crossing is located within 0.001 nm with a root finder. The default height range is now up to 300 nm (covering thick brushes).
+- All wavelengths: the angle range of each channel's fresnel background is scaled with the width of its SPR dip, the thickness bounds are wider than in the first channel (the 980 nm fit could end at the bound before), and fits at a bound or with a large offset are flagged.
+- Exclusion height calculations run in the SPRpy process instead of parallel processes, which only added overhead with the vectorised fresnel model: a full calculation on the example data takes under a second with the adaptive search, and about 9 s with the fixed grid (about 45 s before).
+
+- Surface coverage in the response quantification tab: select two points in the sensorgram ("Select surface coverage points" toggle) to calculate the surface coverage m_S in ng/cm², with the thin film approximation m_S = δ·Δθ_SPR / (2·(∂n/∂C)·S_SPR) for d = 0, or m_S = d·Δθ_SPR / ((∂n/∂C)·S_SPR·(1 − exp(−2d/δ))) for an estimated layer thickness d. ∂n/∂C is given next to the equations at the bottom of the page, and d, δ and S_SPR are taken from the bulk correction parameters.
+
+- PHEAA added to the default sensor values in config.toml, with its refractive index at each wavelength from spectroscopic ellipsometry (1.464, 1.457, 1.454 and 1.449 at 670, 785, 850 and 980 nm), used when fresnel modelling all wavelengths.
+
+- Layer series (fresnel modelling tab): fits repeated samples measured after each added layer (e.g. clean SiO2, APS, SMCC, PEG) for all channels at once. Samples and steps are read from the file names, each step builds on the fitted layers of the same sample and channel with the optical constants of each wavelength, one sensor per sample and channel gets a layer added for each step, every fit is added to the session as a fresnel analysis, and the results (mean ± std over samples per step and channel, all fits, flagged fits) can be exported to .csv.
+
+### Fixes
+- Spectra where no TIR or SPR angle is found get the value 0 instead of NaN, so they can still be selected in the sensorgram (e.g. Pd or Pt films).
+- Automatic angle ranges no longer fail when the SPR minimum is close to the end of the scan (Pd films), and ignore low reflectivity below the TIR angle.
+- Points in exclusion height determination can be selected in any order within each pair.
+- Exclusion height analysis objects are saved as EH... instead of FM... by "save all".
+- Batch analysis file dialog opens in the folder of the current measurement file.
+- k values at 850 nm for PEG, protein and DNA in the default sensor values were set to their n values, now 0.
+- Compatibility fixes when loading old sessions (missing fitted layer attributes, fitted_result = None).
+- Removed an unused Windows-only import.
+- SPRpy_X_cal.py works with the new .spr2 converter.
+- Cancelling a file dialog no longer gives errors: at startup SPRpy closes with a message (or returns to the start menu), and in the GUI the action is skipped (load data, add data trace, batch files, save/export).
+- The desktop shortcut script was registered twice (as console and GUI script).
+
+
 ## v1.2.1
 
 ### Features

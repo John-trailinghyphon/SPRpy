@@ -20,7 +20,7 @@ dto_wavelengths = [int(dto_file[-9:-6]) for dto_file in dto_files]
 # Read .spr2 file and get calibration values
 with open(spr2_file, 'r') as file:
     spr2_content = file.read()
-start_pos, scanspeed, _, _, _, _, _, _ = SPRpy_spr2_to_csv.extract_parameters(spr2_content)
+start_pos, scanspeed, *_ = SPRpy_spr2_to_csv.extract_parameters(spr2_content)
 
 # Get polynomial coefficients
 polycoffs = []
