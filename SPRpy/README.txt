@@ -231,6 +231,7 @@ The channels are grouped by measurement spot, set with channel_spots in config.t
 The results from fresnel modelling and exclusion height determination are presented in two tables in the left-most column and can be exported into a .csv format using the button at the top.
 
 The right barplot groups and plots fresnel model results based on what sensor object was used as background and all its layers that were fitted.
+Below it, a second plot shows the exclusion height results: the mean height of each exclusion height analysis with the standard deviation over its injection steps as error bars, and the height of each step as points. Both plots follow the tables (also after a layer series or an all wavelengths run) and can be saved as .png, .svg, .html or .csv with their "Save as..." menus.
 NOTE: For session files < v1.0.0 only the label for the latest fitted layer is available, but the value will correctly represent earlier layers (you can verify with the analysis column in the table to the left).
 
 ### Automated tests

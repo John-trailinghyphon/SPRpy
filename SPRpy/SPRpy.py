@@ -101,6 +101,50 @@ def make_TIR_fit_figure(fit_details):
                         yaxis_title=r'$\large{\text{TIR angular derivative}\text{}}$')
 
 
+def fresnel_summary_barplot(session):
+    """
+    Bar plot of the fitted values of all fresnel analyses (result summary tab).
+    """
+    try:
+        instances = session.fresnel_analysis_instances.values()
+        x_barplot = [[fm.fitted_layer for fm in instances],
+                     ['S' + str(fm.sensor_object.object_id) + ' ' + fm.fitted_layer for fm in instances]]
+        y_barplot = [round(fm.fitted_result[0], 3) for fm in instances]
+        figure = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
+    except Exception:
+        figure = go.Figure(go.Bar(x=[0], y=[0]))
+    figure.update_layout(yaxis_title='Fitted value', font_family=PLOT_FONT, font_size=19, margin_r=25, margin_l=60, margin_t=40,
+                         template='simple_white', uirevision=True, height=600, width=900)
+    figure.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
+    figure.update_yaxes(mirror=True, showline=True)
+    return figure
+
+
+def exclusion_summary_barplot(session):
+    """
+    Bar plot of the exclusion height results (result summary tab): the mean height of each exclusion height analysis
+    with the standard deviation over its injection steps, and the height of each step as points.
+    """
+    names, means, stds, step_x, step_y = [], [], [], [], []
+    for eh in session.exclusion_height_analysis_instances.values():
+        heights = np.asarray(eh.all_exclusion_results[0, :], dtype=np.float64) if np.ndim(eh.all_exclusion_results) == 2 else np.array([np.nan])
+        name = 'EH{id} {name}'.format(id=eh.object_id, name=eh.name)
+        names.append(name)
+        finite = heights[np.isfinite(heights)]
+        means.append(float(np.mean(finite)) if len(finite) else np.nan)
+        stds.append(float(np.std(finite)) if len(finite) else np.nan)
+        step_x += [name] * len(finite)
+        step_y += [float(h) for h in finite]
+    figure = go.Figure(go.Bar(x=names, y=means, error_y=dict(type='data', array=stds, visible=True), name='Mean ± std',
+                              marker_color='#636efa'))
+    figure.add_trace(go.Scatter(x=step_x, y=step_y, mode='markers', name='Injection steps', marker=dict(color='#ef553b', size=7)))
+    figure.update_layout(yaxis_title='Exclusion height [nm]', font_family=PLOT_FONT, font_size=19, margin_r=25, margin_l=60, margin_t=40,
+                         template='simple_white', uirevision=True, height=600, width=900, legend=dict(orientation='h', y=1.08))
+    figure.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
+    figure.update_yaxes(mirror=True, showline=True)
+    return figure
+
+
 def fresnel_summary_table(session):
     """
     Children of the fresnel modelling table in the result summary tab.
@@ -532,43 +576,7 @@ if __name__ == '__main__':
     d_n_pair_fig.update_xaxes(mirror=True, showline=True)
     d_n_pair_fig.update_yaxes(mirror=True, showline=True)
 
-    try:
-        x_barplot = [[current_session.fresnel_analysis_instances[
-                          fresnel_inst].fitted_layer for
-                      fresnel_inst in current_session.fresnel_analysis_instances],
-                     ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
-                      current_session.fresnel_analysis_instances]]
-        y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
-                     fresnel_inst in current_session.fresnel_analysis_instances]
-        result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
-        result_barplot_fig.update_layout(
-            yaxis_title='Fitted value',
-            font_family=PLOT_FONT,
-            font_size=19,
-            margin_r=25,
-            margin_l=60,
-            margin_t=40,
-            template='simple_white',
-            uirevision=True,
-            height=600,
-            width=900)
-        result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
-        result_barplot_fig.update_yaxes(mirror=True, showline=True)
-    except:
-        result_barplot_fig = go.Figure(go.Bar(x=[0], y=[0]))
-        result_barplot_fig.update_layout(
-            yaxis_title='Fitted value',
-            font_family=PLOT_FONT,
-            font_size=19,
-            margin_r=25,
-            margin_l=60,
-            margin_t=40,
-            template='simple_white',
-            uirevision=True,
-            height=600,
-            width=900)
-        result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
-        result_barplot_fig.update_yaxes(mirror=True, showline=True)
+    result_barplot_fig = fresnel_summary_barplot(current_session)
 
     # Dash webapp layout
     app.layout = dash.html.Div([
@@ -1902,6 +1910,21 @@ if __name__ == '__main__':
                                                 dbc.DropdownMenuItem('.HTML', id='barplot-save-html', n_clicks=0),
                                                 dbc.DropdownMenuItem('.csv', id='barplot-save-csv', n_clicks=0)],
                                             style={'margin-left': '299px'}
+                                        ),
+                                        dash.dcc.Store(id='summary-plots-save-signal', storage_type='memory', data=None),
+                                        dash.dcc.Graph(id='summary-exclusion-barplot-graph',
+                                                       figure=exclusion_summary_barplot(current_session),
+                                                       mathjax=True, style={'margin-top': '30px'}),
+                                        dbc.DropdownMenu(
+                                            id='exclusion-barplot-save-dropdown',
+                                            label='Save as...',
+                                            color='info',
+                                            children=[
+                                                dbc.DropdownMenuItem('.PNG', id='exclusion-barplot-save-png', n_clicks=0),
+                                                dbc.DropdownMenuItem('.SVG', id='exclusion-barplot-save-svg', n_clicks=0),
+                                                dbc.DropdownMenuItem('.HTML', id='exclusion-barplot-save-html', n_clicks=0),
+                                                dbc.DropdownMenuItem('.csv', id='exclusion-barplot-save-csv', n_clicks=0)],
+                                            style={'margin-left': '299px'}
                                         )
                                     ]),
                                 ]),
@@ -3050,24 +3073,7 @@ if __name__ == '__main__':
                                              channel=current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.channel)), dash.html.Td(round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3))]) for fresnel_inst in current_session.fresnel_analysis_instances])]
             fresnel_result_summary_dataframe = table_header + table_body
 
-            x_barplot = [[current_session.fresnel_analysis_instances[
-                          fresnel_inst].fitted_layer for
-                      fresnel_inst in current_session.fresnel_analysis_instances],['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in current_session.fresnel_analysis_instances]]
-            y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for fresnel_inst in current_session.fresnel_analysis_instances]
-            result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
-            result_barplot_fig.update_layout(
-                yaxis_title='Fitted value',
-                font_family=PLOT_FONT,
-                font_size=19,
-                margin_r=25,
-                margin_l=60,
-                margin_t=40,
-                template='simple_white',
-                uirevision=True,
-                height=600,
-                width=900)
-            result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
-            result_barplot_fig.update_yaxes(mirror=True, showline=True)
+            result_barplot_fig = fresnel_summary_barplot(current_session)
 
             return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, 'finished', dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
@@ -3201,27 +3207,7 @@ if __name__ == '__main__':
                                            fresnel_inst in current_session.fresnel_analysis_instances])]
             fresnel_result_summary_dataframe = table_header + table_body
 
-            x_barplot = [[current_session.fresnel_analysis_instances[
-                          fresnel_inst].fitted_layer for
-                      fresnel_inst in current_session.fresnel_analysis_instances],
-                         ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
-                          current_session.fresnel_analysis_instances]]
-            y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
-                         fresnel_inst in current_session.fresnel_analysis_instances]
-            result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
-            result_barplot_fig.update_layout(
-                yaxis_title='Fitted value',
-                font_family=PLOT_FONT,
-                font_size=19,
-                margin_r=25,
-                margin_l=60,
-                margin_t=40,
-                template='simple_white',
-                uirevision=True,
-                height=600,
-                width=900)
-            result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
-            result_barplot_fig.update_yaxes(mirror=True, showline=True)
+            result_barplot_fig = fresnel_summary_barplot(current_session)
 
             return dash.no_update, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, dash.no_update, dash.no_update
 
@@ -3348,27 +3334,7 @@ if __name__ == '__main__':
                                                for fresnel_inst in current_session.fresnel_analysis_instances])]
                 fresnel_result_summary_dataframe = table_header + table_body
 
-                x_barplot = [[current_session.fresnel_analysis_instances[
-                          fresnel_inst].fitted_layer for
-                      fresnel_inst in current_session.fresnel_analysis_instances],
-                             ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
-                              current_session.fresnel_analysis_instances]]
-                y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
-                             fresnel_inst in current_session.fresnel_analysis_instances]
-                result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
-                result_barplot_fig.update_layout(
-                    yaxis_title='Fitted value',
-                    font_family=PLOT_FONT,
-                    font_size=19,
-                    margin_r=25,
-                    margin_l=60,
-                    margin_t=40,
-                    template='simple_white',
-                    uirevision=True,
-                    height=600,
-                    width=900)
-                result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
-                result_barplot_fig.update_yaxes(mirror=True, showline=True)
+                result_barplot_fig = fresnel_summary_barplot(current_session)
 
                 return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, False, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], \
                     lower_bound_, upper_bound_, current_fresnel_analysis.extinction_correction, result, current_fresnel_analysis.sensor_object_label, exclusion_analysis_dropdown, dash.no_update, dash.no_update, dash.no_update, 'Data path: \n' + current_fresnel_analysis.initial_data_path, False, dash.no_update, current_fresnel_analysis.fit_offset, current_fresnel_analysis.fit_prism_k
@@ -3651,27 +3617,7 @@ if __name__ == '__main__':
                                            fresnel_inst in current_session.fresnel_analysis_instances])]
             fresnel_result_summary_dataframe = table_header + table_body
 
-            x_barplot = [[current_session.fresnel_analysis_instances[
-                          fresnel_inst].fitted_layer for
-                      fresnel_inst in current_session.fresnel_analysis_instances],
-                         ['S' + str(current_session.fresnel_analysis_instances[fresnel_inst].sensor_object.object_id) + ' ' + current_session.fresnel_analysis_instances[fresnel_inst].fitted_layer for fresnel_inst in
-                          current_session.fresnel_analysis_instances]]
-            y_barplot = [round(current_session.fresnel_analysis_instances[fresnel_inst].fitted_result[0], 3) for
-                         fresnel_inst in current_session.fresnel_analysis_instances]
-            result_barplot_fig = go.Figure(go.Bar(x=x_barplot, y=y_barplot))
-            result_barplot_fig.update_layout(
-                yaxis_title='Fitted value',
-                font_family=PLOT_FONT,
-                font_size=19,
-                margin_r=25,
-                margin_l=60,
-                margin_t=40,
-                template='simple_white',
-                uirevision=True,
-                height=600,
-                width=900)
-            result_barplot_fig.update_xaxes(mirror=True, showline=True, autotickangles=[0, -90])
-            result_barplot_fig.update_yaxes(mirror=True, showline=True)
+            result_barplot_fig = fresnel_summary_barplot(current_session)
 
             return new_figure, fresnel_result_summary_dataframe, result_barplot_fig, dash.no_update, analysis_options, dash.no_update, dash.no_update, dash.no_update, current_fresnel_analysis.angle_range, current_fresnel_analysis.ini_guess[0], lower_bound_, upper_bound_, dash.no_update, result, current_fresnel_analysis.sensor_object_label, dash.no_update, dash.no_update, current_fresnel_analysis.measurement_data['angles'].iloc[0].astype('int'), current_fresnel_analysis.measurement_data['angles'].iloc[-1].astype('int')+1, 'Data path: \n' + current_fresnel_analysis.initial_data_path, dash.no_update, 'finished', dash.no_update, dash.no_update
 
@@ -5584,6 +5530,7 @@ if __name__ == '__main__':
         dash.Output('exclusion-choose-background-dropdown', 'options', allow_duplicate=True),
         dash.Output('chosen-sensor-dropdown', 'children', allow_duplicate=True),
         dash.Output('result-summary-fresnel-table', 'children', allow_duplicate=True),
+        dash.Output('summary-fresnel-barplot-graph', 'figure', allow_duplicate=True),
         dash.Input('fresnel-fit-result', 'children'),
         dash.Input('fresnel-all-wavelengths-run', 'n_clicks'),
         dash.State('fresnel-all-wavelengths-channels', 'value'),
@@ -5593,7 +5540,7 @@ if __name__ == '__main__':
         Repeats the current fresnel model for the other channels (wavelengths) of the measurement.
         """
         template = globals().get('current_fresnel_analysis')
-        no_change = [dash.no_update] * 4
+        no_change = [dash.no_update] * 5
 
         if 'fresnel-fit-result' == dash.ctx.triggered_id:
             # Channels of the measurement of the selected analysis
@@ -5649,7 +5596,8 @@ if __name__ == '__main__':
         sensor_options = [dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
                                                id={'type': 'sensor-list', 'index': sensor_id}, n_clicks=0)
                           for sensor_id in current_session.sensor_instances]
-        return [dash.no_update, dash.no_update, dash.no_update, children, fresnel_dropdown, background_options, sensor_options, fresnel_summary_table(current_session)]
+        return [dash.no_update, dash.no_update, dash.no_update, children, fresnel_dropdown, background_options, sensor_options, fresnel_summary_table(current_session),
+                fresnel_summary_barplot(current_session)]
 
     @dash.callback(
         dash.Output('exclusion-all-wavelengths-channels-hint', 'children'),
@@ -5810,6 +5758,7 @@ if __name__ == '__main__':
         dash.Output('exclusion-choose-background-dropdown', 'options', allow_duplicate=True),
         dash.Output('chosen-sensor-dropdown', 'children', allow_duplicate=True),
         dash.Output('result-summary-fresnel-table', 'children', allow_duplicate=True),
+        dash.Output('summary-fresnel-barplot-graph', 'figure', allow_duplicate=True),
         dash.Input('series-run', 'n_clicks'),
         dash.State('series-files', 'data'),
         dash.State('series-base-sensor', 'value'),
@@ -5817,7 +5766,7 @@ if __name__ == '__main__':
         dash.State('series-options', 'value'),
         prevent_initial_call=True)
     def run_layer_series(n_clicks, paths, sensor_id, recipe, options_values):
-        no_change = [dash.no_update] * 4
+        no_change = [dash.no_update] * 5
         if not paths:
             return [dbc.Alert('Choose the measurement files first.', color='warning'), dash.no_update, dash.no_update] + no_change
         template_sensor = current_session.sensor_instances.get(sensor_id)
@@ -5867,7 +5816,8 @@ if __name__ == '__main__':
         sensor_options = [dbc.DropdownMenuItem('S' + str(sensor_id) + ' ' + current_session.sensor_instances[sensor_id].name,
                                                id={'type': 'sensor-list', 'index': sensor_id}, n_clicks=0)
                           for sensor_id in current_session.sensor_instances]
-        return [children, results.to_dict('records'), False, fresnel_dropdown, background_options, sensor_options, fresnel_summary_table(current_session)]
+        return [children, results.to_dict('records'), False, fresnel_dropdown, background_options, sensor_options, fresnel_summary_table(current_session),
+                fresnel_summary_barplot(current_session)]
 
     @dash.callback(
         dash.Output('series-export-signal', 'data'),
@@ -5882,6 +5832,56 @@ if __name__ == '__main__':
         results = pd.DataFrame(results)
         results.to_csv(save_filename, sep=';', index=False)
         SPRpy_series.series_summary(results).to_csv(save_filename[:-4] + ' summary.csv', sep=';', index=False, encoding='utf-8-sig')
+        raise dash.exceptions.PreventUpdate
+
+    # Exclusion height plot of the result summary tab, updated whenever the exclusion height table is updated
+    @dash.callback(
+        dash.Output('summary-exclusion-barplot-graph', 'figure'),
+        dash.Input('result-summary-exclusion-table', 'children'),
+        prevent_initial_call=True)
+    def update_exclusion_summary_barplot(table_children):
+        return exclusion_summary_barplot(current_session)
+
+    # Saving the plots of the result summary tab
+    @dash.callback(
+        dash.Output('summary-plots-save-signal', 'data'),
+        dash.Input('barplot-save-png', 'n_clicks'),
+        dash.Input('barplot-save-svg', 'n_clicks'),
+        dash.Input('barplot-save-html', 'n_clicks'),
+        dash.Input('barplot-save-csv', 'n_clicks'),
+        dash.Input('exclusion-barplot-save-png', 'n_clicks'),
+        dash.Input('exclusion-barplot-save-svg', 'n_clicks'),
+        dash.Input('exclusion-barplot-save-html', 'n_clicks'),
+        dash.Input('exclusion-barplot-save-csv', 'n_clicks'),
+        prevent_initial_call=True)
+    def save_summary_plots(*clicks):
+        trigger = dash.ctx.triggered_id
+        if not trigger or not dash.ctx.triggered[0]['value']:
+            raise dash.exceptions.PreventUpdate
+        exclusion = trigger.startswith('exclusion-')
+        figure = exclusion_summary_barplot(current_session) if exclusion else fresnel_summary_barplot(current_session)
+        file_format = trigger.rsplit('-', 1)[-1]
+        if file_format in ('png', 'svg'):
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
+                                      file_types=[(file_format.upper() + ' files', '*.' + file_format)], default_extension='.' + file_format)
+            plotly.io.write_image(figure, save_filename, format=file_format)
+        elif file_format == 'html':
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
+                                      file_types=[('HTML files', '*.html')], default_extension='.html')
+            plotly.io.write_html(figure, save_filename, include_mathjax='cdn')
+        else:
+            save_filename = save_file(prompt='Choose save location and filename', prompt_folder=default_data_folder,
+                                      file_types=[('CSV files', '*.csv')], default_extension='.csv')
+            if exclusion:
+                rows = [{'Analysis': 'EH{id} {name}'.format(id=eh.object_id, name=eh.name),
+                         'Exclusion height mean [nm]': eh.mean_exclusion_height_result[0],
+                         'Exclusion height std [nm]': eh.mean_exclusion_height_result[1] if len(eh.mean_exclusion_height_result) > 1 else np.nan,
+                         'Exclusion heights of the steps [nm]': ' '.join('{h:.3f}'.format(h=h) for h in np.asarray(eh.all_exclusion_results[0, :], dtype=np.float64))}
+                        for eh in current_session.exclusion_height_analysis_instances.values()]
+            else:
+                rows = [{'Analysis': 'FM{id} {name}'.format(id=fm.object_id, name=fm.name), 'Sensor': 'S{id}'.format(id=fm.sensor_object.object_id),
+                         'Fitted layer': fm.fitted_layer, 'Value': fm.fitted_result[0]} for fm in current_session.fresnel_analysis_instances.values()]
+            pd.DataFrame(rows).to_csv(save_filename, sep=';', index=False)
         raise dash.exceptions.PreventUpdate
 
     @dash.callback(

@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.0.2
+
+### Features
+- Exclusion height plot in the result summary tab: mean height of each exclusion height analysis (± standard deviation over the injection steps) with the height of each step as points.
+
+### Fixes
+- The fresnel result plot in the result summary tab now updates after a layer series or an all wavelengths run (before, only the table did).
+- The "Save as..." menus of the result summary plots now work (.png, .svg, .html, .csv).
+
 ## v2.0.1
 
 ### Features
