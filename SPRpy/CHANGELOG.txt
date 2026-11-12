@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.3
+
+### Fixes
+- Updated fit warnings (yellow boxes) for fits that match the dip angle. A poor fit is now flagged above rms 0.02 when matching the dip angle (0.01 otherwise), since matching roughly doubles the rms of good fits, and a matched fit whose model dip is more than 1 mdeg from the measured SPR angle is flagged. "Fit all wavelengths" no longer flags large offsets (which also occur for good fits, e.g. in liquid); it now flags channels whose value differs by more than 25 % from the first channel, the direct sign of optical constants that do not match the wavelength.
+- The "All wavelengths" panel of the exclusion height tab is shown after "Initialize model" (together with "Run full calculation").
+
 ## v2.0.2
 
 ### Features

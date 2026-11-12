@@ -242,6 +242,23 @@ def test_channel_bounds_and_fit_warnings(tmp_path, defaults):
     assert bounds[1][0] >= 10 * fm.fitted_result[0] and bounds[0][0] <= fm.fitted_result[0] / 4
     fresnel_objects, _ = M.fit_fresnel_all_channels(session, fm, defaults)
     assert M.channel_fit_warnings(fresnel_objects[1]) == []
+    assert M.channel_fit_warnings(fresnel_objects[1], fm) == []  # Same layer in all channels
     other = fresnel_objects[1]
     other.fitted_result = np.array([other.bounds[1][0], 0.05, 0.0])
-    assert M.channel_fit_warnings(other) == ['fitted value at a bound', 'large offset']
+    assert M.channel_fit_warnings(other) == ['fitted value at a bound']  # Offsets are not flagged
+    assert M.channel_fit_warnings(other, fm)[-1].startswith('+')  # Differs from the template channel
+
+
+def test_fit_quality_warnings_depend_on_dip_matching():
+    from types import SimpleNamespace
+    fm = SimpleNamespace(bounds=[(0.1, -np.inf, 0), (20, np.inf, 0.1)], fitted_result=np.array([3.0, 0.08, 0.001]),
+                         match_dip_angle=True, dip_angle_mismatch=0.0002)
+    assert M.fit_quality_warnings(fm, 0.015) == []  # Matching the dip angle raises the rms of good fits
+    fm.match_dip_angle = False
+    assert M.fit_quality_warnings(fm, 0.015) == ['poor fit (rms 0.015)']
+    fm.dip_angle_mismatch = 0.009
+    assert M.fit_quality_warnings(fm, 0.005) == []  # Without matching the model dip is typically some mdeg off
+    fm.match_dip_angle, fm.dip_angle_mismatch = True, 0.002
+    assert M.fit_quality_warnings(fm, 0.005) == ['model dip +2.0 mdeg from the measured SPR angle']
+    del fm.match_dip_angle, fm.dip_angle_mismatch  # Analyses of older sessions
+    assert M.fit_quality_warnings(fm, 0.005) == []

@@ -1745,7 +1745,7 @@ if __name__ == '__main__':
                             ], id='exclusion-height-sensorgram-collapse', is_open=False, style={'width': '60%', 'margin-left': '3%'})
                         ], style={'display': 'flex', 'justify-content': 'center'}),
 
-                        dash.html.Div([
+                        dbc.Collapse(dash.html.Div([
                             dbc.Card(dbc.CardBody([
                                 dash.html.H5('All wavelengths'),
                                 dash.html.P('Runs this analysis (same points and settings as above) for each selected channel, with the fresnel '
@@ -1757,7 +1757,7 @@ if __name__ == '__main__':
                                 dbc.Button('Run all wavelengths', id='exclusion-all-wavelengths-run', color='success', n_clicks=0, style={'margin-top': '10px'}),
                                 dbc.Spinner(dash.html.Div(id='exclusion-all-wavelengths-result'), color='success', spinner_style={'margin-top': '10px'})
                             ]))
-                        ], style={'margin': '25px 5% 10px 5%'}),
+                        ], style={'margin': '25px 5% 10px 5%'}), id='exclusion-all-wavelengths-collapse', is_open=False),
                         # Results
                         dbc.Collapse([
                             dash.html.Div([
@@ -5571,7 +5571,7 @@ if __name__ == '__main__':
                          round(float(fm.fitted_result[2]), 5) if fm.fit_prism_k and len(fm.fitted_result) > 2 else '-',
                          round(float(fm.sensor_object.refractive_indices[-1]), 5),
                          '{a:.2f}-{b:.2f}'.format(a=fm.angle_range[0], b=fm.angle_range[1]),
-                         ', '.join(SPRpy_multichannel.channel_fit_warnings(fm)) or '-'])
+                         ', '.join(SPRpy_multichannel.channel_fit_warnings(fm, template)) or '-'])
         spot_lines = SPRpy_multichannel.spot_summary_lines(fresnel_objects, channel_spots, lambda fm: float(fm.fitted_result[0]), decimals=4)
         current_session.add_log('Fresnel modelling for all wavelengths from FM{id} ({layer}|{parameter}, scan {scan}): {spots}'.format(
             id=template.object_id, layer=template.fitted_layer, parameter=parameter, scan=getattr(template, 'scan_index', '?'), spots='; '.join(spot_lines)), save=True)
@@ -5579,12 +5579,12 @@ if __name__ == '__main__':
                                  'Offset', 'Prism k', 'Bulk RI', 'Angle range', 'Check'], rows),
                     dash.html.Ul([dash.html.Li(line) for line in spot_lines], style={'font-size': '0.9rem', 'margin-bottom': '4px'}),
                     dash.html.P('Scan {scan}. {note}'.format(scan=getattr(template, 'scan_index', '?'), note=WAVELENGTH_NOTE), style={'font-size': '0.8rem', 'color': '#6c757d'})]
-        flagged = [fm.sensor_object.channel for fm in fresnel_objects if SPRpy_multichannel.channel_fit_warnings(fm)]
+        flagged = [fm.sensor_object.channel for fm in fresnel_objects if SPRpy_multichannel.channel_fit_warnings(fm, template)]
         if flagged:
-            children.append(dbc.Alert('{channels}: the fit is at a bound or needs a large offset, so the model does not describe the measured dip '
-                                      'well. Check the optical constants for this wavelength in config.toml (gold and prism in particular): the '
-                                      'fit then compensates with a wrong layer thickness, which also affects exclusion heights calculated with this '
-                                      'background.'.format(channels=', '.join(flagged)), color='warning', style={'font-size': '0.85rem'}))
+            children.append(dbc.Alert('{channels}: see "Check" in the table. A fit at a bound, a poor fit (high rms) or a value that differs much '
+                                      'from the first channel (more than 25 %) usually means that the optical constants for this wavelength in config.toml '
+                                      '(gold and prism in particular) do not match the sensor and instrument: the fit then compensates with a wrong layer '
+                                      'thickness, which also affects exclusion heights calculated with this background.'.format(channels=', '.join(flagged)), color='warning', style={'font-size': '0.85rem'}))
         if notes:
             children.append(dash.html.Ul([dash.html.Li(note) for note in notes], style={'font-size': '0.8rem', 'color': '#6c757d'}))
 
@@ -5798,8 +5798,9 @@ if __name__ == '__main__':
                     dash.html.H5('All fits'),
                     dbc.Table.from_dataframe(per_sample, bordered=True, size='sm', striped=True, style={'font-size': '0.8rem'})]
         if not flagged.empty:
-            children.append(dbc.Alert(['Flagged fits (at a bound, or rms above 0.01: the model does not describe the dip well, e.g. because of the '
-                                       'optical constants for that wavelength in config.toml): ',
+            children.append(dbc.Alert(['Flagged fits (at a bound, poor fit with rms above 0.01, or 0.02 when matching the dip angle, or model dip not at '
+                                       'the measured SPR angle: the model does not describe the dip well, e.g. because of the optical constants '
+                                       'for that wavelength in config.toml): ',
                                        ', '.join('{s} {st} {c} ({check})'.format(s=row['Sample'], st=row['Step'], c=row['Channel'], check=row['Check'])
                                                  for _, row in flagged.iterrows())], color='warning', style={'font-size': '0.85rem'}))
         children.append(dash.html.Div('{n} fresnel analyses (e.g. FM{first} {name}) and {sensors} sensors (one per sample and channel, with a layer added '
@@ -5883,6 +5884,13 @@ if __name__ == '__main__':
                          'Fitted layer': fm.fitted_layer, 'Value': fm.fitted_result[0]} for fm in current_session.fresnel_analysis_instances.values()]
             pd.DataFrame(rows).to_csv(save_filename, sep=';', index=False)
         raise dash.exceptions.PreventUpdate
+
+    # The all wavelengths panel of the exclusion height tab is shown together with "Run full calculation" (after "Initialize model")
+    @dash.callback(
+        dash.Output('exclusion-all-wavelengths-collapse', 'is_open'),
+        dash.Input('exclusion-height-progress-collapse', 'is_open'))
+    def show_exclusion_all_wavelengths(progress_open):
+        return bool(progress_open)
 
     @dash.callback(
         dash.Input('export-single-file-button', 'n_clicks'),

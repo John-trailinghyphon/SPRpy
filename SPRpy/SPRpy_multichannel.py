@@ -310,17 +310,66 @@ def channel_bounds(template_fresnel):
     return [min(lower, float(template_fresnel.fitted_result[0]) / 4), max(upper, minimum_upper)]
 
 
-def channel_fit_warnings(fresnel_object, large_offset=0.03):
+# Limits of the fit quality checks. Matching the dip angle places the model dip at the measured SPR angle at the expense
+# of the rest of the curve, which roughly doubles the rms deviation of good fits (e.g. 0.002-0.003 at 670 nm and
+# 0.010-0.012 at 785 nm for dry SiO2/APS/SMCC/PEG sensors, compared to 0.001-0.002 and 0.005-0.006 without matching).
+RMS_LIMIT = 0.01  # Reflectivity units, reflectivity-only fit
+RMS_LIMIT_DIP_MATCHED = 0.02  # Reflectivity units, fit matching the dip angle
+DIP_MISMATCH_LIMIT = 0.001  # Degrees: the fit could not place the model dip at the measured angle
+
+
+def fit_rms(fresnel_object):
     """
-    Warnings for a channel fit: fitted value at a bound, or a large intensity offset. Both indicate that the model does
-    not describe the measured dip well, typically because the optical constants (e.g. of gold or the prism) for this
-    wavelength in config.toml do not match the sensor and instrument.
+    Root mean square deviation between the fitted model and the measured reflectivity within the angle range.
+    """
+    angles = fresnel_object.measurement_data['angles'].to_numpy(dtype=np.float64)
+    selection = (angles >= fresnel_object.angle_range[0]) & (angles <= fresnel_object.angle_range[1])
+    measured = fresnel_object.measurement_data['ydata'].to_numpy(dtype=np.float64)[selection]
+    return float(np.sqrt(np.mean((fresnel_object.fitted_data['ydata'].to_numpy(dtype=np.float64) - measured) ** 2)))
+
+
+def fit_quality_warnings(fresnel_object, rms=None):
+    """
+    Warnings for a fresnel fit (all wavelengths and layer series):
+    - the fitted value is at a bound (the fit did not converge within the bounds),
+    - poor fit: rms deviation above RMS_LIMIT (RMS_LIMIT_DIP_MATCHED when matching the dip angle, which raises the rms),
+      i.e. the model does not describe the shape of the dip, typically because the optical constants (e.g. of gold or
+      the prism) for this wavelength in config.toml do not match the sensor and instrument,
+    - when matching the dip angle: the fit could not place the model dip at the measured SPR angle (more than 1 mdeg off).
+      Without matching, the model dip is typically several mdeg off (shown in the fit result), which is not flagged.
+    Intensity offsets are not flagged: they differ between channels also for good fits (up to about 0.1 in liquid).
     """
     warnings = []
     if fit_at_bound(fresnel_object):
         warnings.append('fitted value at a bound')
-    if fresnel_object.fit_offset and len(fresnel_object.fitted_result) > 1 and abs(fresnel_object.fitted_result[1]) > large_offset:
-        warnings.append('large offset')
+    matched = bool(getattr(fresnel_object, 'match_dip_angle', False))
+    if rms is None:
+        try:
+            rms = fit_rms(fresnel_object)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            rms = np.nan
+    if np.isfinite(rms) and rms > (RMS_LIMIT_DIP_MATCHED if matched else RMS_LIMIT):
+        warnings.append('poor fit (rms {r:.3f})'.format(r=rms))
+    mismatch = getattr(fresnel_object, 'dip_angle_mismatch', np.nan)
+    if matched and mismatch is not None and np.isfinite(mismatch) and abs(mismatch) > DIP_MISMATCH_LIMIT:
+        warnings.append('model dip {m:+.1f} mdeg from the measured SPR angle'.format(m=mismatch * 1000))
+    return warnings
+
+
+def channel_fit_warnings(fresnel_object, template_fresnel=None, relative_limit=0.25, absolute_limit=0.5):
+    """
+    Warnings for a channel fit of "Fit all wavelengths": the checks of fit_quality_warnings, and a fitted value that
+    differs from the fitted value of the template (first) channel by more than relative_limit of it (and more than
+    absolute_limit, e.g. nm). A channel can describe its dip well and still give a different thickness when the optical
+    constants for its wavelength (gold and prism in particular) do not match the sensor and instrument, since the fit
+    then compensates with the layer thickness (and typically a larger offset).
+    """
+    warnings = fit_quality_warnings(fresnel_object)
+    if template_fresnel is not None and template_fresnel is not fresnel_object:
+        value, reference = float(fresnel_object.fitted_result[0]), float(template_fresnel.fitted_result[0])
+        if np.isfinite(value) and np.isfinite(reference) and abs(value - reference) > max(relative_limit * abs(reference), absolute_limit):
+            channel = getattr(template_fresnel.sensor_object, 'channel', None) or 'the first channel'
+            warnings.append('{d:+.2f} from {channel}'.format(d=value - reference, channel=channel))
     return warnings
 
 

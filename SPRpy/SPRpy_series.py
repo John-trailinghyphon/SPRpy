@@ -129,9 +129,7 @@ def fit_rms(fm):
     """
     Root mean square deviation between the fitted model and the measured reflectivity within the angle range.
     """
-    angles = fm.measurement_data['angles'].to_numpy(dtype=np.float64)
-    selection = (angles >= fm.angle_range[0]) & (angles <= fm.angle_range[1])
-    return float(np.sqrt(np.mean((fm.fitted_data['ydata'].to_numpy(dtype=np.float64) - fm.measurement_data['ydata'].to_numpy(dtype=np.float64)[selection]) ** 2)))
+    return M.fit_rms(fm)
 
 
 def add_layer(sensor, layer, n, k, thickness):
@@ -210,7 +208,7 @@ def run_layer_series(session, series, template_sensor, recipe, options, default_
                 layer = str(sensor.optical_parameters.iloc[sensor.fitted_layer_index[0], 0])
                 parameter = sensor.optical_parameters.columns[sensor.fitted_layer_index[1]]
                 rms = fit_rms(fm)
-                warnings = series_fit_warnings(fm, rms, options.get('rms_limit', 0.01))
+                warnings = series_fit_warnings(fm, rms)
                 rows.append({'Sample': sample, 'Step': step, 'Layer': layer, 'Variable': '{layer}|{parameter}'.format(layer=layer, parameter=parameter),
                              'Channel': label, 'Spot': M.channel_spot(path, channel_spots), 'Wavelength': sensor.wavelength,
                              'Value': float(fm.fitted_result[0]),
@@ -227,18 +225,12 @@ def run_layer_series(session, series, template_sensor, recipe, options, default_
     return pd.DataFrame(rows)
 
 
-def series_fit_warnings(fm, rms, rms_limit=0.01):
+def series_fit_warnings(fm, rms):
     """
-    Warnings for a fit of the series: fitted value at a bound, or a poor fit (root mean square deviation above
-    rms_limit, in reflectivity units). Intensity offsets are not flagged, since they differ between channels of dry
-    measurements also for good fits.
+    Warnings for a fit of the series: fitted value at a bound, poor fit (rms deviation) or model dip away from the
+    measured SPR angle (see SPRpy_multichannel.fit_quality_warnings).
     """
-    warnings = []
-    if M.fit_at_bound(fm):
-        warnings.append('fitted value at a bound')
-    if rms > rms_limit:
-        warnings.append('poor fit (rms {r:.3f})'.format(r=rms))
-    return warnings
+    return M.fit_quality_warnings(fm, rms)
 
 
 def layer_constants(default_sensor_values, recipe_row, wavelength):
