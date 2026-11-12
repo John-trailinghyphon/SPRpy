@@ -8,7 +8,7 @@ import copy
 import bottleneck
 import numpy as np
 from SPRpy_functions import *
-from fresnel_transfer_matrix import fresnel_calculation, TIR_shift_overlay
+from fresnel_transfer_matrix import fresnel_calculation, fit_spectrum, model_dip_angle, measured_dip_angle, DIP_ANGLE_WEIGHT, TIR_shift_overlay
 
 EXCLUSION_HEIGHT_SEARCH_METHODS = {'adaptive': 'Adaptive: sweep until the crossing, then refine (recommended)',
                                    'grid': 'Fixed grid of height steps (SPRpy <= 1.2)'}
@@ -391,6 +391,9 @@ class FresnelModel:
         self.fitted_data = None
         self.fitted_result = np.array([0, 0, 0])
         self.update_bulk_RI_from_TIR = True  # If False, the bulk refractive index in the sensor table is used as is
+        self.match_dip_angle = True  # Fit the model dip at the measured SPR angle (see fresnel_residuals); False for older sessions
+        self.measured_dip_angle = np.nan  # SPR angle of the measured spectrum (deg)
+        self.dip_angle_mismatch = np.nan  # Angle of the fitted model dip minus the measured SPR angle (deg)
         self.fitted_layer_index = copy.deepcopy(self.sensor_object.fitted_layer_index)  # Deepcopy to not overwrite if fitting multiple layers in the same sensor object
         self.fitted_layer = copy.deepcopy(self.sensor_object.optical_parameters.iloc[self.fitted_layer_index[0], 0])
 
@@ -436,25 +439,27 @@ class FresnelModel:
         # weights = np.ones(len(selection_ydata_))
         # weights[selection_ydata_.argmin():-1] = 2
 
+        # SPR angle of the measured spectrum: the model dip is placed there with match_dip_angle, and the difference
+        # between the model dip and this angle is reported in either case
+        match_dip_angle = getattr(self, 'match_dip_angle', False)
+        self.measured_dip_angle = measured_dip_angle(xdata_, ydata_, self.SPR_TIR_fitting_parameters)
+
         # Perform the first fitting
-        result = scipy.optimize.least_squares(fresnel_calculation,
-                                              self.ini_guess,
-                                              bounds=self.bounds,
-                                              kwargs={'fitted_layer_index': self.sensor_object.fitted_layer_index,
-                                                      'wavelength': self.sensor_object.wavelength,
-                                                      'layer_thicknesses': self.sensor_object.layer_thicknesses,
-                                                      'n_re': self.sensor_object.refractive_indices,
-                                                      'n_im': self.sensor_object.extinction_coefficients,
-                                                      'angles': selection_xdata_,
-                                                      'ydata': selection_ydata_,
-                                                      'weights': weights,
-                                                      'ydata_type': self.sensor_object.data_type,
-                                                      'polarization': self.polarization,
-                                                      'ydata_offset': self.y_offset},
-                                              loss='huber',
-                                              ftol=1e-12,
-                                              xtol=1e-12,
-                                              gtol=1e-12)
+        result = fit_spectrum(self.ini_guess, self.bounds,
+                              {'fitted_layer_index': self.sensor_object.fitted_layer_index,
+                               'wavelength': self.sensor_object.wavelength,
+                               'layer_thicknesses': self.sensor_object.layer_thicknesses,
+                               'n_re': self.sensor_object.refractive_indices,
+                               'n_im': self.sensor_object.extinction_coefficients,
+                               'angles': selection_xdata_,
+                               'ydata': selection_ydata_,
+                               'weights': weights,
+                               'ydata_type': self.sensor_object.data_type,
+                               'polarization': self.polarization,
+                               'ydata_offset': self.y_offset},
+                              measured_dip_angle=self.measured_dip_angle,
+                              dip_weight=DIP_ANGLE_WEIGHT if match_dip_angle else 0.0,
+                              loss='huber', ftol=1e-12, xtol=1e-12, gtol=1e-12)
 
         # Collect the results from least_squares object and calculate corresponding fresnel coefficients
         self.fitted_result = np.array(result['x'])
@@ -480,6 +485,14 @@ class FresnelModel:
 
         # Compile into fresnel_coefficients data frame
         self.fitted_data = pd.DataFrame(data={'angles': selection_xdata_, 'ydata': fresnel_coefficients})
+
+        # Angle of the fitted model dip relative to the measured SPR angle
+        measured = self.measured_dip_angle if np.isfinite(self.measured_dip_angle) else float(selection_xdata_.iloc[int(np.argmin(selection_ydata_.to_numpy()))])
+        self.dip_angle_mismatch = model_dip_angle(self.fitted_result, measured,
+                                                  fitted_layer_index=self.sensor_object.fitted_layer_index, wavelength=self.sensor_object.wavelength,
+                                                  layer_thicknesses=self.sensor_object.layer_thicknesses, n_re=self.sensor_object.refractive_indices,
+                                                  n_im=self.sensor_object.extinction_coefficients, polarization=self.polarization,
+                                                  ydata_offset=self.y_offset) - measured if np.isfinite(self.measured_dip_angle) else np.nan
 
         return self.fitted_data
 
@@ -542,6 +555,7 @@ class ExclusionHeight:
         self.fit_prism = False
         self.bulk_RI_method = 'edge_overlay'  # How the bulk RI change between buffer and probe is determined, see EXCLUSION_BULK_RI_METHODS
         self.height_search = 'adaptive'  # How the crossing of the buffer and probe curves is searched, see EXCLUSION_HEIGHT_SEARCH_METHODS
+        self.match_dip_angle = True  # Fit the model dip at the measured SPR angle of each buffer and probe spectrum (False for older sessions)
         self.TIR_shifts = []  # TIR shift (deg) between each buffer and its probe, used for the bulk RI change
         self.height_sensitivity = np.array([np.nan])  # Change of each exclusion height (nm) per +1 mdeg error in the TIR shift
 
@@ -683,19 +697,22 @@ def fit_surface_layer(exclusion_height_analysis_object, reflectivity_df, bulk_RI
     layer_thicknesses[-2] = height  # Surface layer height
     extinction_coefficients = np.array(eh.sensor_object.extinction_coefficients, dtype=np.float64)
 
-    result = scipy.optimize.least_squares(fresnel_calculation,
-                                          np.array(initial_guess, dtype=np.float64),
-                                          bounds=bounds,
-                                          kwargs={'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
-                                                  'wavelength': eh.sensor_object.wavelength,
-                                                  'layer_thicknesses': layer_thicknesses,
-                                                  'n_re': refractive_indices,
-                                                  'n_im': extinction_coefficients,
-                                                  'angles': reflectivity_df['angles'].to_numpy(),
-                                                  'ydata': reflectivity_df['reflectivity'].to_numpy(),
-                                                  'ydata_type': eh.sensor_object.data_type,
-                                                  'ydata_offset': eh.fresnel_object.y_offset,
-                                                  'polarization': eh.polarization})
+    # SPR angle of the measured spectrum, at which the model dip is placed (with match_dip_angle)
+    match_dip_angle = getattr(eh, 'match_dip_angle', False)
+    dip_angle = measured_dip_angle(reflectivity_df['angles'], reflectivity_df['reflectivity'], eh.SPR_TIR_fitting_parameters) if match_dip_angle else None
+
+    result = fit_spectrum(initial_guess, bounds,
+                          {'fitted_layer_index': (-2, 2),  # Should always be the RI of the surface layer
+                           'wavelength': eh.sensor_object.wavelength,
+                           'layer_thicknesses': layer_thicknesses,
+                           'n_re': refractive_indices,
+                           'n_im': extinction_coefficients,
+                           'angles': reflectivity_df['angles'].to_numpy(),
+                           'ydata': reflectivity_df['reflectivity'].to_numpy(),
+                           'ydata_type': eh.sensor_object.data_type,
+                           'ydata_offset': eh.fresnel_object.y_offset,
+                           'polarization': eh.polarization},
+                          measured_dip_angle=dip_angle, dip_weight=DIP_ANGLE_WEIGHT if match_dip_angle else 0.0)
     return result['x']
 
 

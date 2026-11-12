@@ -280,6 +280,7 @@ def copy_fit_settings(template_fresnel, fresnel_object, reflectivity_df):
     fresnel_object.fit_offset = template_fresnel.fit_offset
     fresnel_object.fit_prism_k = template_fresnel.fit_prism_k
     fresnel_object.update_bulk_RI_from_TIR = getattr(template_fresnel, 'update_bulk_RI_from_TIR', True)
+    fresnel_object.match_dip_angle = getattr(template_fresnel, 'match_dip_angle', False)
     fresnel_object.extinction_correction = template_fresnel.extinction_correction
     fresnel_object.bounds = channel_bounds(template_fresnel)
     fresnel_object.y_offset = initial_offset(fresnel_object, reflectivity_df) if fresnel_object.fit_offset else 0
@@ -501,8 +502,8 @@ def exclusion_height_all_channels(session, template_exclusion, logical_cores, ch
             exclusion_object.initial_data_path = path
             exclusion_object.sensorgram_data = sensorgram_df.iloc[:, :3]
             for attribute in ('sensorgram_offset_ind', 'd_n_pair_resolution', 'RI_bounds', 'RI_initial_guess',
-                              'fit_offset', 'fit_prism', 'height_search', 'injection_points', 'buffer_points', 'probe_points'):
-                setattr(exclusion_object, attribute, copy.deepcopy(getattr(template_exclusion, attribute, 'grid' if attribute == 'height_search' else None)))
+                              'fit_offset', 'fit_prism', 'height_search', 'match_dip_angle', 'injection_points', 'buffer_points', 'probe_points'):
+                setattr(exclusion_object, attribute, copy.deepcopy(getattr(template_exclusion, attribute, {'height_search': 'grid', 'match_dip_angle': False}.get(attribute))))
             exclusion_object.height_bounds = list(template_exclusion.height_bounds)
             exclusion_object.height_steps = np.array(template_exclusion.height_steps, dtype=np.float64)
             template_exclusion.channel_exclusion_ids[path] = exclusion_object.object_id

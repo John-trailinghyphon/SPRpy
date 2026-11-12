@@ -155,6 +155,130 @@ def fresnel_calculation(fitted_var=None,
 # TIR angle determination
 # ----------------------------------------------------------------------------------------------------------------------
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Fitting with the SPR dip angle
+# ----------------------------------------------------------------------------------------------------------------------
+
+DIP_ANGLE_WEIGHT = 10.0  # Weight of the dip angle in fits (per degree): a mismatch of 1 mdeg weighs as much as a reflectivity
+                         # error of 0.01 at every point of the fit, so that the dip angle is matched closely
+
+
+def model_dip_angle(fitted_var, guess, half_width=0.4, coarse_points=41, fine_points=21, **fresnel_kwargs):
+    """
+    Angle (deg) of the minimum of the modelled reflectivity near guess: the lowest point of the model on a coarse angle
+    grid, refined on a fine grid around it, each time with a parabola through the lowest point and its neighbours
+    (accurate to about 0.02 mdeg). The coarse grid is widened if the minimum lies at its edge, and the search is then
+    repeated around the minimum found.
+
+    :param fitted_var: fitted values (as for fresnel_calculation)
+    :param fresnel_kwargs: the other arguments of fresnel_calculation (angles, ydata and weights are ignored)
+    """
+    kwargs = {key: value for key, value in fresnel_kwargs.items() if key not in ('angles', 'ydata', 'weights')}
+    for key in ('layer_thicknesses', 'n_re', 'n_im'):  # fresnel_calculation writes the fitted values into these arrays
+        if key in kwargs:
+            kwargs[key] = np.array(kwargs[key], dtype=np.float64)
+
+    def lowest(angles):
+        reflectivity = fresnel_calculation(fitted_var, angles=angles, **kwargs)
+        index = int(np.argmin(reflectivity))
+        if index == 0 or index == len(angles) - 1:
+            return float(angles[index]), False
+        y0, y1, y2 = reflectivity[index - 1], reflectivity[index], reflectivity[index + 1]
+        curvature = y0 - 2 * y1 + y2
+        shift = 0.5 * (y0 - y2) / curvature if curvature > 0 else 0.0
+        return float(angles[index] + shift * (angles[1] - angles[0])), True
+
+    search_width = half_width
+    for _ in range(5):
+        angle, inside = lowest(np.linspace(guess - search_width, guess + search_width, coarse_points))
+        if inside and search_width <= half_width:
+            step = 2 * search_width / (coarse_points - 1)
+            fine_angle, fine_inside = lowest(np.linspace(angle - 2 * step, angle + 2 * step, fine_points))
+            return fine_angle if fine_inside else angle
+        if inside:
+            guess, search_width = angle, half_width  # Found on a widened grid: search again around it at normal resolution
+        else:
+            guess, search_width = angle, search_width * 3  # Minimum at the edge of the grid: look further out
+    return angle
+
+
+_measured_dip_angles = {}  # Measured SPR angles of recently fitted spectra (the same spectrum is often fitted many times)
+
+
+def measured_dip_angle(xdata, ydata, SPR_TIR_fitting_parameters=None):
+    """
+    SPR angle of a measured spectrum for fitting with the dip angle: the adaptive dip-level method (independent of the
+    SPR method chosen for the sensorgram), above the TIR range if it is given. Returns nan if no dip is found.
+    """
+    xdata, ydata = _as_numpy(xdata), _as_numpy(ydata)
+    parameters = SPR_TIR_fitting_parameters or {}
+    key = (len(xdata), float(xdata[0]), float(xdata[-1]), float(np.sum(ydata)), float(np.sum(ydata * np.arange(len(ydata)))),
+           tuple(parameters.get('TIR range', ())), parameters.get('SPR dip level', 0.2))
+    if key not in _measured_dip_angles:
+        if len(_measured_dip_angles) > 1000:
+            _measured_dip_angles.clear()
+        _measured_dip_angles[key] = _measured_dip_angle(xdata, ydata, parameters)
+    return _measured_dip_angles[key]
+
+
+def _measured_dip_angle(xdata, ydata, parameters):
+    min_angle = parameters['TIR range'][1] if 'TIR range' in parameters else None
+    try:
+        return float(SPR_determination_dip_level(_as_numpy(xdata), _as_numpy(ydata), dip_level=parameters.get('SPR dip level', 0.2),
+                                                 min_angle=min_angle)[0])
+    except Exception:
+        return np.nan
+
+
+def fresnel_residuals(fitted_var, measured_dip_angle=None, dip_weight=0.0, **fresnel_kwargs):
+    """
+    Residuals for fitting a measured reflectivity spectrum (fresnel_calculation with ydata), with an extra residual for
+    the difference between the angle of the modelled and the measured SPR dip when dip_weight > 0.
+
+    The SPR angle is what carries the information in a spectrum, while the reflectivity values are also affected by the
+    optics, the calibration and differences between the model and reality (which the intensity offset and prism k
+    absorb). Fitting the reflectivity alone balances the errors over the whole angle range, which can leave the model
+    dip some millidegrees from the measured one (depending on the angle range). With the dip angle residual the model
+    dip is placed at the measured dip angle, and the reflectivity residuals determine the rest (offset, prism k).
+
+    :param measured_dip_angle: SPR angle of the measured spectrum (deg), e.g. from SPR_determination
+    :param dip_weight: weight of the dip angle residual per degree (e.g. DIP_ANGLE_WEIGHT), 0 for reflectivity only.
+                       It is scaled with the square root of the number of points, so that it does not depend on the
+                       angle range.
+    """
+    residuals = fresnel_calculation(fitted_var, **fresnel_kwargs)
+    if dip_weight and measured_dip_angle is not None and np.isfinite(measured_dip_angle):
+        mismatch = model_dip_angle(fitted_var, measured_dip_angle, **fresnel_kwargs) - measured_dip_angle
+        residuals = np.append(residuals, dip_weight * np.sqrt(len(residuals)) * mismatch)
+    return residuals
+
+
+def fit_spectrum(initial_guess, bounds, fresnel_kwargs, measured_dip_angle=None, dip_weight=0.0, **least_squares_options):
+    """
+    Fits a measured spectrum (fresnel_kwargs as for fresnel_calculation, including angles and ydata) with
+    scipy.optimize.least_squares. With dip_weight > 0, the fit is done in two steps: first the reflectivity alone, then
+    from that result with the dip angle residual added (see fresnel_residuals). Starting the dip angle fit close to the
+    solution avoids that the large dip angle weight pulls the fit to a different combination of the fitted values
+    (e.g. thickness, offset and prism k) from a distant initial guess. With one fitted value, one fit is enough.
+
+    :return: the least_squares result
+    """
+    import scipy.optimize
+    initial_guess = np.array(initial_guess, dtype=np.float64)
+    use_dip = bool(dip_weight) and measured_dip_angle is not None and np.isfinite(measured_dip_angle)
+    if use_dip and initial_guess.size == 1:
+        # One fitted value (e.g. the RI of the surface layer): nothing to trade off, so one fit with the dip angle is enough
+        return scipy.optimize.least_squares(fresnel_residuals, initial_guess, bounds=bounds,
+                                            kwargs=dict(fresnel_kwargs, measured_dip_angle=measured_dip_angle, dip_weight=dip_weight),
+                                            **least_squares_options)
+    result = scipy.optimize.least_squares(fresnel_residuals, initial_guess, bounds=bounds, kwargs=dict(fresnel_kwargs), **least_squares_options)
+    if use_dip:
+        result = scipy.optimize.least_squares(fresnel_residuals, result['x'], bounds=bounds,
+                                              kwargs=dict(fresnel_kwargs, measured_dip_angle=measured_dip_angle, dip_weight=dip_weight),
+                                              **least_squares_options)
+    return result
+
+
 def _as_numpy(data):
     if isinstance(data, (pd.Series, pd.DataFrame)):
         return data.to_numpy(dtype=np.float64)

@@ -100,6 +100,7 @@ def fit_series_step(session, sensor, path, name, options, reflectivity_df=None):
     fm.fit_offset = options['fit_offset']
     fm.fit_prism_k = options['fit_prism_k'] and options['fit_offset']
     fm.update_bulk_RI_from_TIR = options['bulk_from_TIR']
+    fm.match_dip_angle = options.get('match_dip_angle', True)
     fm.extinction_correction = 0
     fm.y_offset = M.initial_offset(fm, reflectivity_df) if fm.fit_offset else 0
 

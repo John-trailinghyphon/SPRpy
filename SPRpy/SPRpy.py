@@ -169,6 +169,28 @@ def small_table(columns, rows):
                      bordered=True, size='sm', striped=True, style={'margin-top': '10px', 'font-size': '0.9rem'})
 
 
+def fit_result_text(fresnel_analysis):
+    """
+    Fit result of a fresnel analysis, with the angle of the fitted model dip relative to the measured SPR angle.
+    """
+    if fresnel_analysis.fitted_result is None:
+        return 'Fit result: None'
+    text = 'Fit result: {res}'.format(res=round(fresnel_analysis.fitted_result[0], 4))
+    mismatch = getattr(fresnel_analysis, 'dip_angle_mismatch', np.nan)
+    if mismatch is not None and np.isfinite(mismatch):
+        text += ' (model dip {m:+.1f} mdeg from the measured SPR angle{matched})'.format(
+            m=mismatch * 1000, matched=', dip angle matched' if getattr(fresnel_analysis, 'match_dip_angle', False) else '')
+    return text
+
+
+def dip_log_text(fresnel_analysis):
+    mismatch = getattr(fresnel_analysis, 'dip_angle_mismatch', np.nan)
+    if mismatch is None or not np.isfinite(mismatch):
+        return ''
+    return ', model dip {m:+.2f} mdeg from the measured SPR angle{matched}'.format(
+        m=mismatch * 1000, matched=' (matched)' if getattr(fresnel_analysis, 'match_dip_angle', False) else '')
+
+
 def exclusion_height_result_texts(exclusion_height_analysis):
     """
     Result texts of an exclusion height analysis: mean height, mean RI, all heights and all RIs.
@@ -293,7 +315,10 @@ if __name__ == '__main__':
                 current_session = pickle.load(file)
 
             # Assert that the session file is of the same version as the current SPRpy version
-            if current_session.version != version and current_session.version.split('.')[0] == '1' and version.split('.')[0] == '2':
+            if current_session.version != version and current_session.version.split('.')[0] == version.split('.')[0]:
+                print('Note: the session file was created with SPRpy ' + current_session.version + ' (now ' + version + '). Its analyses keep '
+                      'the settings they were made with (new options, e.g. matching the dip angle, can be switched on for them).')
+            elif current_session.version != version and current_session.version.split('.')[0] == '1' and version.split('.')[0] == '2':
                 print('Note: the session file was created with SPRpy ' + current_session.version + '. Sessions from SPRpy 1.x can be '
                       'opened with SPRpy 2: their analyses keep the methods and settings they were made with (e.g. the legacy TIR '
                       'method, or separate TIR angles for the exclusion height) until they are run again with new settings.')
@@ -1256,8 +1281,9 @@ if __name__ == '__main__':
                                                 dbc.Checklist(id='series-options',
                                                               options=[{'label': 'Fit reflectivity offset', 'value': 'offset'},
                                                                        {'label': 'Fit prism k', 'value': 'prism'},
-                                                                       {'label': 'Bulk RI from TIR angle', 'value': 'bulk'}],
-                                                              value=['offset', 'prism', 'bulk'], inline=True, style={'margin-top': '15px'}),
+                                                                       {'label': 'Bulk RI from TIR angle', 'value': 'bulk'},
+                                                                       {'label': 'Match dip angle', 'value': 'dip'}],
+                                                              value=['offset', 'prism', 'bulk', 'dip'], inline=True, style={'margin-top': '15px'}),
                                                 dbc.ButtonGroup([
                                                     dbc.Button('Run layer series', id='series-run', n_clicks=0, color='success'),
                                                     dbc.Button('Export results (.csv)', id='series-export', n_clicks=0, color='info', disabled=True),
@@ -1357,6 +1383,17 @@ if __name__ == '__main__':
                                                             dbc.Tooltip('When checked (default), the refractive index of the bulk layer is calculated from the TIR angle of the measurement '
                                                                         'every time the model is run. Uncheck it to use the bulk refractive index entered in the sensor table instead.',
                                                                         target='fresnel-analysis-bulk-RI-from-TIR', placement='top'),
+                                                        ], width='auto', style={'padding-top': '20px'}),
+                                                        dbc.Col([
+                                                            dbc.Checkbox(
+                                                                id='fresnel-analysis-match-dip',
+                                                                label="Match dip angle?",
+                                                                value=True),
+                                                            dbc.Tooltip('When checked (default), the model dip is placed at the measured SPR angle (which carries the information '
+                                                                        'about the layer), and the reflectivity offset and prism k describe the depth and width of the dip. '
+                                                                        'Otherwise the reflectivity is fitted over the whole angle range, which can leave the model dip some '
+                                                                        'millidegrees from the measured one, depending on the angle range (as in SPRpy <= 2.0.0).',
+                                                                        target='fresnel-analysis-match-dip', placement='top'),
                                                         ], width='auto', style={'padding-top': '20px'}),
                                                     ]),
                                                     dbc.Row([
@@ -1581,6 +1618,15 @@ if __name__ == '__main__':
                                                                     id='exclusion-height-analysis-prism-refit',
                                                                     label="Refitting prism k?",
                                                                     value=False)
+                                                            ], width='auto'),
+                                                            dbc.Col([
+                                                                dbc.Checkbox(
+                                                                    id='exclusion-height-match-dip',
+                                                                    label=dash.html.Span('Match dip angle?', className='sprpy-help',
+                                                                                         title='When checked (default), the model dip of each buffer and probe spectrum is placed at its '
+                                                                                               'measured SPR angle when fitting the RI at each height (as in SPR_WetHeight.m), instead of '
+                                                                                               'fitting the reflectivity over the whole angle range.'),
+                                                                    value=True)
                                                             ], width='auto'),
                                                         ]),
                                                         dbc.Row([
@@ -2746,18 +2792,19 @@ if __name__ == '__main__':
 
     @dash.callback(
         dash.Output('fresnel-analysis-bulk-RI-from-TIR', 'value'),
+        dash.Output('fresnel-analysis-match-dip', 'value'),
         dash.Input({'type': 'fresnel-analysis-list', 'index': dash.ALL}, 'n_clicks'),
         dash.Input('add-fresnel-analysis-confirm', 'n_clicks'),
         prevent_initial_call=True)
     def update_bulk_RI_flag_checkbox(selected_fresnel_object, add_confirm):
         if 'add-fresnel-analysis-confirm' == dash.ctx.triggered_id:
-            return True
+            return True, True
         if not dash.ctx.triggered or not dash.ctx.triggered[0]['value']:
             raise dash.exceptions.PreventUpdate
         analysis_object = current_session.fresnel_analysis_instances.get(dash.ctx.triggered_id['index'])
         if analysis_object is None:
             raise dash.exceptions.PreventUpdate
-        return getattr(analysis_object, 'update_bulk_RI_from_TIR', True)
+        return getattr(analysis_object, 'update_bulk_RI_from_TIR', True), getattr(analysis_object, 'match_dip_angle', False)
 
     @dash.callback(
         dash.Output('sensorgram-correction-layer-S_SPR', 'value'),
@@ -2827,11 +2874,12 @@ if __name__ == '__main__':
         dash.State('fresnel-analysis-elastomer-fit', 'value'),
         dash.State('fresnel-fit-option-pfactor', 'value'),
         dash.State('fresnel-analysis-bulk-RI-from-TIR', 'value'),
+        dash.State('fresnel-analysis-match-dip', 'value'),
         prevent_initial_call=True)
     def update_reflectivity_fresnel_graph(run_model, add_button, add_confirm_button, remove_button, remove_confirm, remove_cancel, rangeslider_inp,
                                           selected_fresnel_object, save_png, save_svg, save_html, save_csv, rename_button, rename_confirm, batch_start_signal, analysis_name, figure_JSON, rangeslider_state, ini_guess,
                                           lower_bound, upper_bound,
-                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_newlayer_radio_selection, batch_sensor_index, batch_analysis_index, offset_fit_flag, elastomer_fit_flag, polarization_factor, bulk_RI_from_TIR_flag):
+                                          extinction_correction, analysis_name_, batch_files, background_sensors, batch_radio_selection, batch_newlayer_radio_selection, batch_sensor_index, batch_analysis_index, offset_fit_flag, elastomer_fit_flag, polarization_factor, bulk_RI_from_TIR_flag, match_dip_flag):
 
         global current_fresnel_analysis
         global current_data_path
@@ -2904,6 +2952,7 @@ if __name__ == '__main__':
             current_fresnel_analysis.fit_offset = offset_fit_flag
             current_fresnel_analysis.fit_prism_k = elastomer_fit_flag
             current_fresnel_analysis.update_bulk_RI_from_TIR = bool(bulk_RI_from_TIR_flag)
+            current_fresnel_analysis.match_dip_angle = bool(match_dip_flag)
 
             # Determine number of simultaneous fitting variables
             if current_fresnel_analysis.fit_offset and current_fresnel_analysis.fit_prism_k:
@@ -2945,12 +2994,12 @@ if __name__ == '__main__':
                 value=current_fresnel_analysis.fitted_result[0],
                 extra=(', offset {o:.4f}'.format(o=current_fresnel_analysis.fitted_result[1]) if current_fresnel_analysis.fit_offset and len(current_fresnel_analysis.fitted_result) > 1 else '')
                       + (', prism k {k:.5f}'.format(k=current_fresnel_analysis.fitted_result[2]) if current_fresnel_analysis.fit_prism_k and len(current_fresnel_analysis.fitted_result) > 2 else '')
-                      + ('' if getattr(current_fresnel_analysis, 'update_bulk_RI_from_TIR', True) else ', bulk RI from sensor table'),
+                      + ('' if getattr(current_fresnel_analysis, 'update_bulk_RI_from_TIR', True) else ', bulk RI from sensor table') + dip_log_text(current_fresnel_analysis),
                 sensor=current_fresnel_analysis.sensor_object.object_id, file=current_fresnel_analysis.initial_data_path.split('/')[-1],
                 low=current_fresnel_analysis.angle_range[0], high=current_fresnel_analysis.angle_range[1]), save=True)
 
             # Fit result text
-            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
+            result = fit_result_text(current_fresnel_analysis)
 
             # Plot fitted trace
             new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
@@ -3215,7 +3264,7 @@ if __name__ == '__main__':
                                                current_session.fresnel_analysis_instances]
 
                 if current_fresnel_analysis.fitted_result is not None:
-                    result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
+                    result = fit_result_text(current_fresnel_analysis)
                 else:
                     result = 'Fit result: None'
 
@@ -3389,6 +3438,7 @@ if __name__ == '__main__':
                     current_fresnel_analysis.y_offset = example_analysis_object.y_offset
                     current_fresnel_analysis.fit_prism_k = example_analysis_object.fit_prism_k
                     current_fresnel_analysis.update_bulk_RI_from_TIR = getattr(example_analysis_object, 'update_bulk_RI_from_TIR', True)
+                    current_fresnel_analysis.match_dip_angle = getattr(example_analysis_object, 'match_dip_angle', False)
 
                     # Run calculations and modelling
                     fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
@@ -3411,7 +3461,7 @@ if __name__ == '__main__':
                             value=current_fresnel_analysis.fitted_result[0],
                             extra=(', offset {o:.4f}'.format(o=current_fresnel_analysis.fitted_result[1]) if current_fresnel_analysis.fit_offset and len(current_fresnel_analysis.fitted_result) > 1 else '')
                                   + (', prism k {k:.5f}'.format(k=current_fresnel_analysis.fitted_result[2]) if current_fresnel_analysis.fit_prism_k and len(current_fresnel_analysis.fitted_result) > 2 else '')
-                                  + ('' if getattr(current_fresnel_analysis, 'update_bulk_RI_from_TIR', True) else ', bulk RI from sensor table'),
+                                  + ('' if getattr(current_fresnel_analysis, 'update_bulk_RI_from_TIR', True) else ', bulk RI from sensor table') + dip_log_text(current_fresnel_analysis),
                             sensor=current_fresnel_analysis.sensor_object.object_id, file=current_fresnel_analysis.initial_data_path.split('/')[-1],
                             low=current_fresnel_analysis.angle_range[0], high=current_fresnel_analysis.angle_range[1]))
 
@@ -3491,6 +3541,7 @@ if __name__ == '__main__':
                     current_fresnel_analysis.y_offset = example_analysis_object.y_offset
                     current_fresnel_analysis.fit_prism_k = example_analysis_object.fit_prism_k
                     current_fresnel_analysis.update_bulk_RI_from_TIR = getattr(example_analysis_object, 'update_bulk_RI_from_TIR', True)
+                    current_fresnel_analysis.match_dip_angle = getattr(example_analysis_object, 'match_dip_angle', False)
 
                     # Run calculations and modelling
                     fresnel_df = current_fresnel_analysis.model_reflectivity_trace()
@@ -3513,7 +3564,7 @@ if __name__ == '__main__':
                             value=current_fresnel_analysis.fitted_result[0],
                             extra=(', offset {o:.4f}'.format(o=current_fresnel_analysis.fitted_result[1]) if current_fresnel_analysis.fit_offset and len(current_fresnel_analysis.fitted_result) > 1 else '')
                                   + (', prism k {k:.5f}'.format(k=current_fresnel_analysis.fitted_result[2]) if current_fresnel_analysis.fit_prism_k and len(current_fresnel_analysis.fitted_result) > 2 else '')
-                                  + ('' if getattr(current_fresnel_analysis, 'update_bulk_RI_from_TIR', True) else ', bulk RI from sensor table'),
+                                  + ('' if getattr(current_fresnel_analysis, 'update_bulk_RI_from_TIR', True) else ', bulk RI from sensor table') + dip_log_text(current_fresnel_analysis),
                             sensor=current_fresnel_analysis.sensor_object.object_id, file=current_fresnel_analysis.initial_data_path.split('/')[-1],
                             low=current_fresnel_analysis.angle_range[0], high=current_fresnel_analysis.angle_range[1]))
 
@@ -3522,7 +3573,7 @@ if __name__ == '__main__':
                     current_session.save_session()
 
             # Fit result text
-            result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
+            result = fit_result_text(current_fresnel_analysis)
 
             # Plot fitted trace
             new_figure = go.Figure(go.Scatter(x=current_fresnel_analysis.measurement_data['angles'],
@@ -3664,7 +3715,7 @@ if __name__ == '__main__':
                 dash.callback_context.triggered_id.index]
 
             if current_fresnel_analysis.fitted_result is not None:
-                result = 'Fit result: {res}'.format(res=round(current_fresnel_analysis.fitted_result[0], 4))
+                result = fit_result_text(current_fresnel_analysis)
             else:
                 result = 'Fit result: None'
 
@@ -5325,8 +5376,9 @@ if __name__ == '__main__':
         dash.State('exclusion-height-analysis-offset-refit', 'value'),
         dash.State('exclusion-height-analysis-prism-refit', 'value'),
         dash.State('exclusion-height-search-method', 'value'),
+        dash.State('exclusion-height-match-dip', 'value'),
         prevent_initial_call=True)
-    def run_exclusion_height_calculations(run_button, lower_height_bound, upper_height_bound, lower_RI_bound, upper_RI_bound, RI_initial_guess, resolution, fit_offset_flag, fit_prism_flag, height_search):
+    def run_exclusion_height_calculations(run_button, lower_height_bound, upper_height_bound, lower_RI_bound, upper_RI_bound, RI_initial_guess, resolution, fit_offset_flag, fit_prism_flag, height_search, match_dip_flag):
         """
         This callback runs the exclusion height calculations in the background. It is triggered by the run button, and
         updates the progress bar. It also updates the result figures when the calculations are done.
@@ -5351,6 +5403,7 @@ if __name__ == '__main__':
             current_exclusion_height_analysis.fit_offset = fit_offset_flag
             current_exclusion_height_analysis.fit_prism = fit_prism_flag
             current_exclusion_height_analysis.height_search = height_search or 'adaptive'
+            current_exclusion_height_analysis.match_dip_angle = bool(match_dip_flag)
 
             # Set resolution, height steps and RI bounds and guess
             current_exclusion_height_analysis.d_n_pair_resolution = resolution
@@ -5365,11 +5418,11 @@ if __name__ == '__main__':
 
             mean_result_height, mean_result_RI, all_result_heights, all_result_RI = exclusion_height_result_texts(current_exclusion_height_analysis)
 
-            current_session.add_log('EH{id} {name}: {height}, {RI}, {all_heights} (heights {heights_from}-{heights_to} nm, {resolution} steps, {search} search, RI bounds {RI_bounds}, fit offset {offset}, fit prism k {prism})'.format(
+            current_session.add_log('EH{id} {name}: {height}, {RI}, {all_heights} (heights {heights_from}-{heights_to} nm, {resolution} steps, {search} search, RI bounds {RI_bounds}, fit offset {offset}, fit prism k {prism}, dip angle matched {dip})'.format(
                 id=current_exclusion_height_analysis.object_id, name=current_exclusion_height_analysis.name,
                 height=mean_result_height, RI=mean_result_RI, all_heights=all_result_heights, heights_from=lower_height_bound, heights_to=upper_height_bound, resolution=resolution,
                 RI_bounds=current_exclusion_height_analysis.RI_bounds, offset=fit_offset_flag, prism=fit_prism_flag,
-                search=current_exclusion_height_analysis.height_search))
+                search=current_exclusion_height_analysis.height_search, dip=current_exclusion_height_analysis.match_dip_angle))
 
             # Save session
             current_session.save_exclusion_height_analysis(current_exclusion_height_analysis.object_id)
@@ -5618,9 +5671,10 @@ if __name__ == '__main__':
         dash.State('exclusion-height-analysis-prism-refit', 'value'),
         dash.State('exclusion-height-bulk-RI-method', 'value'),
         dash.State('exclusion-height-search-method', 'value'),
+        dash.State('exclusion-height-match-dip', 'value'),
         prevent_initial_call=True)
     def exclusion_height_all_wavelengths(analysis_label, run_clicks, selected_paths, lower_height_bound, upper_height_bound,
-                                         lower_RI_bound, upper_RI_bound, RI_initial_guess, resolution, fit_offset_flag, fit_prism_flag, bulk_RI_method, height_search):
+                                         lower_RI_bound, upper_RI_bound, RI_initial_guess, resolution, fit_offset_flag, fit_prism_flag, bulk_RI_method, height_search, match_dip_flag):
         """
         Runs the current exclusion height analysis for the other channels (wavelengths) of the measurement.
         """
@@ -5645,6 +5699,7 @@ if __name__ == '__main__':
         template.fit_offset = fit_offset_flag
         template.fit_prism = fit_prism_flag
         template.height_search = height_search or 'adaptive'
+        template.match_dip_angle = bool(match_dip_flag)
         template.d_n_pair_resolution = resolution
         template.height_bounds = [lower_height_bound, upper_height_bound]
         template.height_steps = np.linspace(lower_height_bound, upper_height_bound, resolution)
@@ -5693,6 +5748,7 @@ if __name__ == '__main__':
     def series_options_from_settings(options_values):
         return {'fit_offset': 'offset' in (options_values or []), 'fit_prism_k': 'prism' in (options_values or []),
                 'bulk_from_TIR': 'bulk' in (options_values or []),
+                'match_dip_angle': 'dip' in (options_values or []),
                 'angle_range_points': current_session.SPR_TIR_fitting_parameters['Fresnel_angle_range_points'],
                 'TIR_ranges': [TIR_default_parameters['TIR_range_water_or_long_measurement'], TIR_default_parameters['TIR_range_air_or_few_scans']]}
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.0.1
+
+### Features
+- Fits match the SPR dip angle ("Match dip angle?" option, default for new fresnel and exclusion height analyses, the layer series and the batch analysis): the model dip is placed at the measured SPR angle, and the other fitted values (offset, prism k) describe the rest of the dip. Before, fitting the reflectivity over the angle range could leave the model dip several millidegrees from the measured one depending on the range (about +9 mdeg on average with the default range in the SiO2/APS/SMCC/PEG test data); now the result hardly depends on the angle range. The fit result and the log show the difference between the model dip and the measured SPR angle. Analyses from older sessions keep the reflectivity-only fit until the option is checked.
+
+### Fixes
+- The package no longer includes converted example data (.csv files made from the example .spr2 files), which made it too large for PyPI.
+- README: what to do when the sprpy command is not found, uv cannot hardlink files (e.g. with OneDrive), or an older version was installed right after a release.
+- Corrected the name of Jesper Medin in the documentation and source comments.
+
 ## v2.0.0
 
 ### Features
